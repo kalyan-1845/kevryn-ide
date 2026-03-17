@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 
-const AntigravityBackground = React.memo(() => {
+const KevrynBackground = React.memo(() => {
     const canvasRef = useRef(null);
     const mouseRef = useRef({ x: -1000, y: -1000, active: false });
 
@@ -185,4 +185,4 @@ const AntigravityBackground = React.memo(() => {
     );
 });
 
-export default AntigravityBackground;
+export default KevrynBackground;

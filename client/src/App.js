@@ -10,7 +10,7 @@ import {
 import FileTree from './components/FileTree';
 import Terminal from './components/Terminal';
 import AIPanel from './components/AIPanel';
-import AntigravityBackground from './components/AntigravityBackground';
+import KevrynBackground from './components/KevrynBackground';
 import { GoogleLogin } from '@react-oauth/google';
 import './App.css';
 import DeploymentPanel from './components/DeploymentPanel';
@@ -1634,7 +1634,7 @@ function App() {
             // FACULTY MANDATORY GATE: Block access until college linked
             return (
                 <div style={{ position: 'fixed', inset: 0, background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, overflow: 'hidden' }}>
-                    <AntigravityBackground />
+                    <KevrynBackground />
                     <div style={{ position: 'relative', zIndex: 10, background: 'rgba(30, 30, 45, 0.8)', backdropFilter: 'blur(20px)', padding: '40px', borderRadius: '24px', textAlign: 'center', maxWidth: '440px', border: '1px solid rgba(124, 58, 237, 0.3)', boxShadow: '0 0 60px rgba(124, 58, 237, 0.15)' }}>
                         <div style={{ marginBottom: '20px', color: '#7c3aed' }}><FaUserGraduate size={48} /></div>
                         <h2 style={{ color: '#fff', marginBottom: '10px', fontSize: '24px', fontWeight: '800' }}>Link Your College Account</h2>
@@ -1700,7 +1700,7 @@ function App() {
                 />
             )}
 
-            {token && <AntigravityBackground />}
+            {token && <KevrynBackground />}
 
             {token && userRole === 'student' && activeSessionId && !isLabOpen && (
                 <motion.div

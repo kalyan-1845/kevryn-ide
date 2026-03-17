@@ -137,7 +137,7 @@ const StudentAssignmentView = ({ token, serverUrl, userId, onBack, activeSession
         margin: '0 auto',
         height: '100vh',
         overflowY: 'auto',
-        background: 'transparent', // FIX: Transparent to show AntigravityBg
+        background: 'transparent', // FIX: Transparent to show KevrynBackground
         position: 'relative',
         zIndex: 10
     };

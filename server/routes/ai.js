@@ -1,8 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const groqService = require('../services/groqService');
+const aiProviderService = require('../services/aiProviderService');
+const ollamaService = require('../services/ollamaService');
 const jwt = require('jsonwebtoken');
 const File = require('../File');
+const ChatSession = require('../models/ChatSession');
+
+/**
+ * Helper: Choose AI service based on model
+ */
+function getAiService(model) {
+    if (!model || model === 'groq' || model.startsWith('llama-3.3')) return groqService;
+    if (model.includes('ollama')) return ollamaService;
+    return aiProviderService;
+}
 
 // Helper: Get project file tree
 async function getProjectFileTree(userId) {
@@ -62,7 +74,7 @@ router.get('/status', (req, res) => {
             available,
             provider: 'groq',
             model: groqService.model,
-            message: available ? 'Groq AI is ready' : 'Groq API key not set. Enter your key to get started.'
+            message: available ? 'Kevryn AI is ready' : 'AI Core is active. Free models available.'
         });
     } catch (error) {
         res.json({ available: false, provider: 'groq', message: error.message });
@@ -77,7 +89,7 @@ router.post('/api-key', (req, res) => {
             return res.status(400).json({ error: 'API key is required' });
         }
         groqService.setApiKey(apiKey.trim());
-        res.json({ success: true, message: 'Groq API key configured successfully' });
+        res.json({ success: true, message: 'AI Core linked successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -86,33 +98,100 @@ router.post('/api-key', (req, res) => {
 // Chat with AI
 router.post('/chat', verifyToken, async (req, res) => {
     try {
-        const { messages } = req.body;
+        const { messages, model, sessionId } = req.body;
 
         if (!messages || !Array.isArray(messages)) {
             return res.status(400).json({ error: 'Messages array required' });
         }
 
-
         const projectContext = await getProjectFileTree(req.user.userId);
+        const service = getAiService(model);
 
-        // Inject context into system message if exists, or add one
-        if (projectContext) {
-            const systemMsg = `\n\nProject Structure:\n${projectContext}`;
-            let systemFound = false;
-            for (let m of messages) {
-                if (m.role === 'system') {
-                    m.content += systemMsg;
-                    systemFound = true;
-                    break;
-                }
-            }
-            if (!systemFound) {
-                messages.unshift({ role: 'system', content: `You are a helpful AI assistant. You have access to the project structure:${systemMsg}` });
+        // Inject context into system message
+        const contextMsg = projectContext ? `\n\nProject Structure:\n${projectContext}` : '';
+        const systemPrompt = `You are a helpful AI assistant integrated into Kevryn Studio. You have access to the project structure:${contextMsg}`;
+        
+        let aiMessages = [...messages];
+        let systemFound = false;
+        for (let m of aiMessages) {
+            if (m.role === 'system') {
+                m.content += contextMsg;
+                systemFound = true;
+                break;
             }
         }
+        if (!systemFound) {
+            aiMessages.unshift({ role: 'system', content: systemPrompt });
+        }
 
-        const response = await groqService.chat(messages);
+        const response = await service.chat(aiMessages, { model });
+
+        // Save to history if sessionId or new session needed
+        if (req.user && req.user.userId) {
+            let session;
+            if (sessionId) {
+                session = await ChatSession.findById(sessionId);
+            }
+
+            if (!session) {
+                // Create new session if none provided or not found
+                const firstUserMsg = messages.find(m => m.role === 'user')?.content || 'New Chat';
+                const title = firstUserMsg.slice(0, 40) + (firstUserMsg.length > 40 ? '...' : '');
+                session = new ChatSession({
+                    userId: req.user.userId,
+                    title,
+                    messages: messages // Use primitive messages without injected system context
+                });
+            } else {
+                // Update existing session
+                // We only add the last two messages (user prompt and AI response)
+                const lastUserMsg = messages[messages.length - 1];
+                session.messages.push(lastUserMsg);
+            }
+            
+            session.messages.push({ role: 'assistant', content: response });
+            await session.save();
+            
+            return res.json({ response, sessionId: session._id });
+        }
+
         res.json({ response });
+    } catch (error) {
+        console.error("Chat Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- HISTORY ROUTES ---
+
+// List sessions
+router.get('/sessions', verifyToken, async (req, res) => {
+    try {
+        const sessions = await ChatSession.find({ userId: req.user.userId })
+            .sort({ updatedAt: -1 })
+            .select('title updatedAt');
+        res.json({ sessions });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get specific session
+router.get('/sessions/:id', verifyToken, async (req, res) => {
+    try {
+        const session = await ChatSession.findOne({ _id: req.params.id, userId: req.user.userId });
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+        res.json({ session });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete session
+router.delete('/sessions/:id', verifyToken, async (req, res) => {
+    try {
+        await ChatSession.deleteOne({ _id: req.params.id, userId: req.user.userId });
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -121,13 +200,11 @@ router.post('/chat', verifyToken, async (req, res) => {
 // Explain code
 router.post('/explain', verifyToken, async (req, res) => {
     try {
-        const { code, language } = req.body;
+        const { code, language, model } = req.body;
+        if (!code) return res.status(400).json({ error: 'Code is required' });
 
-        if (!code) {
-            return res.status(400).json({ error: 'Code is required' });
-        }
-
-        const explanation = await groqService.explainCode(code, language || 'code');
+        const service = getAiService(model);
+        const explanation = await service.explainCode(code, language || 'code', model);
         res.json({ explanation });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -137,14 +214,12 @@ router.post('/explain', verifyToken, async (req, res) => {
 // Fix code
 router.post('/fix', verifyToken, async (req, res) => {
     try {
-        const { code, language, error } = req.body;
-
-        if (!code) {
-            return res.status(400).json({ error: 'Code is required' });
-        }
+        const { code, language, error, model } = req.body;
+        if (!code) return res.status(400).json({ error: 'Code is required' });
 
         const projectContext = await getProjectFileTree(req.user.userId);
-        const fixed = await groqService.fixCode(code, language || 'code', error, projectContext);
+        const service = getAiService(model);
+        const fixed = await service.fixCode(code, language || 'code', error, projectContext, model);
         res.json({ fixed });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -154,13 +229,11 @@ router.post('/fix', verifyToken, async (req, res) => {
 // Optimize code
 router.post('/optimize', verifyToken, async (req, res) => {
     try {
-        const { code, language } = req.body;
+        const { code, language, model } = req.body;
+        if (!code) return res.status(400).json({ error: 'Code is required' });
 
-        if (!code) {
-            return res.status(400).json({ error: 'Code is required' });
-        }
-
-        const optimized = await groqService.optimizeCode(code, language || 'code');
+        const service = getAiService(model);
+        const optimized = await service.optimizeCode(code, language || 'code', model);
         res.json({ optimized });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -170,13 +243,11 @@ router.post('/optimize', verifyToken, async (req, res) => {
 // Generate code
 router.post('/generate', verifyToken, async (req, res) => {
     try {
-        const { description, language } = req.body;
+        const { description, language, model } = req.body;
+        if (!description) return res.status(400).json({ error: 'Description is required' });
 
-        if (!description) {
-            return res.status(400).json({ error: 'Description is required' });
-        }
-
-        const generated = await groqService.generateCode(description, language || 'javascript');
+        const service = getAiService(model);
+        const generated = await service.generateCode(description, language || 'javascript', model);
         res.json({ generated });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -186,14 +257,12 @@ router.post('/generate', verifyToken, async (req, res) => {
 // Analyze error
 router.post('/analyze-error', verifyToken, async (req, res) => {
     try {
-        const { code, language, errorOutput } = req.body;
-
-        if (!code || !errorOutput) {
-            return res.status(400).json({ error: 'Code and error output are required' });
-        }
+        const { code, language, errorOutput, model } = req.body;
+        if (!code || !errorOutput) return res.status(400).json({ error: 'Code and error output are required' });
 
         const projectContext = await getProjectFileTree(req.user.userId);
-        const analysis = await groqService.analyzeError(code, language || 'code', errorOutput, projectContext);
+        const service = getAiService(model);
+        const analysis = await service.analyzeError(code, language || 'code', errorOutput, projectContext, model);
         res.json({ analysis });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -203,41 +272,41 @@ router.post('/analyze-error', verifyToken, async (req, res) => {
 // Add comments
 router.post('/comment', verifyToken, async (req, res) => {
     try {
-        const { code, language } = req.body;
+        const { code, language, model } = req.body;
+        if (!code) return res.status(400).json({ error: 'Code is required' });
 
-        if (!code) {
-            return res.status(400).json({ error: 'Code is required' });
-        }
-
-        const commented = await groqService.addComments(code, language || 'code');
+        const service = getAiService(model);
+        const commented = await service.addComments(code, language || 'code', model);
         res.json({ commented });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Auto-Dev Plan Generation
+// Auto-Dev Plan Generation (THE KEVRYN AI ENGINE)
 router.post('/auto/plan', verifyToken, async (req, res) => {
     try {
-        const { prompt } = req.body;
+        const { prompt, model } = req.body;
         if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
         // Fetch project context
-        const File = require('../File');
         const files = await File.find({ owner: req.user.userId });
-
-        // Contextualize: Send file tree AND content of text files
         const fileTree = await getProjectFileTree(req.user.userId);
 
-        const projectContext = files.map(f => ({
-            name: f.name,
-            content: f.content?.substring(0, 2000) // Cap content per file
-        })).filter(f => !f.name.match(/\.(png|jpg|jpeg|gif|ico|pdf|zip|mp4)$/i));
+        // Contextualize: Send file tree AND full content of most recent files
+        // (Sorted by updatedAt to give AI the most relevant code)
+        const projectContext = files
+            .sort((a,b) => b.updatedAt - a.updatedAt)
+            .slice(0, 50) // Send a good chunk of files
+            .map(f => ({
+                name: f.name,
+                content: f.content || ""
+            })).filter(f => !f.name.match(/\.(png|jpg|jpeg|gif|ico|pdf|zip|mp4)$/i));
 
-        // Add the tree structure as a special "file" or just prepend to prompt
         const fullContext = `Project Directory Structure:\n${fileTree}\n\nFile Contents:\n${JSON.stringify(projectContext)}`;
 
-        const plan = await groqService.generateImplementationPlan(prompt, fullContext);
+        const service = getAiService(model);
+        const plan = await service.generateImplementationPlan(prompt, fullContext, model);
         res.json({ plan });
     } catch (error) {
         console.error("Auto Plan Error:", error);

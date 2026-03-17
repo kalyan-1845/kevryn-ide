@@ -4,7 +4,8 @@ import { marked } from 'marked';
 import {
     FaPaperPlane, FaRobot, FaSpinner, FaCheck, FaTimes, FaKey,
     FaSearch, FaBug, FaBolt, FaMagic, FaComment, FaCopy, FaCode,
-    FaTrash, FaChevronDown, FaChevronUp, FaEye, FaTerminal
+    FaTrash, FaChevronDown, FaChevronUp, FaEye, FaTerminal,
+    FaPlus, FaHistory, FaEllipsisV
 } from 'react-icons/fa';
 
 const _rawServerUrl = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
@@ -20,7 +21,21 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
     const [activeAction, setActiveAction] = useState(null);
     const [showActions, setShowActions] = useState(true);
     const [copiedIndex, setCopiedIndex] = useState(null);
+    const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
+    const [currentSessionId, setCurrentSessionId] = useState(null);
+    const [sessions, setSessions] = useState([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const [mode, setMode] = useState('chat'); // 'chat' | 'auto-dev'
     const chatEndRef = useRef(null);
+
+    const models = [
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini', desc: 'Balanced' },
+        { id: 'claude-3-haiku', name: 'Claude 3 Haiku', desc: 'Creative' },
+        { id: 'llama-3', name: 'Llama 3 70B', desc: 'Power' },
+        { id: 'mixtral-8x7b', name: 'Mixtral 8x7B', desc: 'Logic' },
+        { id: 'groq', name: 'Groq Core', desc: 'Instant' }
+    ];
+
     const api = useMemo(() => axios.create({ baseURL: SERVER_URL, headers: { Authorization: token } }), [token]);
 
     useEffect(() => {
@@ -29,9 +44,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
         // --- GLOBAL ACCESS FOR TRIGGERING CHAT ---
         window.triggerAiChat = (msg) => {
             setInput(msg);
-            // Simulate enter or just call sendMessage directly if we refactor it
-            // For now, setting input is enough for the user to just click send,
-            // but let's try to trigger it automatically.
             setTimeout(() => {
                 const sendBtn = document.querySelector('.ai-send-btn');
                 if (sendBtn) sendBtn.click();
@@ -39,10 +51,53 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
         };
 
         return () => {
-            // Clean up the global function when the component unmounts
             delete window.triggerAiChat;
         };
-    }, [token, setInput]); // Added setInput to dependencies as it's used inside the effect
+    }, [token, setInput]);
+
+    const fetchSessions = async () => {
+        try {
+            const response = await api.get('/ai/sessions');
+            setSessions(response.data.sessions || []);
+        } catch (error) {
+            console.error('Failed to fetch sessions:', error);
+        }
+    };
+
+    const loadSession = async (sessionId) => {
+        setIsLoading(true);
+        setShowHistory(false);
+        try {
+            const response = await api.get(`/ai/sessions/${sessionId}`);
+            const session = response.data.session;
+            setMessages(session.messages);
+            setCurrentSessionId(session._id);
+        } catch (error) {
+            console.error('Failed to load session:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const deleteSession = async (e, sessionId) => {
+        e.stopPropagation();
+        try {
+            await api.delete(`/ai/sessions/${sessionId}`);
+            setSessions(prev => prev.filter(s => s._id !== sessionId));
+            if (currentSessionId === sessionId) {
+                newChat();
+            }
+        } catch (error) {
+            console.error('Failed to delete session:', error);
+        }
+    };
+
+    const newChat = () => {
+        setMessages([]);
+        setCurrentSessionId(null);
+        setMode('chat');
+        setShowHistory(false);
+    };
 
     const checkGroqStatus = async () => {
         try {
@@ -168,9 +223,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
         { id: 'auto-dev', label: 'Auto-Dev', icon: <FaRobot size={11} />, color: '#f43f5e', endpoint: '/ai/auto/plan', dataKey: 'plan' },
     ];
 
-    const [mode, setMode] = useState('chat'); // 'chat' | 'auto-dev'
-
-    // ... existing status check ...
 
     // Handle Quick Action Click
     const handleQuickAction = async (action) => {
@@ -197,9 +249,9 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             let response;
             if (action.id === 'generate') {
                 const description = input.trim() || 'Improve this code';
-                response = await api.post(action.endpoint, { description, language: language || 'javascript' });
+                response = await api.post(action.endpoint, { description, language: language || 'javascript', model: selectedModel });
             } else {
-                response = await api.post(action.endpoint, { code, language: language || 'javascript' });
+                response = await api.post(action.endpoint, { code, language: language || 'javascript', model: selectedModel });
             }
 
             const aiResponse = response.data[action.dataKey] || response.data.response || 'No response';
@@ -236,8 +288,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     fileName: filePlan.path,
                     language: language || 'javascript',
                     onApply: (finalCode) => {
-                        // For AutoDev diffs, we just update the content in the plan temporarily
-                        // so the final "Execute" uses the adjusted code if they want to edit it
                         filePlan.content = finalCode;
                     }
                 });
@@ -249,7 +299,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
     const executePlan = async (plan, msgIndex) => {
         try {
-            // Update message to show executing state
             setMessages(prev => prev.map((m, i) => i === msgIndex ? { ...m, executed: 'loading' } : m));
 
             if (window.handleAutoDevExecution) {
@@ -278,30 +327,23 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
         try {
             if (mode === 'auto-dev') {
-                // Auto-Dev Mode Logic
-                const response = await api.post('/ai/auto/plan', { prompt: currentInput });
+                const response = await api.post('/ai/auto/plan', { prompt: currentInput, model: selectedModel, sessionId: currentSessionId });
                 const aiResponse = response.data.plan;
+                if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
+                
                 setMessages(prev => [...prev, {
                     role: 'assistant',
                     type: 'plan',
                     content: aiResponse
                 }]);
             } else {
-                // Standard Chat Logic
-                const hasCode = code && code.trim() && code !== '// Select a file to start coding...';
-                const systemContext = hasCode ? [{
-                    role: 'system',
-                    content: `The user is working on a file called "${fileName}" ({language}). Here is their current code:\n\`\`\`${language}\n${code}\n\`\`\`\nHelp them.`
-                }] : [];
-                const chatHistory = messages
-                    .filter(m => m.role === 'user' || m.role === 'assistant')
-                    .slice(-6)
-                    .map(m => ({ role: m.role, content: m.content }));
-
                 const response = await api.post('/ai/chat', {
-                    messages: [...systemContext, ...chatHistory, { role: 'user', content: currentInput }]
+                    messages: [...messages, { role: 'user', content: currentInput }],
+                    model: selectedModel,
+                    sessionId: currentSessionId
                 });
 
+                if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
                 setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
             }
 
@@ -325,36 +367,63 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     <div className="ai-logo">
                         <FaRobot size={14} />
                     </div>
-                    <span className="ai-title">AI Assistant</span>
-                    <span className="ai-model-badge">Groq</span>
+                    <span className="ai-title">Kevryn AI</span>
+                    <select
+                        className="ai-model-selector"
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                    >
+                        {models.map(m => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="ai-header-right">
-                    {groqStatus.available ? (
-                        <span className="ai-status ai-status-online">
-                            <span className="ai-status-dot"></span> Ready
-                        </span>
-                    ) : (
-                        <span className="ai-status ai-status-offline">
-                            <FaTimes size={10} /> Offline
-                        </span>
-                    )}
-                    <button onClick={clearChat} className="ai-clear-btn" title="Clear chat">
-                        <FaTrash size={10} />
+                    <button onClick={newChat} className="ai-header-btn" title="New Chat">
+                        <FaPlus size={12} />
+                    </button>
+                    <button onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchSessions(); }} className={`ai-header-btn ${showHistory ? 'active' : ''}`} title="History">
+                        <FaHistory size={12} />
+                    </button>
+                    <button className="ai-header-btn" title="Menu">
+                        <FaEllipsisV size={12} />
                     </button>
                 </div>
             </div>
 
-            {/* API Key Input */}
-            {!groqStatus.available && (
+            {/* History View Overlay */}
+            {showHistory && (
+                <div className="ai-history-overlay">
+                    <div className="ai-history-header">
+                        <span>Chat History</span>
+                        <FaTimes className="close-history" onClick={() => setShowHistory(false)} />
+                    </div>
+                    <div className="ai-history-list">
+                        {sessions.length === 0 ? (
+                            <div className="no-history">No past conversations</div>
+                        ) : (
+                            sessions.map(s => (
+                                <div key={s._id} className={`history-item ${currentSessionId === s._id ? 'active' : ''}`} onClick={() => loadSession(s._id)}>
+                                    <div className="history-info">
+                                        <div className="history-title">{s.title || 'New Chat'}</div>
+                                        <div className="history-date">{new Date(s.updatedAt).toLocaleDateString()}</div>
+                                    </div>
+                                    <FaTrash className="delete-history" onClick={(e) => deleteSession(e, s._id)} />
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* API Key Input (Only show if groq selected and not available) */}
+            {selectedModel === 'groq' && !groqStatus.available && (
                 <div className="ai-key-setup">
                     <div className="ai-key-title">
-                        <FaKey size={12} /> Enter Groq API Key
+                        <FaKey size={12} /> Link Kevryn AI Core
                     </div>
                     <p className="ai-key-desc">
-                        Get your free key at{' '}
-                        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">
-                            console.groq.com
-                        </a>
+                        Enter your Groq API key for zero-latency responses.
                     </p>
                     <div className="ai-key-input-row">
                         <input
@@ -370,14 +439,14 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                             disabled={isSettingKey || !apiKeyInput.trim()}
                             className="ai-key-btn"
                         >
-                            {isSettingKey ? <FaSpinner className="spinning" size={12} /> : 'Connect'}
+                            {isSettingKey ? <FaSpinner className="spinning" size={12} /> : 'Link'}
                         </button>
                     </div>
                 </div>
             )}
 
             {/* Context Bar */}
-            {groqStatus.available && fileName && fileName !== '' && (
+            {fileName && fileName !== '' && (
                 <div className="ai-context-bar">
                     <span className="ai-context-file">
                         📄 {fileName}
@@ -387,49 +456,47 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             )}
 
             {/* Quick Actions */}
-            {groqStatus.available && (
-                <div className="ai-actions-section">
-                    <div
-                        className="ai-actions-toggle"
-                        onClick={() => setShowActions(!showActions)}
-                    >
-                        <span>Quick Actions</span>
-                        {showActions ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
-                    </div>
-                    {showActions && (
-                        <div className="ai-actions-grid">
-                            {quickActions.map(action => (
-                                <button
-                                    key={action.id}
-                                    className={`ai-action-btn ${(activeAction === action.id || (action.id === 'auto-dev' && mode === 'auto-dev')) ? 'active' : ''}`}
-                                    onClick={() => handleQuickAction(action)}
-                                    disabled={isLoading}
-                                    style={{ '--action-color': action.color }}
-                                    title={action.label}
-                                >
-                                    {activeAction === action.id ? (
-                                        <FaSpinner className="spinning" size={11} />
-                                    ) : (
-                                        action.icon
-                                    )}
-                                    <span>{action.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
+            <div className="ai-actions-section">
+                <div
+                    className="ai-actions-toggle"
+                    onClick={() => setShowActions(!showActions)}
+                >
+                    <span>Capabilities</span>
+                    {showActions ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
                 </div>
-            )}
+                {showActions && (
+                    <div className="ai-actions-grid">
+                        {quickActions.map(action => (
+                            <button
+                                key={action.id}
+                                className={`ai-action-btn ${(activeAction === action.id || (action.id === 'auto-dev' && mode === 'auto-dev')) ? 'active' : ''}`}
+                                onClick={() => handleQuickAction(action)}
+                                disabled={isLoading}
+                                style={{ '--action-color': action.color }}
+                                title={action.label}
+                            >
+                                {activeAction === action.id ? (
+                                    <FaSpinner className="spinning" size={11} />
+                                ) : (
+                                    action.icon
+                                )}
+                                <span>{action.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* Messages */}
             <div className="ai-messages">
-                {messages.length === 0 && groqStatus.available && (
+                {messages.length === 0 && (
                     <div className="ai-welcome">
                         <div className="ai-welcome-icon">
                             <FaRobot size={28} />
                         </div>
-                        <div className="ai-welcome-title">How can I help?</div>
+                        <div className="ai-welcome-title">Kevryn AI Agent</div>
                         <div className="ai-welcome-subtitle">
-                            {mode === 'auto-dev' ? <span style={{ color: '#f43f5e' }}>Auto-Dev Mode Active</span> : "Ask me anything or use Quick Actions above"}
+                            {mode === 'auto-dev' ? <span style={{ color: '#f43f5e' }}>Complete Project Builder Mode</span> : "Ready to accelerate your development."}
                         </div>
                         {mode !== 'auto-dev' && <div className="ai-welcome-hints">
                             <span className="ai-hint" onClick={() => setInput('Explain this code')}>
@@ -440,11 +507,11 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                             </span>
                         </div>}
                         {mode === 'auto-dev' && <div className="ai-welcome-hints">
-                            <span className="ai-hint" onClick={() => setInput('Create a login page')}>
-                                "Create a login page"
+                            <span className="ai-hint" onClick={() => setInput('Build a full auth system')}>
+                                "Build a full auth system"
                             </span>
-                            <span className="ai-hint" onClick={() => setInput('Setup a React component')}>
-                                "Setup React component"
+                            <span className="ai-hint" onClick={() => setInput('Create a responsive portfolio')}>
+                                "Create a portfolio"
                             </span>
                         </div>}
                     </div>
@@ -454,7 +521,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     <div key={i} className={`ai-message ai-message-${msg.role}`}>
                         {msg.role === 'assistant' && (
                             <div className="ai-avatar">
-                                <FaRobot size={12} />
+                                <FaRobot size={10} />
                             </div>
                         )}
                         <div className={`ai-bubble ai-bubble-${msg.role}`}>
@@ -462,7 +529,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                                 <div className="ai-plan-card">
                                     <div className="ai-plan-header">
                                         <FaMagic className="ai-plan-icon" />
-                                        <span>Auto-Dev Plan</span>
+                                        <span>Implementation Plan</span>
                                     </div>
                                     <div className="ai-plan-explanation">{msg.content.explanation}</div>
 
@@ -477,7 +544,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                                                     </div>
                                                     {(f.action === 'create' || f.action === 'update') && (
                                                         <button className="btn-review-diff" onClick={() => handleDiffReview(f)} title="Review Changes">
-                                                            <FaEye /> Diff
+                                                            <FaEye /> View Code
                                                         </button>
                                                     )}
                                                 </li>
@@ -486,7 +553,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                                     </div>
 
                                     <div className="ai-plan-section">
-                                        <strong>Commands</strong>
+                                        <strong>Magic Commands</strong>
                                         {msg.content.commands?.length > 0 ? (
                                             <div className="ai-plan-commands">
                                                 {msg.content.commands.map((cmd, idx) => (
@@ -498,18 +565,18 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
                                     <div className="ai-plan-actions">
                                         {msg.executed === 'success' ? (
-                                            <div className="ai-success-msg"><FaCheck /> Done!</div>
+                                            <div className="ai-success-msg"><FaCheck /> Mission Accomplished!</div>
                                         ) : msg.executed === 'loading' ? (
-                                            <div className="ai-loading-msg"><FaSpinner className="spinning" /> Working...</div>
+                                            <div className="ai-loading-msg"><FaSpinner className="spinning" /> Performing Magic...</div>
                                         ) : msg.executed === 'error' ? (
-                                            <div className="ai-error-msg"><FaTimes /> Failed</div>
+                                            <div className="ai-error-msg"><FaTimes /> Magic Failed</div>
                                         ) : (
                                             <>
                                                 <button className="btn-approve" onClick={() => executePlan(msg.content, i)}>
-                                                    <FaCheck /> Execute
+                                                    <FaCheck /> Build Project
                                                 </button>
                                                 <button className="btn-reject" onClick={() => setMessages(prev => prev.filter((_, idx) => idx !== i))}>
-                                                    <FaTimes /> Reject
+                                                    <FaTimes /> Cancel
                                                 </button>
                                             </>
                                         )}
@@ -527,7 +594,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                 {isLoading && (
                     <div className="ai-message ai-message-assistant">
                         <div className="ai-avatar">
-                            <FaRobot size={12} />
+                            <FaRobot size={10} />
                         </div>
                         <div className="ai-thinking">
                             <div className="ai-thinking-dots">
@@ -546,13 +613,13 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={mode === 'auto-dev' ? "Describe feature to build..." : (groqStatus.available ? "Ask anything..." : "Connect API key to start")}
-                        disabled={!groqStatus.available || isLoading}
+                        placeholder={mode === 'auto-dev' ? "What should we build today?" : "Ask Kevryn AI..."}
+                        disabled={isLoading}
                         className="ai-input"
                     />
                     <button
                         type="submit"
-                        disabled={!groqStatus.available || !input.trim() || isLoading}
+                        disabled={!input.trim() || isLoading}
                         className="ai-send-btn"
                         style={{ color: mode === 'auto-dev' ? '#f43f5e' : '' }}
                     >
@@ -560,7 +627,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     </button>
                 </div>
                 <div className="ai-input-footer">
-                    {mode === 'auto-dev' ? 'Auto-Dev Mode Active' : 'Groq · Llama 3 70B'}
+                    {mode === 'auto-dev' ? 'Kevryn Project Builder' : `${models.find(m => m.id === selectedModel)?.name} · ${models.find(m => m.id === selectedModel)?.desc}`}
                 </div>
             </form>
         </div>
