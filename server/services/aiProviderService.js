@@ -20,22 +20,35 @@ class AiProviderService {
      */
     async chat(messages, options = {}) {
         try {
-            const model = options.model || 'openai'; // default to GPT-4o mini style
+            const model = options.model || 'gpt-4o-mini'; 
             
             // Pollinations text API uses a simple POST to / with messages
-            // Mapping common model names to Pollinations specific identifiers
             const pollinationsModel = this.models[model] || model;
 
+            // Sanitize messages to only include role and content (prevents Mongoose object bleed-in)
+            const sanitizedMessages = messages.map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+
             const response = await axios.post(this.baseURL, {
-                messages: messages,
+                messages: sanitizedMessages,
                 model: pollinationsModel,
-                seed: Math.floor(Math.random() * 100000)
+                seed: Math.floor(Math.random() * 100000),
+                jsonMode: options.jsonMode || false
+            }, {
+                timeout: 30000 // 30s timeout
             });
 
-            return response.data || 'No response from AI';
+            if (!response.data) throw new Error('Empty response from AI Provider');
+            
+            // Pollinations sometimes returns raw text even on POST, or a JSON object depending on path
+            return typeof response.data === 'string' ? response.data : (response.data.content || response.data.choices?.[0]?.message?.content || JSON.stringify(response.data));
+
         } catch (error) {
             console.error('[AiProviderService] Error:', error.message);
-            throw new Error(`AI Agent Error: ${error.response?.data || error.message}`);
+            const detail = error.response?.data || error.message;
+            throw new Error(`Kevryn AI Engine Error: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
         }
     }
 
@@ -71,7 +84,7 @@ class AiProviderService {
             { role: 'user', content: prompt }
         ];
         
-        const response = await this.chat(messages, { model });
+        const response = await this.chat(messages, { model, jsonMode: true });
         
         // Extract JSON from response
         try {

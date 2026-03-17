@@ -6,6 +6,7 @@ const ollamaService = require('../services/ollamaService');
 const jwt = require('jsonwebtoken');
 const File = require('../File');
 const ChatSession = require('../models/ChatSession');
+const { authenticate } = require('../utils/authMiddleware'); // Use global middleware
 
 /**
  * Helper: Choose AI service based on model
@@ -52,19 +53,7 @@ async function getProjectFileTree(userId) {
     }
 }
 
-// Auth middleware for AI routes
-const verifyToken = (req, res, next) => {
-    let token = req.headers.authorization;
-    if (!token) return res.status(401).json({ error: "Access denied" });
-    if (token.startsWith('Bearer ')) token = token.slice(7);
-    try {
-        const verified = jwt.verify(token, process.env.JWT_SECRET || 'my_super_secret_key_123');
-        req.user = verified;
-        next();
-    } catch (err) {
-        res.status(400).json({ error: "Invalid token" });
-    }
-};
+// Auth middleware removed - now using central authenticate from utils/authMiddleware
 
 // Check if Groq is available
 router.get('/status', (req, res) => {
@@ -96,7 +85,7 @@ router.post('/api-key', (req, res) => {
 });
 
 // Chat with AI
-router.post('/chat', verifyToken, async (req, res) => {
+router.post('/chat', authenticate, async (req, res) => {
     try {
         const { messages, model, sessionId } = req.body;
 
@@ -165,7 +154,7 @@ router.post('/chat', verifyToken, async (req, res) => {
 // --- HISTORY ROUTES ---
 
 // List sessions
-router.get('/sessions', verifyToken, async (req, res) => {
+router.get('/sessions', authenticate, async (req, res) => {
     try {
         const sessions = await ChatSession.find({ userId: req.user.userId })
             .sort({ updatedAt: -1 })
@@ -177,7 +166,7 @@ router.get('/sessions', verifyToken, async (req, res) => {
 });
 
 // Get specific session
-router.get('/sessions/:id', verifyToken, async (req, res) => {
+router.get('/sessions/:id', authenticate, async (req, res) => {
     try {
         const session = await ChatSession.findOne({ _id: req.params.id, userId: req.user.userId });
         if (!session) return res.status(404).json({ error: 'Session not found' });
@@ -188,7 +177,7 @@ router.get('/sessions/:id', verifyToken, async (req, res) => {
 });
 
 // Delete session
-router.delete('/sessions/:id', verifyToken, async (req, res) => {
+router.delete('/sessions/:id', authenticate, async (req, res) => {
     try {
         await ChatSession.deleteOne({ _id: req.params.id, userId: req.user.userId });
         res.json({ success: true });
@@ -198,7 +187,7 @@ router.delete('/sessions/:id', verifyToken, async (req, res) => {
 });
 
 // Explain code
-router.post('/explain', verifyToken, async (req, res) => {
+router.post('/explain', authenticate, async (req, res) => {
     try {
         const { code, language, model } = req.body;
         if (!code) return res.status(400).json({ error: 'Code is required' });
@@ -212,7 +201,7 @@ router.post('/explain', verifyToken, async (req, res) => {
 });
 
 // Fix code
-router.post('/fix', verifyToken, async (req, res) => {
+router.post('/fix', authenticate, async (req, res) => {
     try {
         const { code, language, error, model } = req.body;
         if (!code) return res.status(400).json({ error: 'Code is required' });
@@ -227,7 +216,7 @@ router.post('/fix', verifyToken, async (req, res) => {
 });
 
 // Optimize code
-router.post('/optimize', verifyToken, async (req, res) => {
+router.post('/optimize', authenticate, async (req, res) => {
     try {
         const { code, language, model } = req.body;
         if (!code) return res.status(400).json({ error: 'Code is required' });
@@ -241,7 +230,7 @@ router.post('/optimize', verifyToken, async (req, res) => {
 });
 
 // Generate code
-router.post('/generate', verifyToken, async (req, res) => {
+router.post('/generate', authenticate, async (req, res) => {
     try {
         const { description, language, model } = req.body;
         if (!description) return res.status(400).json({ error: 'Description is required' });
@@ -255,7 +244,7 @@ router.post('/generate', verifyToken, async (req, res) => {
 });
 
 // Analyze error
-router.post('/analyze-error', verifyToken, async (req, res) => {
+router.post('/analyze-error', authenticate, async (req, res) => {
     try {
         const { code, language, errorOutput, model } = req.body;
         if (!code || !errorOutput) return res.status(400).json({ error: 'Code and error output are required' });
@@ -270,7 +259,7 @@ router.post('/analyze-error', verifyToken, async (req, res) => {
 });
 
 // Add comments
-router.post('/comment', verifyToken, async (req, res) => {
+router.post('/comment', authenticate, async (req, res) => {
     try {
         const { code, language, model } = req.body;
         if (!code) return res.status(400).json({ error: 'Code is required' });
@@ -284,7 +273,7 @@ router.post('/comment', verifyToken, async (req, res) => {
 });
 
 // Auto-Dev Plan Generation (THE KEVRYN AI ENGINE)
-router.post('/auto/plan', verifyToken, async (req, res) => {
+router.post('/auto/plan', authenticate, async (req, res) => {
     try {
         const { prompt, model } = req.body;
         if (!prompt) return res.status(400).json({ error: 'Prompt is required' });

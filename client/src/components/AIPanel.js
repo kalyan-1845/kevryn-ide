@@ -316,18 +316,27 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
 
     const sendMessage = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         if (!input.trim() || isLoading) return;
 
-        const userMessage = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
         const currentInput = input;
+        const userMessage = { role: 'user', content: currentInput };
+        
+        // Update UI immediately
+        setMessages(prev => [...prev, userMessage]);
         setInput('');
         setIsLoading(true);
 
+        // Prepare messages for the API (including the new one)
+        const messagesToAI = [...messages, userMessage];
+
         try {
             if (mode === 'auto-dev') {
-                const response = await api.post('/ai/auto/plan', { prompt: currentInput, model: selectedModel, sessionId: currentSessionId });
+                const response = await api.post('/ai/auto/plan', { 
+                    prompt: currentInput, 
+                    model: selectedModel, 
+                    sessionId: currentSessionId 
+                });
                 const aiResponse = response.data.plan;
                 if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
                 
@@ -338,7 +347,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                 }]);
             } else {
                 const response = await api.post('/ai/chat', {
-                    messages: [...messages, { role: 'user', content: currentInput }],
+                    messages: messagesToAI,
                     model: selectedModel,
                     sessionId: currentSessionId
                 });
@@ -348,9 +357,10 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             }
 
         } catch (error) {
+            console.error("Chat Error:", error);
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `❌ ${error.response?.data?.error || error.message}`
+                content: `❌ ${error.response?.data?.error || error.response?.data || error.message}`
             }]);
         } finally {
             setIsLoading(false);

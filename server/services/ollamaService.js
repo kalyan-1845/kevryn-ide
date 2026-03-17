@@ -36,8 +36,9 @@ class OllamaService {
      */
     async chat(messages, options = {}) {
         try {
+            const modelToUse = options.model || this.model;
             const response = await axios.post(`${this.baseURL}/api/chat`, {
-                model: this.model,
+                model: modelToUse,
                 messages: messages,
                 stream: false,
                 options: {

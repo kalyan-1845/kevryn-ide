@@ -58,9 +58,10 @@ class GroqService {
         }
 
         try {
+            const modelToUse = options.model || this.model;
             const completion = await this.groq.chat.completions.create({
                 messages: messages,
-                model: this.model,
+                model: modelToUse,
                 temperature: options.temperature || 0.7,
                 max_tokens: options.max_tokens || 8192,
             });
