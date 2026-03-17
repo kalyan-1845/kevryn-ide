@@ -1061,6 +1061,16 @@ app.use('/preview/:userId', (req, res, next) => {
     express.static(dir)(req, res, next);
 });
 
+// --- GLOBAL ERROR HANDLER ---
+app.use((err, req, res, next) => {
+    console.error('!!! UNHANDLED ERROR !!!', err.stack);
+    res.status(500).json({ 
+        error: 'Internal Server Error', 
+        message: err.message,
+        path: req.path
+    });
+});
+
 // ============================================================
 // FINAL BOOT: Start listening BEFORE heavy DB/logic to pass healthchecks
 // ============================================================

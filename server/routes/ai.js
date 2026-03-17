@@ -93,6 +93,10 @@ router.post('/chat', authenticate, async (req, res) => {
             return res.status(400).json({ error: 'Messages array required' });
         }
 
+        if (!req.user || !req.user.userId) {
+            return res.status(401).json({ error: 'User context missing from request' });
+        }
+
         const projectContext = await getProjectFileTree(req.user.userId);
         const service = getAiService(model);
 
@@ -113,40 +117,54 @@ router.post('/chat', authenticate, async (req, res) => {
             aiMessages.unshift({ role: 'system', content: systemPrompt });
         }
 
-        const response = await service.chat(aiMessages, { model });
-
-        // Save to history if sessionId or new session needed
-        if (req.user && req.user.userId) {
-            let session;
-            if (sessionId) {
-                session = await ChatSession.findById(sessionId);
-            }
-
-            if (!session) {
-                // Create new session if none provided or not found
-                const firstUserMsg = messages.find(m => m.role === 'user')?.content || 'New Chat';
-                const title = firstUserMsg.slice(0, 40) + (firstUserMsg.length > 40 ? '...' : '');
-                session = new ChatSession({
-                    userId: req.user.userId,
-                    title,
-                    messages: messages // Use primitive messages without injected system context
-                });
+        let response;
+        try {
+            response = await service.chat(aiMessages, { model });
+        } catch (serviceError) {
+            console.error(`[AI Router] Service Failure (${model}):`, serviceError.message);
+            // FALLBACK: If Pollinations/Ollama fails, try Groq (if not already using it)
+            if (service !== groqService && groqService.isAvailable()) {
+                console.log("[AI Router] Falling back to Groq Core...");
+                try {
+                    response = await groqService.chat(aiMessages);
+                } catch (groqError) {
+                    throw new Error(`Primary and Fallback AI both failed. ${serviceError.message}`);
+                }
             } else {
-                // Update existing session
-                // We only add the last two messages (user prompt and AI response)
-                const lastUserMsg = messages[messages.length - 1];
-                session.messages.push(lastUserMsg);
+                throw serviceError;
             }
-            
-            session.messages.push({ role: 'assistant', content: response });
-            await session.save();
-            
-            return res.json({ response, sessionId: session._id });
         }
 
-        res.json({ response });
+        // Save to history
+        let session;
+        if (sessionId) {
+            try {
+                session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
+            } catch (e) {
+                console.warn("[AI History] Session lookup failed:", e.message);
+            }
+        }
+
+        if (!session) {
+            const firstUserMsg = messages.find(m => m.role === 'user')?.content || 'New Chat';
+            const title = firstUserMsg.substring(0, 40) + (firstUserMsg.length > 40 ? '...' : '');
+            session = new ChatSession({
+                userId: req.user.userId,
+                title,
+                messages: messages 
+            });
+        } else {
+            const lastUserMsg = messages[messages.length - 1];
+            session.messages.push(lastUserMsg);
+        }
+        
+        session.messages.push({ role: 'assistant', content: response });
+        await session.save();
+        
+        return res.json({ response, sessionId: session._id });
+
     } catch (error) {
-        console.error("Chat Error:", error);
+        console.error("Critical Chat Error:", error);
         res.status(500).json({ error: error.message });
     }
 });
