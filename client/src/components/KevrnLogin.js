@@ -225,7 +225,7 @@ export default function KevrnLogin({
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [forgotData, setForgotData] = useState({ username: '', email: '', newPassword: '' });
+  const [forgotData, setForgotData] = useState({ username: '', newPassword: '' });
 
   const onSubmit = async (e) => {
     setIsLoading(true);
@@ -246,7 +246,7 @@ export default function KevrnLogin({
       if (!res.ok) throw new Error(data.error || 'Failed to reset password');
       alert('Password reset successful! Please log in with your new password.');
       setIsForgotPassword(false);
-      setForgotData({ username: '', email: '', newPassword: '' });
+      setForgotData({ username: '', newPassword: '' });
     } catch (err) {
       alert(err.message);
     } finally {
@@ -754,9 +754,6 @@ export default function KevrnLogin({
               <form onSubmit={onForgotPasswordSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="kl-input-wrap">
                   <input className="kl-input" type="text" placeholder="Username" value={forgotData.username} onChange={e => setForgotData({...forgotData, username: e.target.value})} required />
-                </div>
-                <div className="kl-input-wrap">
-                  <input className="kl-input" type="email" placeholder="Email Address" value={forgotData.email} onChange={e => setForgotData({...forgotData, email: e.target.value})} required />
                 </div>
                 <div className="kl-input-wrap">
                   <input className="kl-input" type="password" placeholder="New Password" value={forgotData.newPassword} onChange={e => setForgotData({...forgotData, newPassword: e.target.value})} required />

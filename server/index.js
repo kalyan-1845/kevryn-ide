@@ -1957,11 +1957,11 @@ app.post('/auth/login', async (req, res) => {
 
 app.post('/auth/reset-password', async (req, res) => {
     try {
-        const { username, email, newPassword } = req.body;
-        if (!username || !email || !newPassword) return res.status(400).json({ error: "All fields are required" });
+        const { username, newPassword } = req.body;
+        if (!username || !newPassword) return res.status(400).json({ error: "Username and new password are required" });
 
-        const user = await User.findOne({ username, email });
-        if (!user) return res.status(404).json({ error: "User not found or email doesn't match" });
+        const user = await User.findOne({ username });
+        if (!user) return res.status(404).json({ error: "User not found" });
 
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
