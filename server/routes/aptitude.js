@@ -279,7 +279,7 @@ router.post('/submit', authenticate, async (req, res) => {
 });
 
 // --- STUDENT: GET TEST HISTORY & RESULTS ---
-router.get('/student/history', authenticateToken, async (req, res) => {
+router.get('/student/history', authenticate, async (req, res) => {
     try {
         const studentId = req.user.userId;
         const submissions = await AptitudeSubmission.find({ studentId })
@@ -292,7 +292,7 @@ router.get('/student/history', authenticateToken, async (req, res) => {
             startTime: sub.submittedAt,
             duration: sub.testId?.duration,
             submission: {
-                score: sub.score,
+                score: sub.totalScore,
                 maxScore: sub.testId?.questions?.reduce((acc, q) => acc + (q.points || 1), 0)
             }
         }));
