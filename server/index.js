@@ -107,6 +107,7 @@ const adminRouter = require('./routes/admin'); // NEW: Admin Dashboard
 const issuesRouter = require('./routes/issues'); // NEW: Issue Reporting
 const collegeRouter = require('./routes/college'); // NEW: Multi-College Tenancy
 const College = require('./models/College'); // NEW: College Model
+const aptitudeRouter = require('./routes/aptitude'); // NEW: Aptitude Test Module
 const DeployManager = require('./deploy/DeployManager');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const courseManager = require('./routes/courseManager');
@@ -351,6 +352,7 @@ app.use('/api/admin', adminRouter); // NEW: Admin API
 app.use('/api/issues', issuesRouter); // NEW: Issue Reporting
 app.use('/api', collegeRouter); // NEW: Multi-College Routes (/api/college/join, /api/admin/colleges)
 app.use('/ai', aiRouter); // Mount AI routes
+app.use('/api/aptitude', aptitudeRouter); // NEW: Aptitude Module
 
 // --- OAUTH ROUTES ---
 
@@ -553,6 +555,19 @@ app.get('/lab/active-session', authenticate, async (req, res) => {
         // Find the most recent active session for this faculty
         const session = await LabSession.findOne(query).sort({ startTime: -1 });
 
+        if (session && session.duration) {
+            const now = new Date();
+            const expiresAt = new Date(session.startTime.getTime() + session.duration * 60 * 1000);
+            if (now > expiresAt) {
+                // strict expiration logic
+                session.isActive = false;
+                session.endTime = new Date();
+                await session.save();
+                console.log(`[DIAGNOSTIC] Session ${session._id} strictly expired via duration.`);
+                return res.json({ session: null });
+            }
+        }
+
         console.log(`[DIAGNOSTIC] FETCH ACTIVE SESSION for ${req.user.userId}: ${session ? session._id : 'none'}`);
         res.json({ session });
     } catch (e) {
@@ -569,6 +584,17 @@ app.get('/lab/student/active-session', authenticate, async (req, res) => {
 
         // Find an active session where this student is whitelisted
         const session = await LabSession.findOne(query).sort({ startTime: -1 });
+
+        if (session && session.duration) {
+            const now = new Date();
+            const expiresAt = new Date(session.startTime.getTime() + session.duration * 60 * 1000);
+            if (now > expiresAt) {
+                session.isActive = false;
+                session.endTime = new Date();
+                await session.save();
+                return res.json({ session: null });
+            }
+        }
 
         res.json({ session });
     } catch (e) {

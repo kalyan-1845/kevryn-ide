@@ -34,6 +34,7 @@ import StudentAssignmentView from './components/StudentAssignmentView'; // NEW: 
 import AdminDashboard from './components/AdminDashboard'; // NEW: Admin Dashboard
 import IssueReporter from './components/IssueReporter'; // NEW: Issue Reporting
 import KevrnLogin from './components/KevrnLogin'; // NEW: Cinematic Login
+import LiveAptitudeTest from './components/LiveAptitudeTest'; // NEW: Aptitude Module
 
 // --- MONACO CDN SETUP (More Reliable) ---
 // Using CDN to avoid local worker resolution issues
@@ -98,6 +99,8 @@ function App() {
     // --- LAB MODE STATE (Moved to top to fix ReferenceError) ---
     const [activeSessionId, setActiveSessionId] = useState(null);
     const [activeSession, setActiveSession] = useState(null); // NEW: Store full session data (including courseId)
+    const [activeAptitudeSession, setActiveAptitudeSession] = useState(null); // NEW: Aptitude Session
+    const [isAptitudeOpen, setIsAptitudeOpen] = useState(false); // Controls opening the test environment
     const [isLabOpen, setIsLabOpen] = useState(false); // NEW: Explicitly control lab opening
     const [currentLabTime, setCurrentLabTime] = useState(0); // For display
 
@@ -853,6 +856,26 @@ function App() {
                     window.currentLabSessionId = null;
                 }
             }).catch(e => { });
+        }
+    }, [token, userRole, api]);
+
+    // --- APTITUDE SESSION CHECK ---
+    useEffect(() => {
+        if (userRole === 'student' && token) {
+            const checkAptitude = async () => {
+                try {
+                    const res = await api.get('/api/aptitude/student/active');
+                    if (res.data.session) {
+                        setActiveAptitudeSession(res.data.session);
+                    } else {
+                        setActiveAptitudeSession(null);
+                    }
+                } catch (e) { console.error("Aptitude Check Failed", e); }
+            };
+            checkAptitude();
+            // Poll every 2 minutes for new exams
+            const interval = setInterval(checkAptitude, 120000);
+            return () => clearInterval(interval);
         }
     }, [token, userRole, api]);
 
@@ -1720,6 +1743,24 @@ function App() {
                 </motion.div>
             )}
 
+            {token && userRole === 'student' && activeAptitudeSession && !isAptitudeOpen && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    style={{ background: 'linear-gradient(90deg, #eab308, #ca8a04)', color: 'white', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold', zIndex: 1000, position: 'relative', boxShadow: '0 4px 15px rgba(234, 179, 8, 0.3)' }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FaExclamationTriangle /> <span>STRICT EXAM ACTIVE: {activeAptitudeSession.title}</span>
+                    </div>
+                    <button
+                        onClick={() => setIsAptitudeOpen(true)}
+                        style={{ background: 'white', color: '#a16207', border: 'none', padding: '6px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                        Start Exam Now
+                    </button>
+                </motion.div>
+            )}
+
             <div style={{ flex: 1, position: 'relative' }}>
                 {!token ? (
                     <KevrnLogin
@@ -1742,6 +1783,8 @@ function App() {
                         onBack={() => setShowStudentAssignments(false)}
                         activeSessionId={activeSessionId}
                         onEnterLab={() => setIsLabOpen(true)}
+                        activeAptitudeSession={activeAptitudeSession}
+                        onEnterAptitude={() => setIsAptitudeOpen(true)}
                     />
                 ) : (
                     <>
@@ -2455,6 +2498,21 @@ function App() {
                                 />
                             )}
                             <IssueReporter isOpen={isIssueReporterOpen} onClose={() => setIsIssueReporterOpen(false)} token={token} />
+                        </AnimatePresence>
+
+                        {/* --- FULL SCREEN APTITUDE TEST --- */}
+                        <AnimatePresence>
+                            {isAptitudeOpen && activeAptitudeSession && (
+                                <LiveAptitudeTest
+                                    token={token}
+                                    serverUrl={SERVER_URL}
+                                    session={activeAptitudeSession}
+                                    onCompleted={() => {
+                                        setIsAptitudeOpen(false);
+                                        setActiveAptitudeSession(null); // Clear session after completion
+                                    }}
+                                />
+                            )}
                         </AnimatePresence>
                     </>
                 )}

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
     FaChalkboardTeacher, FaCode, FaChartLine, FaSignOutAlt, FaBookOpen,
     FaUserGraduate, FaClipboardList, FaDesktop, FaTachometerAlt,
-    FaBell, FaShieldAlt, FaEye
+    FaBell, FaShieldAlt, FaEye, FaTasks
 } from 'react-icons/fa';
 import MonitorDashboard from './MonitorDashboard';
 import CourseManager from './CourseManager';
 import AssignmentManager from './AssignmentManager';
+import AptitudeManager from './AptitudeManager';
 import Gradebook from './Gradebook';
 import StudentReports from './StudentReports';
 import axios from 'axios';
@@ -161,6 +162,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                     <NavSection label="Management">
                         <NavItem icon={<FaBookOpen />} label="My Courses" isActive={activeView === 'courses'} onClick={() => setActiveView('courses')} />
                         <NavItem icon={<FaClipboardList />} label="Assignments" isActive={activeView === 'assignments'} onClick={() => setActiveView('assignments')} />
+                        <NavItem icon={<FaTasks />} label="Aptitude Tests" isActive={activeView === 'aptitude'} onClick={() => setActiveView('aptitude')} />
                         <NavItem icon={<FaUserGraduate />} label="Gradebook" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
                     </NavSection>
                     <NavSection label="Lab Control">
@@ -213,6 +215,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                 )}
                 {activeView === 'courses' && <CourseManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'assignments' && <AssignmentManager token={token} serverUrl={serverUrl} userId={userId} />}
+                {activeView === 'aptitude' && <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'active-labs' && <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} onLogout={onLogout} isEmbedded={true} onSessionChange={refreshStats} />}
                 {activeView === 'analytics' && <Gradebook token={token} serverUrl={serverUrl} />}
                 {activeView === 'reports' && <StudentReports token={token} serverUrl={serverUrl} />}

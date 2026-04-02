@@ -163,8 +163,8 @@ function ParticleCanvas() {
   );
 }
 
-// ── Typewriter Hook ──────────────────────────────────────────
-function useTypewriter(text, speed = 60) {
+// ── Typewriter Component ──────────────────────────────────────────
+function TypewriterSubtitle({ text, speed = 60 }) {
   const [displayed, setDisplayed] = useState('');
   useEffect(() => {
     setDisplayed('');
@@ -175,7 +175,13 @@ function useTypewriter(text, speed = 60) {
     }, speed);
     return () => clearInterval(id);
   }, [text, speed]);
-  return displayed;
+  
+  return (
+    <p className="kl-subtitle">
+      {displayed}
+      <span className="kl-cursor" />
+    </p>
+  );
 }
 
 // ── 3D Tilt Hook ─────────────────────────────────────────────
@@ -221,7 +227,6 @@ export default function KevrnLogin({
   const subtitle = isFacultyLogin
     ? 'Secure access for educators & administrators.'
     : 'Your personal cloud workspace.';
-  const typeText = useTypewriter(subtitle, 50);
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -744,10 +749,7 @@ export default function KevrnLogin({
             </h1>
 
             {/* Typewriter subtitle */}
-            <p className="kl-subtitle">
-              {typeText}
-              <span className="kl-cursor" />
-            </p>
+            <TypewriterSubtitle text={subtitle} speed={50} />
 
             {/* Form Area */}
             {isForgotPassword ? (
