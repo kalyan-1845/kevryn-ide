@@ -208,29 +208,38 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
             </div>
 
             {/* Questions List */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '40px 20%', scrollBehavior: 'smooth' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '40px 15%', scrollBehavior: 'smooth', background: 'radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 50%)' }}>
                 <style>{`
-                    .exam-opt:hover { border-color: rgba(99,102,241,0.5) !important; background: rgba(99,102,241,0.05) !important; }
-                    .exam-opt { transition: all 0.2s; user-select: none; }
+                    .exam-opt:hover { border-color: rgba(99,102,241,0.5) !important; background: rgba(99,102,241,0.05) !important; transform: translateX(8px); }
+                    .exam-opt { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; }
+                    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
                 `}</style>
 
                 {session?.questions?.map((q, i) => {
                     const isMulti = q.type === 'multi-correct';
+                    const isTF = q.type === 'tf';
                     const userAns = answers[q._id] || [];
                     return (
-                        <div key={q._id} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '32px', marginBottom: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                <div style={{ fontSize: '12px', fontWeight: '800', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>Question {i + 1}</div>
-                                <div style={{ fontSize: '12px', color: '#94a3b8', background: '#1e293b', padding: '4px 10px', borderRadius: '12px' }}>{q.points} Points {isMulti ? '(Multi-Select)' : ''}</div>
+                        <div key={q._id} style={{ 
+                            background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', 
+                            border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '24px', 
+                            padding: '40px', marginBottom: '30px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                            animation: `slideIn 0.5s ease-out ${i * 0.1}s both`
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '900', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '2px' }}>Obective {i + 1}</div>
+                                <div style={{ fontSize: '11px', color: '#94a3b8', background: 'rgba(255,255,255,0.03)', padding: '6px 14px', borderRadius: '30px', fontWeight: '700', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    {q.points} XP • {isMulti ? 'MULTI-SELECT' : isTF ? 'BOOLEAN' : 'SINGLE-CHOICE'}
+                                </div>
                             </div>
                             
-                            <div style={{ fontSize: '18px', fontWeight: '500', lineHeight: '1.6', marginBottom: '24px' }}>
+                            <div style={{ fontSize: '20px', fontWeight: '500', lineHeight: '1.6', marginBottom: '32px', color: '#f1f5f9' }}>
                                 {q.text}
                             </div>
 
                             {/* Options */}
-                            {(q.type === 'mcq' || isMulti) && (
-                                <div style={{ display: 'grid', gap: '12px' }}>
+                            {(q.type === 'mcq' || isMulti || isTF) && (
+                                <div style={{ display: 'grid', gap: '15px' }}>
                                     {q.options.map((opt, oi) => {
                                         const isSelected = userAns.includes(opt);
                                         return (
@@ -239,16 +248,22 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
                                                 className="exam-opt"
                                                 onClick={() => toggleAnswer(q._id, opt, isMulti)}
                                                 style={{
-                                                    padding: '16px 20px', borderRadius: '12px', cursor: 'pointer',
-                                                    border: isSelected ? '2px solid #6366f1' : '1px solid #334155',
-                                                    background: isSelected ? 'rgba(99,102,241,0.1)' : 'transparent',
-                                                    display: 'flex', alignItems: 'center', gap: '16px'
+                                                    padding: '20px 24px', borderRadius: '16px', cursor: 'pointer',
+                                                    border: isSelected ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.05)',
+                                                    background: isSelected ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)',
+                                                    display: 'flex', alignItems: 'center', gap: '20px',
+                                                    boxShadow: isSelected ? '0 10px 20px -5px rgba(99, 102, 241, 0.2)' : 'none'
                                                 }}
                                             >
-                                                <div style={{ width: '24px', height: '24px', borderRadius: isMulti ? '6px' : '50%', border: isSelected ? '2px solid #6366f1' : '2px solid #64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? '#6366f1' : 'transparent', transition: 'all 0.2s', flexShrink: 0 }}>
-                                                    {isSelected && <FaCheckCircle color="#fff" size={14} />}
+                                                <div style={{ 
+                                                    width: '24px', height: '24px', borderRadius: (isMulti) ? '6px' : '50%', 
+                                                    border: isSelected ? '2px solid #6366f1' : '2px solid rgba(255,255,255,0.2)', 
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                                    background: isSelected ? '#6366f1' : 'transparent', transition: 'all 0.3s', flexShrink: 0 
+                                                }}>
+                                                    {isSelected && <FaCheckCircle color="#fff" size={12} />}
                                                 </div>
-                                                <span style={{ fontSize: '16px', color: isSelected ? '#fff' : '#cbd5e1' }}>{opt}</span>
+                                                <span style={{ fontSize: '16px', color: isSelected ? '#fff' : '#94a3b8', fontWeight: isSelected ? '600' : '400' }}>{opt}</span>
                                             </div>
                                         );
                                     })}
@@ -261,12 +276,13 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
                                     className="exam-opt"
                                     value={userAns[0] || ''}
                                     onChange={(e) => toggleAnswer(q._id, e.target.value, false)}
-                                    placeholder={q.type === 'code' ? 'Write your code here...' : 'Type your answer...'}
+                                    placeholder={q.type === 'code' ? '// Initiate sequence solution...' : 'Input answer...'}
                                     style={{
-                                        width: '100%', height: q.type === 'code' ? '200px' : '60px', padding: '16px',
-                                        background: 'rgba(0,0,0,0.3)', border: '1px solid #334155', borderRadius: '12px',
-                                        color: '#fff', fontSize: '16px', outline: 'none', resize: 'vertical',
-                                        fontFamily: q.type === 'code' ? 'monospace' : 'inherit'
+                                        width: '100%', height: q.type === 'code' ? '250px' : '80px', padding: '20px',
+                                        background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px',
+                                        color: '#6366f1', fontSize: '16px', outline: 'none', resize: 'vertical',
+                                        fontFamily: q.type === 'code' ? '"JetBrains Mono", monospace' : 'inherit',
+                                        lineHeight: '1.6'
                                     }}
                                 />
                             )}

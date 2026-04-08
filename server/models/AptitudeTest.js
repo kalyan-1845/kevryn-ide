@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const AptitudeQuestionSchema = new mongoose.Schema({
     text: { type: String, required: true },
-    type: { type: String, enum: ['mcq', 'multi-correct', 'fill', 'code'], default: 'mcq' },
+    type: { type: String, enum: ['mcq', 'multi-correct', 'tf', 'fill', 'code'], default: 'mcq' },
     options: [{ type: String }], // Array of strings for MCQ options
     correctAnswers: [{ type: String }], // Array for multi-correct or exact match strings for fill-in-blanks
     points: { type: Number, default: 1 }
