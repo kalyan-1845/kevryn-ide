@@ -321,4 +321,49 @@ router.get('/:id/submissions', authenticate, async (req, res) => {
     }
 });
 
+// Get all submissions for a specific course (Faculty) - For Gradebook
+router.get('/course/:courseId/submissions', authenticate, async (req, res) => {
+    try {
+        const { courseId } = req.params;
+        const { batchId } = req.query;
+
+        // 1. Find batches for this course
+        const courseBatches = await Batch.find({ courseId }).select('_id');
+        const courseBatchIds = courseBatches.map(b => b._id);
+
+        let targetBatchIds = courseBatchIds;
+        if (batchId && batchId !== 'all') {
+            targetBatchIds = [batchId];
+        }
+
+        // 2. Find tests targeting these batches
+        const tests = await AptitudeTest.find({ 
+            batches: { $in: targetBatchIds },
+            facultyId: req.user.userId 
+        }).select('_id title totalMarks questions');
+
+        const testIds = tests.map(t => t._id);
+
+        // 3. Find submissions for these tests
+        const submissions = await AptitudeSubmission.find({ testId: { $in: testIds } })
+            .select('testId username studentId totalScore submittedAt answers tabSwitches fullScreenExits pasteViolations')
+            .sort({ submittedAt: -1 });
+
+        // Enrich with test title and maxScore
+        const enrichedSubmissions = submissions.map(sub => {
+            const test = tests.find(t => t._id.toString() === sub.testId.toString());
+            return {
+                ...sub.toObject(),
+                testTitle: test?.title || 'Unknown Test',
+                maxScore: test?.totalMarks || 0,
+                questions: test?.questions || []
+            };
+        });
+
+        res.json({ success: true, submissions: enrichedSubmissions });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
