@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaPlus, FaTasks, FaMagic, FaTrash, FaPlay, FaStop, FaSave, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaPlus, FaTasks, FaMagic, FaTrash, FaPlay, FaStop, FaSave, FaCheck, FaExclamationTriangle, FaChartLine } from 'react-icons/fa';
 
 const AptitudeManager = ({ token, serverUrl }) => {
     const [tests, setTests] = useState([]);
