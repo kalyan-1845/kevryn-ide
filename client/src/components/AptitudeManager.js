@@ -20,6 +20,10 @@ const AptitudeManager = ({ token, serverUrl }) => {
 
     const [magicalText, setMagicalText] = useState('');
     const [isParsing, setIsParsing] = useState(false);
+    const [selectedTestResults, setSelectedTestResults] = useState(null);
+    const [submissions, setSubmissions] = useState([]);
+    const [isLoadingResults, setIsLoadingResults] = useState(false);
+    const [viewingSubmission, setViewingSubmission] = useState(null);
 
     const api = axios.create({ baseURL: serverUrl, headers: { Authorization: token } });
 
@@ -113,6 +117,19 @@ const AptitudeManager = ({ token, serverUrl }) => {
             alert(e.response?.data?.error || e.message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchSubmissions = async (test) => {
+        setIsLoadingResults(true);
+        setSelectedTestResults(test);
+        try {
+            const res = await api.get(`/api/aptitude/${test._id}/submissions`);
+            setSubmissions(res.data.submissions || []);
+        } catch (e) {
+            alert("Failed to fetch submissions: " + (e.response?.data?.error || e.message));
+        } finally {
+            setIsLoadingResults(false);
         }
     };
 
@@ -215,7 +232,20 @@ const AptitudeManager = ({ token, serverUrl }) => {
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                {test.isActive ? <><FaStop /> END SESSION</> : <><FaPlay /> START SESSION</>}
+                                {test.isActive ? <><FaStop /> END</> : <><FaPlay /> START</>}
+                            </button>
+                            <button
+                                onClick={() => fetchSubmissions(test)}
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '12px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer',
+                                    border: '1px solid rgba(255,255,255,0.1)', fontWeight: '700', fontSize: '14px',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    color: '#fff',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <FaChartLine /> RESULTS
                             </button>
                         </div>
 
@@ -470,6 +500,121 @@ const AptitudeManager = ({ token, serverUrl }) => {
                             >
                                 {isLoading ? 'INITIALIZING...' : <><FaSave /> DEPLOY MISSION</>}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* RESULTS MODAL */}
+            {selectedTestResults && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    background: 'rgba(2, 6, 23, 0.98)', backdropFilter: 'blur(15px)',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100,
+                }}>
+                    <div style={{
+                        ...glassStyle,
+                        width: '95%', maxWidth: '1200px', height: '85vh',
+                        display: 'flex', flexDirection: 'column', borderRadius: '32px',
+                        animation: 'modalSlideUp 0.3s ease-out', overflow: 'hidden'
+                    }}>
+                        <div style={{ padding: '30px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#f1f5f9' }}>Mission Analytics: {selectedTestResults.title}</h2>
+                                <p style={{ margin: '5px 0 0 0', color: '#64748b' }}>{submissions.length} Students Participated</p>
+                            </div>
+                            <button onClick={() => setSelectedTestResults(null)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#94a3b8', cursor: 'pointer', borderRadius: '50%', width: '40px', height: '40px' }}>&times;</button>
+                        </div>
+
+                        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                            {/* Student List */}
+                            <div style={{ width: viewingSubmission ? '350px' : '100%', borderRight: viewingSubmission ? '1px solid rgba(255,255,255,0.05)' : 'none', overflowY: 'auto', padding: '20px' }}>
+                                {isLoadingResults ? (
+                                    <div style={{ textAlign: 'center', padding: '40px', color: '#6366f1' }}>Fetching Intel...</div>
+                                ) : submissions.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>No submissions recorded yet.</div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {submissions.map(sub => (
+                                            <div 
+                                                key={sub._id} 
+                                                onClick={() => setViewingSubmission(sub)}
+                                                style={{ 
+                                                    padding: '16px 20px', borderRadius: '16px', cursor: 'pointer',
+                                                    background: viewingSubmission?._id === sub._id ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.02)',
+                                                    border: '1px solid',
+                                                    borderColor: viewingSubmission?._id === sub._id ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.05)',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#f1f5f9' }}>{sub.username}</div>
+                                                        <div style={{ fontSize: '11px', color: '#64748b' }}>{new Date(sub.submittedAt).toLocaleString()}</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#10b981' }}>{sub.totalScore}</div>
+                                                        <div style={{ fontSize: '10px', color: '#64748b' }}>XP EARNED</div>
+                                                    </div>
+                                                </div>
+                                                {(sub.tabSwitches > 0 || sub.pasteViolations > 0) && (
+                                                    <div style={{ marginTop: '8px', fontSize: '10px', color: '#f87171', fontWeight: '700', display: 'flex', gap: '10px' }}>
+                                                        {sub.tabSwitches > 0 && <span>TAB SWITCHES: {sub.tabSwitches}</span>}
+                                                        {sub.pasteViolations > 0 && <span>PASTE: {sub.pasteViolations}</span>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Detailed Response View */}
+                            {viewingSubmission && (
+                                <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+                                        <div>
+                                            <h3 style={{ fontSize: '24px', fontWeight: '900', color: '#f1f5f9', margin: 0 }}>{viewingSubmission.username}</h3>
+                                            <p style={{ color: '#64748b', margin: '5px 0 0 0' }}>Detailed Evaluation Brief</p>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '20px' }}>
+                                            <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.03)', padding: '15px 25px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Efficiency Score</div>
+                                                <div style={{ fontSize: '24px', fontWeight: '900', color: '#6366f1' }}>{Math.round((viewingSubmission.totalScore / (selectedTestResults.totalMarks || 1)) * 100)}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                        {selectedTestResults.questions.map((q, qidx) => {
+                                            const subAns = viewingSubmission.answers.find(a => a.questionId === q._id);
+                                            return (
+                                                <div key={q._id} style={{ ...cardStyle, background: 'rgba(255,255,255,0.02)', cursor: 'default' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                                                        <span style={{ fontSize: '11px', fontWeight: '900', color: '#818cf8', textTransform: 'uppercase' }}>Objective {qidx + 1}</span>
+                                                        <span style={{ fontSize: '11px', fontWeight: '900', color: subAns?.isCorrect ? '#10b981' : '#f87171' }}>
+                                                            {subAns?.pointsEarned || 0} / {q.points || 0} XP
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#f1f5f9', marginBottom: '20px' }}>{q.text}</div>
+                                                    
+                                                    <div style={{ display: 'grid', gap: '10px' }}>
+                                                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                            <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '5px', fontWeight: '800' }}>STUDENT RESPONSE:</div>
+                                                            <div style={{ color: subAns?.isCorrect ? '#10b981' : '#f1f5f9' }}>{subAns?.providedAnswers?.join(', ') || 'No Response'}</div>
+                                                        </div>
+                                                        {!subAns?.isCorrect && (
+                                                            <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.1)' }}>
+                                                                <div style={{ fontSize: '10px', color: '#10b981', marginBottom: '5px', fontWeight: '800' }}>CORRECT SEQUENCE:</div>
+                                                                <div style={{ color: '#10b981' }}>{q.correctAnswers?.join(', ')}</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

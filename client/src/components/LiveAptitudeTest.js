@@ -77,11 +77,12 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
         };
     }, [hasStarted, isSubmitting, session, api]);
 
+    const [isSuccess, setIsSuccess] = useState(false);
+    
     const submitExam = async (isAuto = false) => {
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            // Format answers for backend: [{ questionId, providedAnswers: [...] }]
             const formattedAnswers = Object.keys(answers).map(qId => ({
                 questionId: qId,
                 providedAnswers: answers[qId]
@@ -98,8 +99,10 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
                 document.exitFullscreen().catch(e => console.error(e));
             }
 
-            alert(isAuto ? "Exam Auto-Submitted due to violations or time expiry." : "Exam successfully submitted!");
-            onCompleted();
+            setIsSuccess(true);
+            setTimeout(() => {
+                onCompleted();
+            }, 3000);
         } catch (e) {
             console.error("Submission failed", e);
             alert("Submission failed. Retrying...");
@@ -140,6 +143,26 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
         const s = totalSeconds % 60;
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
+
+    // Success Screen
+    if (isSuccess) {
+        return (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                background: '#060b17', zIndex: 10001, display: 'flex', flexDirection: 'column',
+                justifyContent: 'center', alignItems: 'center', color: '#f1f5f9'
+            }}>
+                <div style={{ textAlign: 'center', animation: 'slideIn 0.5s ease-out' }}>
+                    <div style={{ width: '100px', height: '100px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 30px auto', color: '#10b981', fontSize: '48px', boxShadow: '0 0 50px rgba(16, 185, 129, 0.2)' }}>
+                        <FaCheckCircle />
+                    </div>
+                    <h1 style={{ fontSize: '32px', fontWeight: '900', marginBottom: '10px' }}>MISSION ACCOMPLISHED</h1>
+                    <p style={{ color: '#94a3b8', fontSize: '18px' }}>Your responses have been successfully uplinked.</p>
+                    <div style={{ marginTop: '30px', color: '#64748b', fontSize: '14px' }}>Redirecting to Command Center...</div>
+                </div>
+            </div>
+        );
+    }
 
     // Before Starting Screen
     if (!hasStarted) {

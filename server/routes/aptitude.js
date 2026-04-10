@@ -303,4 +303,22 @@ router.get('/student/history', authenticate, async (req, res) => {
     }
 });
 
+// Get all submissions for a specific test (Faculty)
+router.get('/:id/submissions', authenticate, async (req, res) => {
+    try {
+        const testId = req.params.id;
+        // Verify test belongs to faculty
+        const test = await AptitudeTest.findOne({ _id: testId, facultyId: req.user.userId });
+        if (!test) return res.status(404).json({ error: 'Test not found' });
+
+        const submissions = await AptitudeSubmission.find({ testId })
+            .select('username studentId totalScore submittedAt answers tabSwitches fullScreenExits pasteViolations')
+            .sort({ submittedAt: -1 });
+        
+        res.json({ success: true, submissions });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
