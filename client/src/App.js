@@ -233,18 +233,8 @@ function App() {
 
                 console.log("[WebContainer] Booted Successfully");
 
-                // === NEW: SETUP LANGUAGE RUNTIMES (Python + C) ===
-                const runtime = new LanguageRuntime(instance);
-                languageRuntimeRef.current = runtime;
-                setLangRuntimeStatus('installing');
-                try {
-                    await runtime.setup((msg) => console.log(msg));
-                    setLangRuntimeStatus('ready');
-                    console.log('[LanguageRuntime] ✅ Python & C/C++ runtimes ready');
-                } catch (runtimeErr) {
-                    console.warn('[LanguageRuntime] Setup failed (non-critical):', runtimeErr);
-                    setLangRuntimeStatus('error');
-                }
+                // LanguageRuntime disabled — Python/C/C++ always run via server PTY (faster, no install lag)
+                setLangRuntimeStatus('idle');
             } catch (e) {
                 console.error("[WebContainer] Boot Failed:", e);
             }
@@ -357,7 +347,7 @@ function App() {
     // --- BOTTOM PANEL STATE ---
     const [bottomPanelTab, setBottomPanelTab] = useState('terminal');
     const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(true);
-    const [bottomPanelHeight, setBottomPanelHeight] = useState(350); // Increased default height
+    const [bottomPanelHeight, setBottomPanelHeight] = useState(200); // Compact default — user can resize up
     const [isResizingPanel, setIsResizingPanel] = useState(false);
     const [isBottomPanelMaximized, setIsBottomPanelMaximized] = useState(false);
     const prevBottomPanelHeight = useRef(250);
@@ -1364,7 +1354,7 @@ function App() {
                 resolve();
             });
             // Timeout fallback: don't block forever if server doesn't ack
-            setTimeout(() => resolve(), 3000);
+            setTimeout(() => resolve(), 1500);
         });
 
         if (activeFileName.endsWith('.html')) {
@@ -1378,56 +1368,34 @@ function App() {
         const fileNameNoExt = filenameOnly.replace(/\.[^.]+$/, '');
         const exePrefix = './'; // Standard for Linux/Cloud environments
 
-        // =====================================================================
-        // INTELLIGENT ROUTING: Ask LanguageRuntime for the correct command
-        // =====================================================================
-        let isBrowserLanguage = false;
-        
-        if (languageRuntimeRef.current && langRuntimeStatus === 'ready') {
-            const runCmdObj = languageRuntimeRef.current.getRunCommand(activeFileName);
-            if (runCmdObj && runCmdObj.isBrowser) {
-                cmd = runCmdObj.terminal;
-                isBrowserLanguage = true;
-            }
-        }
-
-        // --- SERVER FALLBACK (if browser execution not supported for this file) ---
-        if (!cmd) {
-            const serverCommands = {
-                'js': `node "${activeFileName}" || node "${filenameOnly}"`,
-                'py': `python3 "${activeFileName}" || python3 "${filenameOnly}" || python "${filenameOnly}"`,
-                'java': `javac "${activeFileName}" || javac "${filenameOnly}" && java "${fileNameNoExt}"`,
-                'c': `gcc "${activeFileName}" -o output && ${exePrefix}output`,
-                'cpp': `g++ "${activeFileName}" -o output && ${exePrefix}output`,
-                'rb': `ruby "${activeFileName}" || ruby "${filenameOnly}"`,
-                'go': `go run "${activeFileName}" || go run "${filenameOnly}"`,
-                'php': `php "${activeFileName}" || php "${filenameOnly}"`,
-                'ts': `npx ts-node "${activeFileName}" || npx ts-node "${filenameOnly}"`,
-            };
-            cmd = serverCommands[ext];
-        }
+        // All languages run via server PTY — fast & reliable
+        const serverCommands = {
+            'js': `node "${activeFileName}" || node "${filenameOnly}"`,
+            'py': `python3 "${activeFileName}" || python3 "${filenameOnly}" || python "${filenameOnly}"`,
+            'java': `javac "${activeFileName}" || javac "${filenameOnly}" && java "${fileNameNoExt}"`,
+            'c': `gcc "${activeFileName}" -o output && ${exePrefix}output`,
+            'cpp': `g++ "${activeFileName}" -o output && ${exePrefix}output`,
+            'rb': `ruby "${activeFileName}" || ruby "${filenameOnly}"`,
+            'go': `go run "${activeFileName}" || go run "${filenameOnly}"`,
+            'php': `php "${activeFileName}" || php "${filenameOnly}"`,
+            'ts': `npx ts-node "${activeFileName}" || npx ts-node "${filenameOnly}"`,
+        };
+        cmd = serverCommands[ext];
 
         if (cmd) {
             setBottomPanelTab('terminal');
             setIsBottomPanelOpen(true);
 
-            // Small delay for UI to render the terminal panel
-            await new Promise(r => setTimeout(r, 150));
-            const inputs = window.ideTerminalInputs || {};
+            // Minimal delay for UI to render the terminal panel
+            await new Promise(r => setTimeout(r, 50));
             const termIdToUse = activeTermId || 1;
-            const inputWriter = inputs[termIdToUse];
 
-            if (isBrowserLanguage && inputWriter && typeof inputWriter.write === 'function') {
-                // ✅ LOCAL execution — no server hit, zero lag for 300 students
-                inputWriter.write('\r' + cmd + '\r');
-            } else {
-                // Server PTY execution (Java, Ruby, Go, PHP, or fallback)
-                safeEmit('terminal:write', {
-                    termId: termIdToUse,
-                    data: '\r' + cmd + '\r',
-                    courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
-                });
-            }
+            // Server PTY execution — works for all languages
+            safeEmit('terminal:write', {
+                termId: termIdToUse,
+                data: '\r' + cmd + '\r',
+                courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
+            });
         } else {
             alert("Auto-run is not configured for this file type. You can manually run it in the terminal.");
         }
@@ -2291,30 +2259,15 @@ function App() {
                                                         </div>
                                                         <div style={{ flex: 1, position: 'relative', background: '#1e1e1e' }}>
                                                             {terminals.map(t => {
-                                                                const activeFile = openFiles.find(f => f._id === activeFileId);
-                                                                const activeExt = activeFile?.name?.split('.').pop()?.toLowerCase() || '';
-                                                                
-                                                                // Use LanguageRuntime to determine if we should stay local
-                                                                const canRunLocally = languageRuntimeRef.current?.canRun(activeExt);
-                                                                const isServerLang = !canRunLocally && ['java', 'c', 'cpp', 'rb', 'go', 'php', 'js', 'ts'].includes(activeExt);
-
-                                                                // --- FORCE REMOUNT FIX ---
-                                                                // We use a combined key of termId + mode.
-                                                                // When isServerLang changes, the key changes, forcing Terminal to remount.
-                                                                const terminalMode = isServerLang ? 'server' : 'local';
-                                                                const terminalKey = `${t.id}-${terminalMode}`;
-
-                                                                const shouldBeLocal = t.type === 'local' && !isServerLang;
-
                                                                 return (
                                                                     <div key={t.id} style={{ width: '100%', height: '100%', display: activeTermId === t.id ? 'block' : 'none' }}>
                                                                         <Terminal
-                                                                            key={terminalKey}
+                                                                            key={t.id}
                                                                             socket={socketRef.current}
                                                                             termId={t.id}
                                                                             userId={userId}
                                                                             onError={(err) => setTerminalError(err)}
-                                                                            webcontainer={shouldBeLocal ? webcontainerInstance : null}
+                                                                            webcontainer={null}
                                                                         />
                                                                     </div>
                                                                 );
@@ -2451,8 +2404,8 @@ function App() {
                                     <span style={{ fontSize: '10px', opacity: 0.6 }}>Server: {SERVER_URL.replace('https://', '')}</span>
                                     <span style={{ opacity: 0.3 }}>|</span>
                                     {/* Language Runtime Status */}
-                                    <span title={langRuntimeStatus === 'ready' ? 'Python & C/C++ running in your browser (zero server load)' : langRuntimeStatus === 'installing' ? 'Installing Python/C runtime...' : 'Python/C runtime unavailable'} style={{ fontSize: '10px', color: langRuntimeStatus === 'ready' ? '#34d399' : langRuntimeStatus === 'installing' ? '#fbbf24' : '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default' }}>
-                                        {langRuntimeStatus === 'ready' ? '✅ 🐍/⚙️ Browser' : langRuntimeStatus === 'installing' ? '⏳ Installing Runtime...' : '🐍/⚙️ Server'}
+                                    <span title="All languages execute via server terminal" style={{ fontSize: '10px', color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'default' }}>
+                                        ✅ Server Ready
                                     </span>
                                     {activeSessionId && (
                                         <>
