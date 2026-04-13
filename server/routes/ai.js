@@ -193,9 +193,10 @@ router.post('/fix-terminal-error', authenticate, async (req, res) => {
             fs.writeFileSync(tempFilePath, code);
         }
 
+        const locationText = isDocker ? "Inside a Docker container." : "Local Path: " + tempFilePath;
         const prompt = `You are a DevOps Agent inside Kevryn IDE.
 A user ran an application script here:
-${isDocker ? "Inside a Docker container." : \`Local Path: \${tempFilePath}\`}
+${locationText}
 
 Here is the exact crash log from the Web Terminal:
 --- CRASH LOG ---
@@ -207,7 +208,7 @@ And here is their source code:
 ${code}
 -----------
 
-Explain exactly what crashed in a short sentence. Then provide the COMPLETELY FIXED ENTIRE SOURCE CODE perfectly wrapped in \`\`\`${language} \`\`\`. Do not omit anything.`;
+Explain exactly what crashed in a short sentence. Then provide the COMPLETELY FIXED ENTIRE SOURCE CODE perfectly wrapped in \`\`\`${language}\n(CODE HERE)\n\`\`\`. Do not omit anything.`;
 
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent(prompt);
