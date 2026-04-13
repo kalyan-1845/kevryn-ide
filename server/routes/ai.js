@@ -7,7 +7,9 @@ const ChatSession = require('../models/ChatSession');
 const { authenticate } = require('../utils/authMiddleware');
 const aiTools = require('../utils/aiTools');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Use env var first, fallback to the provisioned key verified to work
+const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBu9urHeQLzgfWhkgBJkJLu7ZmxrDRl1nY';
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 // --- SESSIONS ---
 router.get('/sessions', authenticate, async (req, res) => {
