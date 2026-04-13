@@ -332,7 +332,19 @@ function App() {
             if (wcBridgeRef.current) {
                 await wcBridgeRef.current.writeFile(fullPath, code);
             }
-            alert("Saved!");
+            // Non-intrusive toast instead of alert
+            const toast = document.createElement('div');
+            toast.textContent = '\u2705 Saved!';
+            Object.assign(toast.style, {
+                position: 'fixed', bottom: '24px', left: '50%',
+                transform: 'translateX(-50%)', background: '#10b981',
+                color: '#fff', padding: '8px 18px', borderRadius: '6px',
+                fontSize: '13px', zIndex: '99999',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                transition: 'opacity 0.3s',
+            });
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 1500);
         } catch (e) {
             console.error("[SAVE] Failed:", e);
             alert("Error saving file");
@@ -1223,8 +1235,16 @@ function App() {
         try {
             // STEP 1: FORCE SAVE CURRENT FILE BEFORE SWITCHING
             if (activeFileId) {
+                // Cancel any pending debounced saves to prevent stale overwrites
+                if (autoSaveTimeoutRef.current) {
+                    clearTimeout(autoSaveTimeoutRef.current);
+                    autoSaveTimeoutRef.current = null;
+                }
+                if (codeSyncTimeoutRef.current) {
+                    clearTimeout(codeSyncTimeoutRef.current);
+                    codeSyncTimeoutRef.current = null;
+                }
                 console.log(`[SWITCH] Saving current file ${activeFileId} before switching...`);
-                // Use a direct API call or handleSave without the 'Saved!' alert for smoothness
                 try {
                     await api.put(`/files/${activeFileId}`, { content: code });
                     safeEmit('save-file-disk', { fileName: fileName, code, userId, fileId: activeFileId });
@@ -1273,6 +1293,11 @@ function App() {
 
     const closeTab = (e, id) => {
         e.stopPropagation();
+        // Cancel pending debounced saves to prevent stale writes
+        if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
+            autoSaveTimeoutRef.current = null;
+        }
         const newOpen = openFiles.filter(f => f._id !== id);
         setOpenFiles(newOpen);
         if (activeFileId === id) {
@@ -1327,16 +1352,25 @@ function App() {
             return false;
         };
 
-        if (!socketRef.current) {
-            if (!openPreview()) alert("Socket not connected - Save might fail.");
-        } else {
-            socketRef.current.emit('save-file-disk', saveData, () => {
-                console.log("[RUN] Disk sync complete");
-                openPreview();
+        // Await disk save before executing — ensures file exists on disk when compiler runs
+        await new Promise((resolve) => {
+            if (!socketRef.current) {
+                console.warn("[RUN] Socket not connected, skipping disk save");
+                resolve();
+                return;
+            }
+            socketRef.current.emit('save-file-disk', saveData, (ack) => {
+                console.log("[RUN] Disk sync complete", ack);
+                resolve();
             });
-        }
+            // Timeout fallback: don't block forever if server doesn't ack
+            setTimeout(() => resolve(), 3000);
+        });
 
-        if (activeFileName.endsWith('.html')) return;
+        if (activeFileName.endsWith('.html')) {
+            openPreview();
+            return;
+        }
 
         let cmd = "";
         // --- FIX: Robust Path Fallback & Linux Support ---
@@ -1352,7 +1386,6 @@ function App() {
         if (languageRuntimeRef.current && langRuntimeStatus === 'ready') {
             const runCmdObj = languageRuntimeRef.current.getRunCommand(activeFileName);
             if (runCmdObj && runCmdObj.isBrowser) {
-                // The LanguageRuntime correctly detected it can handle this file
                 cmd = runCmdObj.terminal;
                 isBrowserLanguage = true;
             }
@@ -1378,23 +1411,23 @@ function App() {
             setBottomPanelTab('terminal');
             setIsBottomPanelOpen(true);
 
-            setTimeout(() => {
-                const inputs = window.ideTerminalInputs || {};
-                const termIdToUse = activeTermId || 1;
-                const inputWriter = inputs[termIdToUse];
+            // Small delay for UI to render the terminal panel
+            await new Promise(r => setTimeout(r, 150));
+            const inputs = window.ideTerminalInputs || {};
+            const termIdToUse = activeTermId || 1;
+            const inputWriter = inputs[termIdToUse];
 
-                if (isBrowserLanguage && inputWriter && typeof inputWriter.write === 'function') {
-                    // ✅ LOCAL execution — no server hit, zero lag for 300 students
-                    inputWriter.write('\r' + cmd + '\r');
-                } else {
-                    // Server PTY execution (Java, Ruby, Go, PHP, or fallback)
-                    safeEmit('terminal:write', {
-                        termId: termIdToUse,
-                        data: '\r' + cmd + '\r',
-                        courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
-                    });
-                }
-            }, 100);
+            if (isBrowserLanguage && inputWriter && typeof inputWriter.write === 'function') {
+                // ✅ LOCAL execution — no server hit, zero lag for 300 students
+                inputWriter.write('\r' + cmd + '\r');
+            } else {
+                // Server PTY execution (Java, Ruby, Go, PHP, or fallback)
+                safeEmit('terminal:write', {
+                    termId: termIdToUse,
+                    data: '\r' + cmd + '\r',
+                    courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
+                });
+            }
         } else {
             alert("Auto-run is not configured for this file type. You can manually run it in the terminal.");
         }
