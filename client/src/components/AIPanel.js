@@ -203,7 +203,8 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
         } catch (error) {
             console.error("Agent Error:", error);
-            setMessages(prev => [...prev, { role: 'assistant', content: `❌ Agent crashed: ${error.message}` }]);
+            const errorMsg = error.response?.data?.error || error.message;
+            setMessages(prev => [...prev, { role: 'assistant', content: `❌ Agent crashed: ${errorMsg}` }]);
         } finally {
             setIsLoading(false);
             setAgentStatus(null);

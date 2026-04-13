@@ -44,7 +44,7 @@ router.delete('/sessions/:id', authenticate, async (req, res) => {
 router.post('/chat', authenticate, async (req, res) => {
     try {
         const { messages, sessionId } = req.body;
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         
         let history = messages.slice(0, -1).map(m => ({
             role: m.role === 'assistant' ? 'model' : 'user',
@@ -85,7 +85,7 @@ router.post('/agent/run', authenticate, async (req, res) => {
         // 1. Initialize Gemini with permitted tools
         const toolsDefinition = [{ functionDeclarations: aiTools.getGeminiToolDeclarations() }];
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash",
             tools: toolsDefinition
         });
 
@@ -210,7 +210,7 @@ ${code}
 
 Explain exactly what crashed in a short sentence. Then provide the COMPLETELY FIXED ENTIRE SOURCE CODE perfectly wrapped in \`\`\`${language}\n(CODE HERE)\n\`\`\`. Do not omit anything.`;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent(prompt);
         const text = result.response.text();
 
