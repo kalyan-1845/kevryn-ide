@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const groqService = require('../services/groqService');
 const aiProviderService = require('../services/aiProviderService');
 const ollamaService = require('../services/ollamaService');
@@ -318,6 +319,65 @@ router.post('/auto/plan', authenticate, async (req, res) => {
     } catch (error) {
         console.error("Auto Plan Error:", error);
         res.status(500).json({ error: "Failed to generate plan: " + error.message });
+    }
+});
+
+// Self-Healing Terminal Route using Gemini
+router.post('/fix-terminal-error', authenticate, async (req, res) => {
+    try {
+        const { code, errorOutput, activeFileName } = req.body;
+        
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({ error: "GEMINI_API_KEY is missing from the server environment." });
+        }
+
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `You are a world-class debugging AI assistant for Kevryn Cloud IDE. 
+The user's code has crashed in the terminal.
+
+Original Code:
+\`\`\`
+${code}
+\`\`\`
+
+Terminal Error Output:
+\`\`\`
+${errorOutput}
+\`\`\`
+
+Please analyze the error and provide the corrected code. 
+Format your response exactly as follows:
+Explanation: [Explain why it failed in 1-2 sentences max]
+Fix:
+\`\`\`
+[Provide ONLY the full corrected code block, no extra markdown fluff around the code block]
+\`\`\``;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        
+        // Parse the response
+        const explanationMatch = responseText.match(/Explanation:\s*(.*?)(?:\nFix:|$)/s);
+        const explanation = explanationMatch ? explanationMatch[1].trim() : "Here is the fixed code based on the terminal error.";
+        
+        // Extract the code block
+        const codeMatch = responseText.match(/```[a-z]*\n(.*?)```/s);
+        let fixedCode = codeMatch ? codeMatch[1].trim() : responseText.trim();
+        
+        if (!codeMatch) {
+            // Fallback parsing just in case AI didn't format backticks perfectly
+            const fixSplit = responseText.split('Fix:');
+            if (fixSplit.length > 1) {
+                fixedCode = fixSplit[1].replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
+            }
+        }
+
+        res.json({ explanation, fixedCode });
+    } catch (e) {
+        console.error("[Gemini Error]", e);
+        res.status(500).json({ error: "AI healing failed: " + e.message });
     }
 });
 

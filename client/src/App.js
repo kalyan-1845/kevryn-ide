@@ -883,41 +883,6 @@ function App() {
 
 
 
-    const handleAgenticFix = async (error) => {
-        if (!activeFileId) return;
-        setTerminalError(null);
-        setIsAiLoading(true);
-
-        try {
-            const currentContent = code;
-            const prompt = `The user ran a command in the terminal and it failed with the following error:\n\n${error.output}\n\nHere is the current content of the file "${fileName}":\n\n\`\`\`\n${currentContent}\n\`\`\`\n\nPlease fix the bug in the code that caused this error. Return ONLY the fully corrected code, no explanations.`;
-
-            const response = await api.post('/ai/chat', { message: prompt });
-            let fixedCode = response.data.reply;
-
-            // Simple cleanup for LLM markdown formatting
-            if (fixedCode.includes('```')) {
-                fixedCode = fixedCode.split('```')[1].replace(/^[a-z]*\n/, '');
-            }
-
-            // Apply fix locally
-            setCode(fixedCode);
-            setOpenFiles(prev => prev.map(f => f._id === activeFileId ? { ...f, content: fixedCode } : f));
-
-            // Save to DB and Disk
-            await api.put(`/files/${activeFileId}`, { content: fixedCode });
-            safeEmit('save-file-disk', { fileName, code: fixedCode, userId, fileId: activeFileId });
-
-            // Notify user in chat
-            setChatMessages(prev => [...prev, { role: 'ai', content: `✨ **Self-Healing:** I've corrected the bug in \`${fileName}\` that caused the terminal error.` }]);
-
-        } catch (err) {
-            console.error('[AgenticFix] Failed:', err);
-            alert("Failed to apply AI fix.");
-        } finally {
-            setIsAiLoading(false);
-        }
-    };
 
     // --- AUTO-DEV EXECUTION HANDLER ---
     const executeAutoDevPlan = async (plan) => {
@@ -1410,6 +1375,48 @@ function App() {
             const res = await api.post('/ai/fix', { code, instruction }, { timeout: 15000 });
             if (res.data.fixedCode) { setCode(res.data.fixedCode); alert("AI Magic applied! ✨"); }
         } catch (e) { alert("AI Error"); } finally { setIsAiLoading(false); }
+    };
+
+    const handleAgenticFix = async (errObj) => {
+        if (!activeFileId || !code) return alert("Open a file first!");
+        console.log("[AGENT] Starting self-healing process...", errObj);
+        
+        setIsAiLoading(true);
+        try {
+            const payload = {
+                code: code,
+                errorOutput: errObj.output,
+                activeFileName: activeFileId
+            };
+            const res = await api.post('/ai/fix-terminal-error', payload, { timeout: 30000 });
+            
+            if (res.data.fixedCode) {
+                setCode(res.data.fixedCode);
+                
+                // Clear the error overlay
+                setTerminalError(null);
+                
+                // Non-intrusive toast instead of alert
+                const toast = document.createElement('div');
+                toast.textContent = '🤖 Fix applied successfully! ' + (res.data.explanation || "");
+                Object.assign(toast.style, {
+                    position: 'fixed', bottom: '60px', left: '50%',
+                    transform: 'translateX(-50%)', background: '#3b82f6',
+                    color: '#fff', padding: '12px 24px', borderRadius: '8px',
+                    fontSize: '14px', zIndex: '99999',
+                    maxWidth: '80%', textAlign: 'center',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    transition: 'opacity 0.5s',
+                });
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 5000);
+            }
+        } catch (e) { 
+            console.error("Agentic fix failed:", e);
+            alert("Kevryn AI Fix Failed: " + (e.response?.data?.error || e.message)); 
+        } finally { 
+            setIsAiLoading(false); 
+        }
     };
 
     const openPort = () => { const p = prompt("Port:"); if (p) window.open(`http://localhost:${p}`, '_blank'); };
