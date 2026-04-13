@@ -1,190 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const groqService = require('../services/groqService');
-const aiProviderService = require('../services/aiProviderService');
-const ollamaService = require('../services/ollamaService');
 const jwt = require('jsonwebtoken');
 const File = require('../File');
 const ChatSession = require('../models/ChatSession');
-const { authenticate } = require('../utils/authMiddleware'); // Use global middleware
+const { authenticate } = require('../utils/authMiddleware');
+const aiTools = require('../utils/aiTools');
 
-/**
- * Helper: Choose AI service based on model
- */
-function getAiService(model) {
-    if (!model || model === 'groq' || model.startsWith('llama-3.3')) return groqService;
-    if (model.includes('ollama')) return ollamaService;
-    return aiProviderService;
-}
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Helper: Get project file tree
-async function getProjectFileTree(userId) {
-    try {
-        const files = await File.find({ owner: userId }).select('name type parentId');
-        const childrenMap = {};
-        files.forEach(f => {
-            const pid = f.parentId || 'root';
-            if (!childrenMap[pid]) childrenMap[pid] = [];
-            childrenMap[pid].push(f);
-        });
-
-        let output = "";
-        const traverse = (parentId, depth = 0) => {
-            const children = childrenMap[parentId] || [];
-            children.sort((a, b) => {
-                if (a.type === b.type) return a.name.localeCompare(b.name);
-                return a.type === 'folder' ? -1 : 1;
-            });
-
-            for (const child of children) {
-                const prefix = "  ".repeat(depth);
-                const indicator = child.type === 'folder' ? '/' : '';
-                output += `${prefix}${child.name}${indicator}\n`;
-                if (child.type === 'folder') {
-                    traverse(child._id.toString(), depth + 1);
-                }
-            }
-        };
-        traverse('root');
-        return output;
-    } catch (e) {
-        console.error("Context Error:", e);
-        return "";
-    }
-}
-
-// Auth middleware removed - now using central authenticate from utils/authMiddleware
-
-// Check if Groq is available
-router.get('/status', (req, res) => {
-    try {
-        const available = groqService.isAvailable();
-        res.json({
-            available,
-            provider: 'groq',
-            model: groqService.model,
-            message: available ? 'Kevryn AI is ready' : 'AI Core is active. Free models available.'
-        });
-    } catch (error) {
-        res.json({ available: false, provider: 'groq', message: error.message });
-    }
-});
-
-// Set API key at runtime
-router.post('/api-key', (req, res) => {
-    try {
-        const { apiKey } = req.body;
-        if (!apiKey || !apiKey.trim()) {
-            return res.status(400).json({ error: 'API key is required' });
-        }
-        groqService.setApiKey(apiKey.trim());
-        res.json({ success: true, message: 'AI Core linked successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Chat with AI
-router.post('/chat', authenticate, async (req, res) => {
-    try {
-        const { messages, model, sessionId } = req.body;
-
-        if (!messages || !Array.isArray(messages)) {
-            return res.status(400).json({ error: 'Messages array required' });
-        }
-
-        if (!req.user || !req.user.userId) {
-            return res.status(401).json({ error: 'User context missing from request' });
-        }
-
-        const projectContext = await getProjectFileTree(req.user.userId);
-        const service = getAiService(model);
-
-        // Inject context into system message
-        const contextMsg = projectContext ? `\n\nProject Structure:\n${projectContext}` : '';
-        const systemPrompt = `You are a helpful AI assistant integrated into Kevryn Studio. You have access to the project structure:${contextMsg}`;
-        
-        let aiMessages = [...messages];
-        let systemFound = false;
-        for (let m of aiMessages) {
-            if (m.role === 'system') {
-                m.content += contextMsg;
-                systemFound = true;
-                break;
-            }
-        }
-        if (!systemFound) {
-            aiMessages.unshift({ role: 'system', content: systemPrompt });
-        }
-
-        let response;
-        try {
-            response = await service.chat(aiMessages, { model });
-        } catch (serviceError) {
-            console.error(`[AI Router] Service Failure (${model}):`, serviceError.message);
-            // FALLBACK: If Pollinations/Ollama fails, try Groq (if not already using it)
-            if (service !== groqService && groqService.isAvailable()) {
-                console.log("[AI Router] Falling back to Groq Core...");
-                try {
-                    response = await groqService.chat(aiMessages);
-                } catch (groqError) {
-                    throw new Error(`Primary and Fallback AI both failed. ${serviceError.message}`);
-                }
-            } else {
-                throw serviceError;
-            }
-        }
-
-        // Save to history
-        let session;
-        if (sessionId) {
-            try {
-                session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
-            } catch (e) {
-                console.warn("[AI History] Session lookup failed:", e.message);
-            }
-        }
-
-        if (!session) {
-            const firstUserMsg = messages.find(m => m.role === 'user')?.content || 'New Chat';
-            const title = firstUserMsg.substring(0, 40) + (firstUserMsg.length > 40 ? '...' : '');
-            session = new ChatSession({
-                userId: req.user.userId,
-                title,
-                messages: messages 
-            });
-        } else {
-            const lastUserMsg = messages[messages.length - 1];
-            session.messages.push(lastUserMsg);
-        }
-        
-        session.messages.push({ role: 'assistant', content: response });
-        await session.save();
-        
-        return res.json({ response, sessionId: session._id });
-
-    } catch (error) {
-        console.error("Critical Chat Error:", error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// --- HISTORY ROUTES ---
-
-// List sessions
+// --- SESSIONS ---
 router.get('/sessions', authenticate, async (req, res) => {
     try {
         const sessions = await ChatSession.find({ userId: req.user.userId })
-            .sort({ updatedAt: -1 })
-            .select('title updatedAt');
+            .select('title updatedAt')
+            .sort({ updatedAt: -1 });
         res.json({ sessions });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get specific session
 router.get('/sessions/:id', authenticate, async (req, res) => {
     try {
         const session = await ChatSession.findOne({ _id: req.params.id, userId: req.user.userId });
@@ -195,189 +31,199 @@ router.get('/sessions/:id', authenticate, async (req, res) => {
     }
 });
 
-// Delete session
 router.delete('/sessions/:id', authenticate, async (req, res) => {
     try {
-        await ChatSession.deleteOne({ _id: req.params.id, userId: req.user.userId });
+        await ChatSession.findOneAndDelete({ _id: req.params.id, userId: req.user.userId });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Explain code
-router.post('/explain', authenticate, async (req, res) => {
+// --- STANDARD CHAT (No Tools) ---
+router.post('/chat', authenticate, async (req, res) => {
     try {
-        const { code, language, model } = req.body;
-        if (!code) return res.status(400).json({ error: 'Code is required' });
-
-        const service = getAiService(model);
-        const explanation = await service.explainCode(code, language || 'code', model);
-        res.json({ explanation });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Fix code
-router.post('/fix', authenticate, async (req, res) => {
-    try {
-        const { code, language, error, model } = req.body;
-        if (!code) return res.status(400).json({ error: 'Code is required' });
-
-        const projectContext = await getProjectFileTree(req.user.userId);
-        const service = getAiService(model);
-        const fixed = await service.fixCode(code, language || 'code', error, projectContext, model);
-        res.json({ fixed });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Optimize code
-router.post('/optimize', authenticate, async (req, res) => {
-    try {
-        const { code, language, model } = req.body;
-        if (!code) return res.status(400).json({ error: 'Code is required' });
-
-        const service = getAiService(model);
-        const optimized = await service.optimizeCode(code, language || 'code', model);
-        res.json({ optimized });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Generate code
-router.post('/generate', authenticate, async (req, res) => {
-    try {
-        const { description, language, model } = req.body;
-        if (!description) return res.status(400).json({ error: 'Description is required' });
-
-        const service = getAiService(model);
-        const generated = await service.generateCode(description, language || 'javascript', model);
-        res.json({ generated });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Analyze error
-router.post('/analyze-error', authenticate, async (req, res) => {
-    try {
-        const { code, language, errorOutput, model } = req.body;
-        if (!code || !errorOutput) return res.status(400).json({ error: 'Code and error output are required' });
-
-        const projectContext = await getProjectFileTree(req.user.userId);
-        const service = getAiService(model);
-        const analysis = await service.analyzeError(code, language || 'code', errorOutput, projectContext, model);
-        res.json({ analysis });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Add comments
-router.post('/comment', authenticate, async (req, res) => {
-    try {
-        const { code, language, model } = req.body;
-        if (!code) return res.status(400).json({ error: 'Code is required' });
-
-        const service = getAiService(model);
-        const commented = await service.addComments(code, language || 'code', model);
-        res.json({ commented });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Auto-Dev Plan Generation (THE KEVRYN AI ENGINE)
-router.post('/auto/plan', authenticate, async (req, res) => {
-    try {
-        const { prompt, model } = req.body;
-        if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
-
-        // Fetch project context
-        const files = await File.find({ owner: req.user.userId });
-        const fileTree = await getProjectFileTree(req.user.userId);
-
-        // Contextualize: Send file tree AND full content of most recent files
-        // (Sorted by updatedAt to give AI the most relevant code)
-        const projectContext = files
-            .sort((a,b) => b.updatedAt - a.updatedAt)
-            .slice(0, 50) // Send a good chunk of files
-            .map(f => ({
-                name: f.name,
-                content: f.content || ""
-            })).filter(f => !f.name.match(/\.(png|jpg|jpeg|gif|ico|pdf|zip|mp4)$/i));
-
-        const fullContext = `Project Directory Structure:\n${fileTree}\n\nFile Contents:\n${JSON.stringify(projectContext)}`;
-
-        const service = getAiService(model);
-        const plan = await service.generateImplementationPlan(prompt, fullContext, model);
-        res.json({ plan });
-    } catch (error) {
-        console.error("Auto Plan Error:", error);
-        res.status(500).json({ error: "Failed to generate plan: " + error.message });
-    }
-});
-
-// Self-Healing Terminal Route using Gemini
-router.post('/fix-terminal-error', authenticate, async (req, res) => {
-    try {
-        const { code, errorOutput, activeFileName } = req.body;
-        
-        if (!process.env.GEMINI_API_KEY) {
-            return res.status(500).json({ error: "GEMINI_API_KEY is missing from the server environment." });
-        }
-
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const { messages, sessionId } = req.body;
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-        const prompt = `You are a world-class debugging AI assistant for Kevryn Cloud IDE. 
-The user's code has crashed in the terminal.
-
-Original Code:
-\`\`\`
-${code}
-\`\`\`
-
-Terminal Error Output:
-\`\`\`
-${errorOutput}
-\`\`\`
-
-Please analyze the error and provide the corrected code. 
-Format your response exactly as follows:
-Explanation: [Explain why it failed in 1-2 sentences max]
-Fix:
-\`\`\`
-[Provide ONLY the full corrected code block, no extra markdown fluff around the code block]
-\`\`\``;
-
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
         
-        // Parse the response
-        const explanationMatch = responseText.match(/Explanation:\s*(.*?)(?:\nFix:|$)/s);
-        const explanation = explanationMatch ? explanationMatch[1].trim() : "Here is the fixed code based on the terminal error.";
+        let history = messages.slice(0, -1).map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+        }));
         
-        // Extract the code block
-        const codeMatch = responseText.match(/```[a-z]*\n(.*?)```/s);
-        let fixedCode = codeMatch ? codeMatch[1].trim() : responseText.trim();
+        const chat = model.startChat({ history });
+        const result = await chat.sendMessage(messages[messages.length - 1].content);
+        const text = result.response.text();
+
+        let session;
+        if (sessionId) {
+            session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
+        }
+        if (!session) {
+            session = new ChatSession({
+                userId: req.user.userId,
+                title: messages[0].content.substring(0, 40),
+                messages: [...messages, { role: 'assistant', content: text }]
+            });
+        } else {
+            session.messages.push(messages[messages.length - 1]);
+            session.messages.push({ role: 'assistant', content: text });
+        }
+        await session.save();
+
+        res.json({ response: text, sessionId: session._id });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- AGENTIC LOOP (With Workspace Tools) ---
+router.post('/agent/run', authenticate, async (req, res) => {
+    try {
+        const { prompt, sessionId } = req.body;
         
-        if (!codeMatch) {
-            // Fallback parsing just in case AI didn't format backticks perfectly
-            const fixSplit = responseText.split('Fix:');
-            if (fixSplit.length > 1) {
-                fixedCode = fixSplit[1].replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
+        // 1. Initialize Gemini with permitted tools
+        const toolsDefinition = [{ functionDeclarations: aiTools.getGeminiToolDeclarations() }];
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            tools: toolsDefinition
+        });
+
+        // Load History
+        let dbHistory = [];
+        let session;
+        if (sessionId) {
+            session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
+            if (session) {
+                dbHistory = session.messages.map(m => ({
+                    role: m.role === 'assistant' ? 'model' : 'user',
+                    parts: [{ text: m.content }]
+                }));
             }
         }
+        
+        // Ensure system prompt rules
+        dbHistory.unshift({
+            role: 'user',
+            parts: [{ text: "You are the Kevryn Autonomous Agent. You have the ability to read and write files directly. If the user asks for a React UI, create the files using your tools." }]
+        });
+        dbHistory.push({ role: 'model', parts: [{ text: "Understood. I will use my tools autonomously." }] });
 
-        res.json({ explanation, fixedCode });
-    } catch (e) {
-        console.error("[Gemini Error]", e);
-        res.status(500).json({ error: "AI healing failed: " + e.message });
+        const chat = model.startChat({ history: dbHistory });
+
+        // Recursive Loop Execution
+        let finalResponseText = '';
+        let currentPrompt = prompt;
+
+        // Loop safety limit
+        for (let loopCount = 0; loopCount < 5; loopCount++) {
+            const result = await chat.sendMessage(currentPrompt);
+            const response = result.response;
+            
+            const functionCalls = response.functionCalls();
+            
+            // If the AI didn't use a tool, it means it's done! Break out of the loop.
+            if (!functionCalls || functionCalls.length === 0) {
+                finalResponseText = response.text();
+                break;
+            }
+
+            // Execute Tools
+            const toolResponses = [];
+            for (const call of functionCalls) {
+                console.log(`[AGENT] Executing tool: ${call.name} with args`, call.args);
+                const toolResult = await aiTools.executeTool(call.name, call.args, req.user.userId);
+                toolResponses.push({
+                    functionResponse: {
+                        name: call.name,
+                        response: toolResult
+                    }
+                });
+            }
+
+            // Loop back to Gemini passing the execution result
+            currentPrompt = toolResponses;
+        }
+
+        // Save session
+        if (!session) {
+            session = new ChatSession({
+                userId: req.user.userId,
+                title: prompt.substring(0, 40),
+                messages: [
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: finalResponseText || "Agent finished execution." }
+                ]
+            });
+        } else {
+            session.messages.push({ role: 'user', content: prompt });
+            session.messages.push({ role: 'assistant', content: finalResponseText || "Agent finished execution." });
+        }
+        await session.save();
+
+        res.json({ response: finalResponseText || "Agent execution was successfully completed.", sessionId: session._id });
+    } catch (error) {
+        console.error("Agent Error Engine:", error);
+        res.status(500).json({ error: `Agent crashed: ${error.message}` });
+    }
+});
+
+
+// --- TERMINAL SELF HEALING ---
+// (We ported this from our earlier work, now standardized strictly to Gemini 1.5)
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
+
+router.post('/fix-terminal-error', authenticate, async (req, res) => {
+    // Exact same secure Gemini 1.5 integration
+    try {
+        const { code, terminalOutput, language } = req.body;
+        if (!code || !terminalOutput) return res.status(400).json({ error: 'Code and terminal output required' });
+
+        const isDocker = fs.existsSync('/.dockerenv');
+        let tempFilePath = '';
+
+        if (!isDocker) {
+            const ext = language === 'python' ? 'py' : language === 'c' ? 'c' : language === 'cpp' ? 'cpp' : 'js';
+            tempFilePath = path.join(os.tmpdir(), `kevryn_fix_${Date.now()}.${ext}`);
+            fs.writeFileSync(tempFilePath, code);
+        }
+
+        const prompt = `You are a DevOps Agent inside Kevryn IDE.
+A user ran an application script here:
+${isDocker ? "Inside a Docker container." : \`Local Path: \${tempFilePath}\`}
+
+Here is the exact crash log from the Web Terminal:
+--- CRASH LOG ---
+${terminalOutput}
+-----------------
+
+And here is their source code:
+--- CODE ---
+${code}
+-----------
+
+Explain exactly what crashed in a short sentence. Then provide the COMPLETELY FIXED ENTIRE SOURCE CODE perfectly wrapped in \`\`\`${language} \`\`\`. Do not omit anything.`;
+
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+
+        const explanationPart = text.split('\`\`\`')[0].trim();
+        const codeBlockMatch = text.match(/```[a-z]*\n([\s\S]*?)```/i);
+        const fixedCode = codeBlockMatch ? codeBlockMatch[1].trim() : code;
+
+        res.json({
+            explanation: explanationPart || "Crash resolved by fixing execution errors.",
+            fixedCode: fixedCode
+        });
+    } catch (error) {
+        console.error("Self-Healing Error:", error);
+        res.status(500).json({ error: error.message });
     }
 });
 
