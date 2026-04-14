@@ -267,15 +267,14 @@ router.post('/local/chat', authenticate, async (req, res) => {
 
         const result = await ollamaService.chat(messages, { tier });
 
-        // Persist to chat session
+        // Persist session
         let session;
-        if (sessionId) {
-            session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
-        }
+        if (sessionId) session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
+        
         if (!session) {
             session = new ChatSession({
                 userId: req.user.userId,
-                title: `[Local AI] ${messages[0].content.substring(0, 40)}`,
+                title: `[AI] ${messages[0].content.substring(0, 40)}`,
                 messages: [...messages, { role: 'assistant', content: result.content }]
             });
         } else {
@@ -289,11 +288,11 @@ router.post('/local/chat', authenticate, async (req, res) => {
             model: result.model,
             tier,
             sessionId: session._id,
-            source: 'local'
+            source: 'neural'
         });
     } catch (error) {
-        console.error('[Local AI Chat]', error.message);
-        res.status(500).json({ error: error.message });
+        console.error('[AI-Error]', error);
+        res.status(error.status || 500).json({ error: error.message || 'AI engine encountered a problem' });
     }
 });
 
@@ -307,19 +306,17 @@ router.post('/local/agent/run', authenticate, async (req, res) => {
         const { prompt, tier, sessionId } = req.body;
         if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
-        console.log(`[Kevryn Local Agent] Running for user ${req.user.userId}, tier: ${tier || 'expert'}`);
+        console.log(`[Kevryn Agent] User: ${req.user.userId} | Persona: ${tier || 'expert'}`);
 
         const result = await ollamaService.runAgentLoop(prompt, aiTools, req.user.userId, { tier });
 
-        // Persist to chat session
         let session;
-        if (sessionId) {
-            session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
-        }
+        if (sessionId) session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
+        
         if (!session) {
             session = new ChatSession({
                 userId: req.user.userId,
-                title: `[Local Agent] ${prompt.substring(0, 40)}`,
+                title: `[Agent] ${prompt.substring(0, 40)}`,
                 messages: [
                     { role: 'user', content: prompt },
                     { role: 'assistant', content: result.response || 'Agent execution completed.' }
@@ -336,11 +333,11 @@ router.post('/local/agent/run', authenticate, async (req, res) => {
             model: result.model,
             loops: result.loops,
             sessionId: session._id,
-            source: 'local'
+            source: 'neural'
         });
     } catch (error) {
-        console.error('[Local Agent Error]', error);
-        res.status(500).json({ error: `Local Agent crashed: ${error.message}` });
+        console.error('[Agent-Error]', error);
+        res.status(500).json({ error: `Neural Agent had a problem: ${error.message}` });
     }
 });
 
