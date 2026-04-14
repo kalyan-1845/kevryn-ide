@@ -1,4 +1,10 @@
 const File = require('../File');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 // Returns the Gemini SDK formatted tool declarations
 const getGeminiToolDeclarations = () => {
@@ -34,6 +40,17 @@ const getGeminiToolDeclarations = () => {
                 properties: {
                     searchQuery: { type: "STRING", description: "Optional filter string." }
                 }
+            }
+        },
+        {
+            name: "runCommand",
+            description: "Executes a shell command in the user's workspace on the server terminal. Use this to install dependencies, run tests, or execute scripts. Output will be returned.",
+            parameters: {
+                type: "OBJECT",
+                properties: {
+                    command: { type: "STRING", description: "The shell command to run (e.g. 'ls -la', 'npm install', 'python script.py')." }
+                },
+                required: ["command"]
             }
         }
     ];
@@ -71,6 +88,37 @@ const executeTool = async (functionName, args, userId) => {
                 const files = await File.find({ owner: userId }, 'name type');
                 const list = files.map(f => `${f.type === 'folder' ? '📁' : '📄'} ${f.name}`);
                 return { files: list };
+            }
+            case "runCommand": {
+                try {
+                    console.log(`[AGENT-SHELL] Executing: ${args.command}`);
+                    
+                    // First, we must ensure the files from MongoDB are actually on the disk for the shell to see them.
+                    // This is a "Cold Workspace" sync.
+                    const userFiles = await File.find({ owner: userId, type: 'file' });
+                    const tempDir = path.join(os.tmpdir(), `kevryn_agent_${userId}`);
+                    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+                    for (const f of userFiles) {
+                        const filePath = path.join(tempDir, f.name);
+                        const dir = path.dirname(filePath);
+                        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                        fs.writeFileSync(filePath, f.content);
+                    }
+
+                    const { stdout, stderr } = await execAsync(args.command, { cwd: tempDir, timeout: 30000 });
+                    return { 
+                        stdout: stdout || "No output", 
+                        stderr: stderr || "No errors",
+                        exitCode: 0 
+                    };
+                } catch (err) {
+                    return { 
+                        stdout: err.stdout || "", 
+                        stderr: err.stderr || err.message,
+                        exitCode: err.code || 1 
+                    };
+                }
             }
             default:
                 return { error: `Tool ${functionName} is not recognized.` };

@@ -2116,14 +2116,13 @@ function App() {
                                         <Breadcrumbs fileName={fileName} />
 
                                         {/* Editor */}
-                                        <div className="editor-wrapper">
-                                            <Editor
+                                                                             <Editor
                                                 height="100%"
                                                 theme={getMonacoTheme()}
                                                 path={fileName}
                                                 defaultLanguage={getLanguage(fileName)}
                                                 language={getLanguage(fileName)}
-                                                value={code}
+                                                defaultValue={code}
                                                 beforeMount={handleEditorWillMount}
                                                 options={{
                                                     fontSize: 14,
@@ -2131,10 +2130,24 @@ function App() {
                                                     minimap: { enabled: true },
                                                     automaticLayout: true,
                                                     scrollBeyondLastLine: false,
-                                                    padding: { top: 10, bottom: 10 }
+                                                    padding: { top: 10, bottom: 10 },
+                                                    formatOnPaste: true,
+                                                    suggestSelection: 'first',
+                                                    quickSuggestions: true
                                                 }}
                                                 onMount={(editor, monaco) => {
                                                     editorRef.current = editor;
+                                                    
+                                                    // Instant switch model logic
+                                                    editor.onDidChangeModel(() => {
+                                                        const model = editor.getModel();
+                                                        if (model) {
+                                                            // Match language to path manually if needed
+                                                            const lang = getLanguage(fileName);
+                                                            monaco.editor.setModelLanguage(model, lang);
+                                                        }
+                                                    });
+
                                                     editor.onDidChangeCursorPosition((e) => {
                                                         if (activeFileId) {
                                                             safeEmit('cursor-move', {
@@ -2145,21 +2158,21 @@ function App() {
                                                             });
                                                         }
                                                     });
-                                                    // Sync logic handled by persistAuth
                                                     setIsAppLoading(false);
                                                 }}
                                                 onChange={(v) => {
                                                     if (!isRemoteUpdate.current && activeFileId) {
-                                                        const targetId = activeFileId; // CAPTURE ID FOR CLOSURE
-                                                        const targetName = fileName;
-
-                                                        setCode(v);
-                                                        setOpenFiles(prev => prev.map(f => f._id === targetId ? { ...f, content: v } : f));
+                                                        // Debounce the heavy state updates
+                                                        if (window.codeUpdateTimer) clearTimeout(window.codeUpdateTimer);
+                                                        window.codeUpdateTimer = setTimeout(() => {
+                                                            setCode(v);
+                                                            setOpenFiles(prev => prev.map(f => f._id === activeFileId ? { ...f, content: v } : f));
+                                                        }, 500);
 
                                                         // Debounce Socket Sync
                                                         if (codeSyncTimeoutRef.current) clearTimeout(codeSyncTimeoutRef.current);
                                                         codeSyncTimeoutRef.current = setTimeout(() => {
-                                                            safeEmit('code-change', { fileId: targetId, newCode: v, userId });
+                                                            safeEmit('code-change', { fileId: activeFileId, newCode: v, userId });
                                                         }, 400);
 
                                                         // Debounce Auto-Save to DB
@@ -2168,26 +2181,17 @@ function App() {
                                                         }
                                                         autoSaveTimeoutRef.current = setTimeout(async () => {
                                                             try {
-                                                                console.log(`[AUTO-SAVE] Saving ${targetName} (${targetId})...`);
-                                                                await api.put(`/files/${targetId}`, { content: v });
-                                                                safeEmit('save-file-disk', { fileName: targetName, code: v, userId, fileId: targetId });
-                                                                
-                                                                // Sync to WebContainer
-                                                                if (wcBridgeRef.current) {
-                                                                    wcBridgeRef.current.writeFile(targetName, v).catch(e => {
-                                                                        console.error('[WC-SYNC] Auto-save failed:', e);
-                                                                    });
-                                                                }
-
-                                                                console.log('[AUTO-SAVE] Success:', targetName);
+                                                                await api.put(`/files/${activeFileId}`, { content: v });
+                                                                safeEmit('save-file-disk', { fileName: fileName, code: v, userId, fileId: activeFileId });
                                                             } catch (err) {
                                                                 console.error('[AUTO-SAVE] Failed:', err);
                                                             }
-                                                        }, 1500);
+                                                        }, 2000);
                                                     }
                                                     isRemoteUpdate.current = false;
                                                 }}
                                             />
+                                     />
                                         </div>
                                     </motion.div>
 

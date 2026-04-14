@@ -303,7 +303,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                         <FaPaperPlane size={12} />
                     </button>
                 </div>
-                <div className="ai-input-footer">Kevryn OS Powered by Gemini 1.5 🚀</div>
+                <div className="ai-input-footer">Kevryn Antigravity Core • Powered by Gemini 2.0 Flash 🚀</div>
             </form>
         </div>
     );

@@ -10,7 +10,12 @@ RUN apt-get update && apt-get install -y \
     make \
     curl \
     default-jdk \
+    golang \
     && rm -rf /var/lib/apt/lists/*
+
+# Pre-Install Global Power-Libs (The "Training" Step)
+RUN pip install --no-cache-dir numpy pandas scikit-learn fastapi uvicorn django flask requests
+RUN npm install -g react react-dom next tailwindcss framer-motion lucide-react express mongoose axios
 
 WORKDIR /app
 

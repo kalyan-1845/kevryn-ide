@@ -107,9 +107,17 @@ router.post('/agent/run', authenticate, async (req, res) => {
         // Ensure system prompt rules
         dbHistory.unshift({
             role: 'user',
-            parts: [{ text: "You are the Kevryn Autonomous Agent. You have the ability to read and write files directly. If the user asks for a React UI, create the files using your tools." }]
+            parts: [{ text: `You are the Kevryn Autonomous Agent, a professional-grade AI built into a cloud IDE. 
+Your goal is to complete projects from start to finish.
+You have access to:
+1. File System Tools: readFile, writeFile, listFiles (These sync to MongoDB).
+2. Terminal Tools: runCommand (This runs on the actual server disk).
+
+When you write code, you should also run 'npm install' or relevant dependency commands if needed.
+If a command fails, read the output and fix the code autonomously. 
+Always aim for zero-bug delivery.` }]
         });
-        dbHistory.push({ role: 'model', parts: [{ text: "Understood. I will use my tools autonomously." }] });
+        dbHistory.push({ role: 'model', parts: [{ text: "Understood. I am now empowered with terminal access. I will build, test, and self-heal projects as the Kevryn Autonomous Agent." }] });
 
         const chat = model.startChat({ history: dbHistory });
 

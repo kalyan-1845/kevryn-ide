@@ -112,6 +112,7 @@ const DeployManager = require('./deploy/DeployManager');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const courseManager = require('./routes/courseManager');
 const assignmentManager = require('./routes/assignmentManager');
+const goldWorkspace = require('./utils/GoldWorkspace');
 
 app.set('trust proxy', true);
 
@@ -2167,6 +2168,10 @@ app.post('/run-code', authenticate, async (req, res) => {
     const tmpDir = path.join(os.tmpdir(), `kevryn_exec_${req.user.userId}_${Date.now()}`);
     try {
         fs.mkdirSync(tmpDir, { recursive: true });
+        
+        // --- GOLD BOOT: Pre-link dependencies for instant run ---
+        await goldWorkspace.initializeMagicProject(req.user.userId, language, tmpDir);
+        
     } catch (e) { }
 
     let cmd, srcFile;
