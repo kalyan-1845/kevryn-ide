@@ -2191,7 +2191,6 @@ function App() {
                                                     isRemoteUpdate.current = false;
                                                 }}
                                             />
-                                        </div>
                                     </motion.div>
 
                                     {/* --- VS CODE STYLE BOTTOM PANEL --- */}
