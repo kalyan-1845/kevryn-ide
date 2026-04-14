@@ -1,75 +1,94 @@
 const axios = require('axios');
 
 /**
- * CloudOpenAIService
- * Provides 24/7 Open-Source AI models (Qwen, Llama, Gemma) 
- * via cloud inference to ensure availability when local PC is shut down.
- * 
- * SIGNATURE COMPATIBLE WITH ORIGINAL OLLAMASERVICE
+ * HighAvailabilityOpenAIService
+ * Ensures 24/7 AI availability by rotating through multiple 
+ * free open-source mirrors (Pollinations, Chimera, and Mirror Proxies).
  */
-class CloudOpenAIService {
+class HighAvailabilityOpenAIService {
     constructor() {
-        this.primaryEndpoint = 'https://text.pollinations.ai/';
+        // High-availability mirrors
+        this.mirrors = [
+            'https://text.pollinations.ai/',
+            'https://api.airforce/v1/chat/completions', // Stable High-speed Mirrror
+            'https://open-ai-mirror.vercel.app/api/chat' // Backup Proxy
+        ];
+        
         this.tiers = {
             fast: 'qwen-2.5-7b-instruct',
-            balanced: 'mistral-large-latest',
-            advanced: 'searchgpt',
+            balanced: 'llama-3.1-8b-instruct',
+            advanced: 'gpt-4o', // Some mirrors allow high-tier aliases
             expert: 'qwen'
         };
     }
 
-    /**
-     * GET /api/ai/local/status
-     */
     async getModelStatus() {
         return {
             tiers: {
                 fast: { ready: true, model: 'Qwen-2.5 7B' },
-                balanced: { ready: true, model: 'Mistral Large' },
-                advanced: { ready: true, model: 'SearchGPT' },
+                balanced: { ready: true, model: 'Llama 3.1' },
+                advanced: { ready: true, model: 'Universal Expert' },
                 expert: { ready: true, model: 'Qwen-Coder' }
             }
         };
     }
 
     /**
-     * POST /api/ai/local/chat
-     * Signature: chat(messages, options = { tier: 'balanced' })
+     * Smart Chat with Auto-Mirror Fallback
      */
     async chat(messages, options = {}) {
         const tier = options.tier || 'balanced';
         const model = this.tiers[tier] || this.tiers.balanced;
+        let lastError = null;
 
-        try {
-            const response = await axios.post(this.primaryEndpoint, {
-                messages,
-                model: model,
-                stream: false,
-                seed: Math.floor(Math.random() * 1000000)
-            }, { timeout: 45000 });
+        // Try rotating through mirrors until one works
+        for (const mirror of this.mirrors) {
+            try {
+                console.log(`[HighAvailability] Trying mirror: ${mirror} for tier ${tier}`);
+                
+                // Determine format based on mirror type
+                let payload;
+                if (mirror.includes('pollinations')) {
+                    payload = { messages, model, stream: false, seed: Date.now() };
+                } else if (mirror.includes('chat/completions') || mirror.includes('v1')) {
+                    payload = { messages, model, stream: false };
+                } else {
+                    payload = { messages, model };
+                }
 
-            const content = typeof response.data === 'string' ? response.data : response.data.content;
-            return { content, model };
-        } catch (error) {
-            console.error(`[CloudAI] Chat failed:`, error.message);
-            throw new Error(`Cloud AI (Open Mode) is busy. Try again in a moment. (${error.message})`);
+                const response = await axios.post(mirror, payload, { timeout: 15000 });
+
+                // Handle different response formats from different mirrors
+                let content = '';
+                if (response.data.choices && response.data.choices[0].message) {
+                    content = response.data.choices[0].message.content;
+                } else if (response.data.content) {
+                    content = response.data.content;
+                } else if (typeof response.data === 'string') {
+                    content = response.data;
+                }
+
+                if (content && content.length > 0) {
+                    return { content, model };
+                }
+            } catch (error) {
+                lastError = error;
+                console.warn(`[HighAvailability] Mirror ${mirror} failed:`, error.message);
+                // Continue to next mirror
+            }
         }
+
+        throw new Error(`Kevryn AI is under extreme load. Error: ${lastError.message}. Please try again in 30 seconds.`);
     }
 
     /**
-     * POST /api/ai/local/agent/run
-     * Signature: runAgentLoop(prompt, tools, userId, options = { tier: 'expert' })
+     * Agentic Loop Logic
      */
     async runAgentLoop(prompt, tools, userId, options = {}) {
         const tier = options.tier || 'expert';
         const model = this.tiers[tier] || this.tiers.expert;
 
-        // For cloud mode, we use a single high-quality reasoning pass that suggests tool use, 
-        // then we execute tools if needed in a mini-loop.
-        const systemPrompt = `You are the Kevryn Expert AI Agent. 
-You can manipulate files and run terminal commands. 
-Identify the best file/terminal actions to take for the following prompt.`;
-
+        const systemPrompt = `You are the Kevryn Expert AI Agent. Solve the task professionally.`;
         const messages = [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
@@ -77,7 +96,6 @@ Identify the best file/terminal actions to take for the following prompt.`;
 
         const chatResult = await this.chat(messages, { tier });
         
-        // Return structured to match ai.js expectations
         return {
             response: chatResult.content,
             model: model,
@@ -85,29 +103,17 @@ Identify the best file/terminal actions to take for the following prompt.`;
         };
     }
 
-    /**
-     * POST /api/ai/local/fix
-     * Signature: analyzeError(code, language, terminalOutput, tier)
-     */
     async analyzeError(code, language, terminalOutput, tier = 'advanced') {
-        const prompt = `Fix this ${language} crash:
-Error: ${terminalOutput}
-Code: ${code}
-Return ONLY the fixed code block.`;
-        
+        const prompt = `Fix this ${language} crash:\nLog: ${terminalOutput}\nCode: ${code}\nReturn ONLY fixed code.`;
         const result = await this.chat([{ role: 'user', content: prompt }], { tier });
         return result.content;
     }
 
-    /**
-     * POST /api/ai/local/generate
-     * Signature: generateCode(description, language, tier)
-     */
     async generateCode(description, language, tier = 'balanced') {
-        const prompt = `Write ${language} code for: ${description}. Return ONLY code block.`;
+        const prompt = `Write ${language} code for: ${description}. Code only.`;
         const result = await this.chat([{ role: 'user', content: prompt }], { tier });
         return result.content;
     }
 }
 
-module.exports = new CloudOpenAIService();
+module.exports = new HighAvailabilityOpenAIService();
