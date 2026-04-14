@@ -21,7 +21,10 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showHistory, setShowHistory] = useState(false);
     
-    // Hardcoded to main AI engine mode now
+    // Model Selection State
+    const [modelSource, setModelSource] = useState('cloud_gemini'); // cloud_gemini | local_fast | local_balanced | local_advanced | local_expert
+    const [localModels, setLocalModels] = useState(null); // Full status object from backend
+    
     const [mode, setMode] = useState('auto-dev'); 
     
     const chatEndRef = useRef(null);
@@ -61,6 +64,20 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             console.error('Failed to fetch sessions:', error);
         }
     };
+
+    const fetchLocalModelsStatus = useCallback(async () => {
+        try {
+            const response = await api.get('/ai/local/status');
+            setLocalModels(response.data);
+        } catch (error) {
+            console.error('Failed to fetch local model status', error);
+        }
+    }, [api]);
+
+    // Check local status on mount
+    useEffect(() => {
+        fetchLocalModelsStatus();
+    }, [fetchLocalModelsStatus]);
 
     const loadSession = async (sessionId) => {
         setIsLoading(true);
@@ -193,12 +210,20 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
     const executeAutonomousPlan = async (instructions) => {
         setIsLoading(true);
-        setAgentStatus("Initializing workspace analysis...");
+        setAgentStatus(`Initializing ${modelSource.startsWith('local_') ? 'Local AI' : 'Cloud Agent'} analysis...`);
         setMessages(prev => [...prev, { role: 'user', content: instructions }]);
 
         try {
-            // Trigger the robust backend autonomous loop that uses tools
-            const response = await api.post('/ai/agent/run', { prompt: instructions, sessionId: currentSessionId });
+            let endpoint = '/ai/agent/run';
+            let payload = { prompt: instructions, sessionId: currentSessionId };
+
+            // If a local model is selected, route to the local agent endpoint
+            if (modelSource.startsWith('local_')) {
+                endpoint = '/ai/local/agent/run';
+                payload.tier = modelSource.split('local_')[1]; // e.g. 'fast', 'expert'
+            }
+
+            const response = await api.post(endpoint, payload);
             setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
             if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
         } catch (error) {
@@ -227,9 +252,23 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             <div className="ai-header">
                 <div className="ai-header-left">
                     <div className="ai-logo"><FaMagic size={14} /></div>
-                    <span className="ai-title">Kevryn Autonomous Agent</span>
+                    <span className="ai-title">Kevryn AI</span>
+                    <select 
+                        className="ai-model-selector" 
+                        value={modelSource} 
+                        onChange={(e) => setModelSource(e.target.value)}
+                    >
+                        <option value="cloud_gemini">🚀 Cloud Gemini 2.0 (Fastest)</option>
+                        <optgroup label="Local Models (No API Key)">
+                            <option value="local_fast">⚡ Qwen2.5 0.5B {localModels?.tiers?.fast?.ready ? '🟢' : '🔴'}</option>
+                            <option value="local_balanced">⚖️ Qwen2.5 1.5B {localModels?.tiers?.balanced?.ready ? '🟢' : '🔴'}</option>
+                            <option value="local_advanced">🧠 Gemma-2 2B {localModels?.tiers?.advanced?.ready ? '🟢' : '🔴'}</option>
+                            <option value="local_expert">💻 Qwen-Coder 7B {localModels?.tiers?.expert?.ready ? '🟢' : '🔴'}</option>
+                        </optgroup>
+                    </select>
                 </div>
                 <div className="ai-header-right">
+                    <button onClick={fetchLocalModelsStatus} className="ai-header-btn" title="Refresh local status"><FaSpinner className={!localModels ? "spinning" : ""} size={12} /></button>
                     <button onClick={newChat} className="ai-header-btn" title="New Chat"><FaPlus size={12} /></button>
                     <button onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchSessions(); }} className={`ai-header-btn ${showHistory ? 'active' : ''}`} title="History"><FaHistory size={12} /></button>
                 </div>
@@ -303,7 +342,11 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                         <FaPaperPlane size={12} />
                     </button>
                 </div>
-                <div className="ai-input-footer">Kevryn Antigravity Core • Powered by Gemini 2.0 Flash 🚀</div>
+                <div className="ai-input-footer">
+                    {modelSource === 'cloud_gemini' 
+                        ? "Kevryn Core • Powered by Gemini 2.0 Flash 🚀" 
+                        : "Kevryn Local AI • Powered by Ollama (100% Offline)"}
+                </div>
             </form>
         </div>
     );
