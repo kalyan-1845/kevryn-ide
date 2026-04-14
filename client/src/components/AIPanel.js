@@ -210,7 +210,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
     const executeAutonomousPlan = async (instructions) => {
         setIsLoading(true);
-        setAgentStatus(`Initializing ${modelSource.startsWith('local_') ? 'Local AI' : 'Cloud Agent'} analysis...`);
+        setAgentStatus(`Initializing ${modelSource.startsWith('local_') ? 'Cloud Open AI' : 'Cloud Agent'} analysis...`);
         setMessages(prev => [...prev, { role: 'user', content: instructions }]);
 
         try {
@@ -259,11 +259,11 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                         onChange={(e) => setModelSource(e.target.value)}
                     >
                         <option value="cloud_gemini">🚀 Cloud Gemini 2.0 (Fastest)</option>
-                        <optgroup label="Local Models (No API Key)">
-                            <option value="local_fast">⚡ Qwen2.5 0.5B {localModels?.tiers?.fast?.ready ? '🟢' : '🔴'}</option>
-                            <option value="local_balanced">⚖️ Qwen2.5 1.5B {localModels?.tiers?.balanced?.ready ? '🟢' : '🔴'}</option>
-                            <option value="local_advanced">🧠 Gemma-2 2B {localModels?.tiers?.advanced?.ready ? '🟢' : '🔴'}</option>
-                            <option value="local_expert">💻 Qwen-Coder 7B {localModels?.tiers?.expert?.ready ? '🟢' : '🔴'}</option>
+                        <optgroup label="24/7 Open Models (No Key)">
+                            <option value="local_fast">⚡ Qwen-2.5 7B (Fast) 🟢</option>
+                            <option value="local_balanced">⚖️ Mistral (Balanced) 🟢</option>
+                            <option value="local_advanced">🧠 SearchGPT (Advanced) 🟢</option>
+                            <option value="local_expert">💻 Qwen-Coder (Expert) 🟢</option>
                         </optgroup>
                     </select>
                 </div>
@@ -345,7 +345,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                 <div className="ai-input-footer">
                     {modelSource === 'cloud_gemini' 
                         ? "Kevryn Core • Powered by Gemini 2.0 Flash 🚀" 
-                        : "Kevryn Local AI • Powered by Ollama (100% Offline)"}
+                        : "Kevryn Open AI • 24/7 High-Performance Cloud ☁️"}
                 </div>
             </form>
         </div>
