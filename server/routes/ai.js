@@ -241,7 +241,6 @@ Explain exactly what crashed in a short sentence. Then provide the COMPLETELY FI
 
 // ── LOCAL AI ROUTES (Ollama — No API Key Required) ──────────────────────────
 const ollamaService = require('../services/ollamaService');
-const aiTools = require('../utils/aiTools');
 
 /**
  * GET /api/ai/local/status
