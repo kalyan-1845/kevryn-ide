@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import axios from 'axios';
 import { marked } from 'marked';
 import {
-    FaPaperPlane, FaRobot, FaSpinner, FaCheck, FaTimes, 
-    FaSearch, FaBug, FaBolt, FaMagic, FaComment, FaCopy, FaCode,
-    FaTrash, FaEye, FaTerminal, FaPlus, FaHistory, FaEllipsisV
+    FaPaperPlane, FaRobot, FaSpinner, FaCheck, FaTimes,
+    FaBolt, FaMagic, FaCopy, FaCode,
+    FaTrash, FaTerminal, FaPlus, FaHistory
 } from 'react-icons/fa';
 
 const _rawServerUrl = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
@@ -14,22 +14,16 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [agentStatus, setAgentStatus] = useState(null); // Real-time agent status (telemetry)
-    const [activeAction, setActiveAction] = useState(null);
+    const [agentStatus, setAgentStatus] = useState(null);
     const [copiedIndex, setCopiedIndex] = useState(null);
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showHistory, setShowHistory] = useState(false);
-    
-    // Model Selection State
-    const [modelSource, setModelSource] = useState('cloud_gemini'); // cloud_gemini | local_fast | local_balanced | local_advanced | local_expert
-    const [localModels, setLocalModels] = useState(null); // Full status object from backend
-    
-    const [mode, setMode] = useState('auto-dev'); 
-    
+
     const chatEndRef = useRef(null);
     const api = useMemo(() => axios.create({ baseURL: SERVER_URL, headers: { Authorization: token } }), [token]);
 
+    // Allow external trigger (e.g., debug terminal button)
     useEffect(() => {
         window.triggerAiChat = (msg) => {
             setInput(msg);
@@ -39,7 +33,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             }, 100);
         };
 
-        // Listen for internal Agent Telemetry emitted globally by App.js
         const handleTelemetry = (e) => {
             if (e.detail?.message) setAgentStatus(e.detail.message);
             if (e.detail?.status === 'complete') setAgentStatus(null);
@@ -50,12 +43,13 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             delete window.triggerAiChat;
             window.removeEventListener('agent-telemetry', handleTelemetry);
         };
-    }, [token, setInput]);
+    }, []);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, agentStatus]);
 
+    // ── SESSION MANAGEMENT ───────────────────────────────────────
     const fetchSessions = async () => {
         try {
             const response = await api.get('/ai/sessions');
@@ -64,20 +58,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             console.error('Failed to fetch sessions:', error);
         }
     };
-
-    const fetchLocalModelsStatus = useCallback(async () => {
-        try {
-            const response = await api.get('/ai/local/status');
-            setLocalModels(response.data);
-        } catch (error) {
-            console.error('Failed to fetch local model status', error);
-        }
-    }, [api]);
-
-    // Check local status on mount
-    useEffect(() => {
-        fetchLocalModelsStatus();
-    }, [fetchLocalModelsStatus]);
 
     const loadSession = async (sessionId) => {
         setIsLoading(true);
@@ -112,32 +92,15 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
         setAgentStatus(null);
     };
 
-    // Auto Code Execution from earlier logic
-    const handleDiffReview = async (filePlan) => {
-        try {
-            let oldCode = fileName === filePlan.path ? code : "";
-            if (window.openDiff) {
-                window.openDiff({
-                    oldCode,
-                    newCode: filePlan.content || "// No content change",
-                    fileName: filePlan.path,
-                    language: language || 'javascript',
-                    onApply: (finalCode) => { filePlan.content = finalCode; }
-                });
-            }
-        } catch (e) {
-            console.error("Diff Review Error:", e);
-        }
-    };
-
+    // ── CLIPBOARD ────────────────────────────────────────────────
     const copyToClipboard = (text, index) => {
         navigator.clipboard.writeText(text);
         setCopiedIndex(index);
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
+    // ── MARKDOWN + CODE BLOCK RENDERER ───────────────────────────
     const renderMessageContent = useCallback((content, msgIndex) => {
-        const html = marked(content);
         const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
         const parts = [];
         let lastIndex = 0;
@@ -184,91 +147,54 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             parts.push(<div key={`text-end`} dangerouslySetInnerHTML={{ __html: marked(remaining) }} className="ai-text-content" />);
         }
 
-        return parts.length > 0 ? parts : <div dangerouslySetInnerHTML={{ __html: html }} className="ai-text-content" />;
+        return parts.length > 0 ? parts : <div dangerouslySetInnerHTML={{ __html: marked(content) }} className="ai-text-content" />;
     }, [copiedIndex, onApplyCode]);
 
-    const handleQuickAction = async (endpoint, label) => {
-        if (!code && (!input.trim() || input === '')) {
-            setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Please open a file or enter a prompt first.' }]);
-            return;
-        }
+    // ── SEND MESSAGE ─────────────────────────────────────────────
+    const sendMessage = async (e) => {
+        if (e) e.preventDefault();
+        if (!input.trim() || isLoading) return;
 
-        setActiveAction(label);
+        const userMessage = input.trim();
+        setInput('');
         setIsLoading(true);
-        setMessages(prev => [...prev, { role: 'user', content: `🔧 **${label}** : ${fileName || 'No file'}` }]);
+        setAgentStatus('Connecting to Neural Core...');
+        setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
         try {
-            const response = await api.post(endpoint, { code, language: language || 'javascript' });
-            setMessages(prev => [...prev, { role: 'assistant', content: response.data.response || 'No response' }]);
-        } catch (error) {
-            setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${error.response?.data?.error || error.message}` }]);
-        } finally {
-            setIsLoading(false);
-            setActiveAction(null);
-        }
-    };
+            // Build full message history for context
+            const fullMessages = [
+                ...messages,
+                { role: 'user', content: userMessage }
+            ];
 
-    const executeAutonomousPlan = async (instructions) => {
-        setIsLoading(true);
-        setAgentStatus(`Initializing ${modelSource.startsWith('local_') ? 'Cloud Open AI' : 'Cloud Agent'} analysis...`);
-        setMessages(prev => [...prev, { role: 'user', content: instructions }]);
+            const response = await api.post('/ai/chat', {
+                messages: fullMessages,
+                sessionId: currentSessionId
+            });
 
-        try {
-            let endpoint = '/ai/agent/run';
-            let payload = { prompt: instructions, sessionId: currentSessionId };
-
-            // If a local model is selected, route to the local agent endpoint
-            if (modelSource.startsWith('local_')) {
-                endpoint = '/ai/local/agent/run';
-                payload.tier = modelSource.split('local_')[1]; // e.g. 'fast', 'expert'
-            }
-
-            const response = await api.post(endpoint, payload);
             setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
             if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
         } catch (error) {
-            console.error("Agent Error:", error);
+            console.error("AI Error:", error);
             const errorMsg = error.response?.data?.error || error.message;
-            setMessages(prev => [...prev, { role: 'assistant', content: `❌ Agent crashed: ${errorMsg}` }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${errorMsg}` }]);
         } finally {
             setIsLoading(false);
             setAgentStatus(null);
         }
     };
 
-    const sendMessage = async (e) => {
-        if (e) e.preventDefault();
-        if (!input.trim() || isLoading) return;
-
-        const currentInput = input;
-        setInput('');
-        
-        // Push user message, then hand off to Agent Loop
-        await executeAutonomousPlan(currentInput);
-    };
-
+    // ── RENDER ───────────────────────────────────────────────────
     return (
         <div className="ai-panel">
             <div className="ai-header">
                 <div className="ai-header-left">
                     <div className="ai-logo"><FaMagic size={14} /></div>
                     <span className="ai-title">Kevryn AI</span>
-                    <select 
-                        className="ai-model-selector" 
-                        value={modelSource} 
-                        onChange={(e) => setModelSource(e.target.value)}
-                    >
-                        <option value="cloud_gemini">🚀 Kevryn Cloud (Flash)</option>
-                        <optgroup label="Neural Intelligence (Cloud)">
-                            <option value="local_fast">⚡ Kevryn AI (Fast)</option>
-                            <option value="local_balanced">⚖️ Kevryn AI (Balanced)</option>
-                            <option value="local_advanced">🧠 Kevryn AI (Advanced)</option>
-                            <option value="local_expert">🛰️ Kevryn Neural Core (Expert)</option>
-                        </optgroup>
-                    </select>
+                    <span style={{ fontSize: '10px', color: '#10b981', marginLeft: '8px', fontWeight: 600 }}>● Online</span>
                 </div>
                 <div className="ai-header-right">
-                    <button onClick={fetchLocalModelsStatus} className="ai-header-btn" title="Refresh local status"><FaSpinner className={!localModels ? "spinning" : ""} size={12} /></button>
                     <button onClick={newChat} className="ai-header-btn" title="New Chat"><FaPlus size={12} /></button>
                     <button onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchSessions(); }} className={`ai-header-btn ${showHistory ? 'active' : ''}`} title="History"><FaHistory size={12} /></button>
                 </div>
@@ -281,7 +207,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                         <FaTimes className="close-history" onClick={() => setShowHistory(false)} />
                     </div>
                     <div className="ai-history-list">
-                        {sessions.length === 0 ? <div className="no-history">No past conversations</div> : 
+                        {sessions.length === 0 ? <div className="no-history">No past conversations</div> :
                             sessions.map(s => (
                                 <div key={s._id} className={`history-item ${currentSessionId === s._id ? 'active' : ''}`} onClick={() => loadSession(s._id)}>
                                     <div className="history-info">
@@ -298,11 +224,11 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                 {messages.length === 0 && (
                     <div className="ai-welcome">
                         <div className="ai-welcome-icon"><FaMagic size={28} /></div>
-                        <div className="ai-welcome-title">Kevryn Dev Agent</div>
-                        <div className="ai-welcome-subtitle">Ask anything, I will magically build it.</div>
+                        <div className="ai-welcome-title">Kevryn Neural Core</div>
+                        <div className="ai-welcome-subtitle">Your custom-trained AI. Always online.</div>
                         <div className="ai-welcome-hints">
-                            <span className="ai-hint" onClick={() => executeAutonomousPlan('Build a complete Authentication React component.')}>"Build Auth UI"</span>
-                            <span className="ai-hint" onClick={() => executeAutonomousPlan('Write a python snake game.')}>"Write Python Snake"</span>
+                            <span className="ai-hint" onClick={() => { setInput('Build a complete Authentication React component.'); }}>Build Auth UI</span>
+                            <span className="ai-hint" onClick={() => { setInput('Write a python snake game.'); }}>Write Python Snake</span>
                         </div>
                     </div>
                 )}
@@ -316,7 +242,6 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     </div>
                 ))}
 
-                {/* Sub-Agent Telemetry Display */}
                 {agentStatus && (
                     <div className="ai-message ai-message-assistant" style={{ opacity: 0.8 }}>
                         <div className="ai-avatar"><FaBolt size={10} color="#f59e0b" /></div>
@@ -334,7 +259,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Instruct the autonomous agent..."
+                        placeholder="Ask your Neural Core anything..."
                         disabled={isLoading}
                         className="ai-input"
                     />
@@ -343,9 +268,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     </button>
                 </div>
                 <div className="ai-input-footer">
-                    {modelSource === 'cloud_gemini' 
-                        ? "Kevryn Core • Powered by Gemini 2.0 Flash 🚀" 
-                        : "Kevryn Open AI • 24/7 High-Performance Cloud ☁️"}
+                    Kevryn Neural Core • Always Online 🛰️
                 </div>
             </form>
         </div>
