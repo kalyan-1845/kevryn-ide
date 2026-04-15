@@ -15,10 +15,10 @@ const mirrors = [
 ];
 
 const tiers = {
-    fast: { name: 'Kevryn AI (Fast)', mirror: 'qwen-2.5-7b-instruct', fallback: 'gemini-2.0-flash' },
-    balanced: { name: 'Kevryn AI (Balanced)', mirror: 'llama-3.1-8b-instruct', fallback: 'gemini-2.0-flash' },
-    advanced: { name: 'Kevryn AI (Advanced)', mirror: 'gpt-4o', fallback: 'gemini-2.0-flash' },
-    expert: { name: 'Kevryn AI (Expert)', hf: true, fallback: 'gemini-2.0-flash' }
+    fast: { name: 'Kevryn AI (Fast)', mirror: 'qwen-2.5-7b-instruct' },
+    balanced: { name: 'Kevryn AI (Balanced)', mirror: 'llama-3.1-8b-instruct' },
+    advanced: { name: 'Kevryn AI (Advanced)', mirror: 'gpt-4o' },
+    expert: { name: 'Kevryn AI (Expert)', hf: true }
 };
 
 /**
@@ -56,6 +56,13 @@ const chatWithHF = async (messages) => {
 
         return { content, model: 'Kevryn Neural Core (Cloud)' };
     } catch (e) {
+        if (e.response?.data?.error?.includes('loading')) {
+            const time = e.response.data.estimated_time || 20;
+            return { 
+                content: `🛰️ **Neural Core is warming up.** Estimated launch in ${Math.round(time)} seconds. Please wait a moment and try again.`, 
+                model: 'Kevryn Neural Core (Loading)' 
+            };
+        }
         console.error("[NeuralCore] HF Cloud failure:", e.response?.data || e.message);
         throw e;
     }
@@ -117,8 +124,8 @@ const chat = async (messages, options = {}) => {
         }
     }
 
-    // C. MASTER FALLBACK
-    return await chatWithGemini(messages, tier.fallback);
+    // C. MASTER ERROR
+    throw new Error('Neural Engine is currently unavailable. Please verify your HF_TOKEN or try again in a few seconds.');
 };
 
 module.exports = {
