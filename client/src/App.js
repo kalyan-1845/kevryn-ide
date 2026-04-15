@@ -1335,15 +1335,15 @@ function App() {
 
         // All languages run via server PTY — fast & reliable
         const serverCommands = {
-            'js': `node "${activeFileName}" || node "${filenameOnly}"`,
-            'py': `python3 "${activeFileName}" || python3 "${filenameOnly}" || python "${filenameOnly}"`,
-            'java': `javac "${activeFileName}" || javac "${filenameOnly}" && java "${fileNameNoExt}"`,
+            'js': `node "${activeFileName}"`,
+            'py': `python3 "${activeFileName}" || python "${activeFileName}"`,
+            'java': `javac "${activeFileName}" && java "${fileNameNoExt}"`,
             'c': `gcc "${activeFileName}" -o output && ${exePrefix}output`,
             'cpp': `g++ "${activeFileName}" -o output && ${exePrefix}output`,
-            'rb': `ruby "${activeFileName}" || ruby "${filenameOnly}"`,
-            'go': `go run "${activeFileName}" || go run "${filenameOnly}"`,
-            'php': `php "${activeFileName}" || php "${filenameOnly}"`,
-            'ts': `npx ts-node "${activeFileName}" || npx ts-node "${filenameOnly}"`,
+            'rb': `ruby "${activeFileName}"`,
+            'go': `go run "${activeFileName}"`,
+            'php': `php "${activeFileName}"`,
+            'ts': `npx ts-node "${activeFileName}"`,
         };
         cmd = serverCommands[ext];
 
