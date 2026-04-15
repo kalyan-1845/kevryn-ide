@@ -3,3 +3,4 @@ node_modules/
 user_projects/
 public_sites/
 deploy/deployments.json
+models/kevryn_neural_core/
