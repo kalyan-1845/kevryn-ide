@@ -5,8 +5,8 @@ const aiService = require('../services/aiService');
 const ChatSession = require('../models/ChatSession');
 const aiTools = require('../utils/aiTools');
 
-// ── BOOT: Start keep-alive ping ─────────────────────────────────
-aiService.startKeepAlive();
+// ── BOOT: Start keep-alive ping (deferred, non-blocking) ────────
+try { setTimeout(() => aiService.startKeepAlive(), 10000); } catch(e) { console.warn('[AI] Keep-alive init error:', e.message); }
 
 // ── SESSION CRUD ─────────────────────────────────────────────────
 router.get('/sessions', authenticate, async (req, res) => {
