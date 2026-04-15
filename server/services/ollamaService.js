@@ -14,9 +14,10 @@ const mirrors = [
 ];
 
 const tiers = {
-    fast: { mirror: 'qwen-2.5-7b-instruct', fallback: 'gemini-2.0-flash' },
-    balanced: { mirror: 'llama-3.1-8b-instruct', fallback: 'gemini-2.0-flash' },
-    expert: { mirror: NEURAL_MODEL, fallback: 'gemini-2.0-flash' } // Neural Core is now the Expert
+    fast: { name: 'Kevryn AI (Fast)', mirror: 'qwen-2.5-7b-instruct', fallback: 'gemini-2.0-flash' },
+    balanced: { name: 'Kevryn AI (Balanced)', mirror: 'llama-3.1-8b-instruct', fallback: 'gemini-2.0-flash' },
+    advanced: { name: 'Kevryn AI (Advanced)', mirror: 'gpt-4o', fallback: 'gemini-2.0-flash' },
+    expert: { name: 'Kevryn AI (Expert)', mirror: NEURAL_MODEL, fallback: 'gemini-2.0-flash' }
 };
 
 /**
@@ -33,7 +34,7 @@ const checkLocalModel = async (modelName) => {
 
 const chatWithGemini = async (messages, modelName = "gemini-2.0-flash") => {
     try {
-        console.log(`[NeuralCore] Falling back to Master Gemini 2.0...`);
+        console.log(`[NeuralCore] Falling back to Kevryn Cloud...`);
         const model = genAI.getGenerativeModel({ model: modelName });
         const history = messages.slice(0, -1).map(m => ({
             role: m.role === 'assistant' ? 'model' : 'user',
@@ -41,17 +42,17 @@ const chatWithGemini = async (messages, modelName = "gemini-2.0-flash") => {
         }));
         const chat = model.startChat({ history });
         const result = await chat.sendMessage(messages[messages.length - 1].content);
-        return { content: result.response.text(), model: `Master ${modelName}` };
+        return { content: result.response.text(), model: `Kevryn Cloud` };
     } catch (e) {
-        console.error("[NeuralCore] Gemini failure:", e.message);
+        console.error("[NeuralCore] Cloud failure:", e.message);
         throw e;
     }
 };
 
 /**
  * HYBRID NEURAL BRIDGE 🧠⚡
- * 1. Checks Local Ollama (Your custom brain)
- * 2. Falls back to Cloud Mirrors (Pollinations/Groq)
+ * 1. Checks Local Ollama (Kevryn Custom brain)
+ * 2. Falls back to Cloud Open Inference
  * 3. Final fallback to Gemini 2.0
  */
 const chat = async (messages, options = {}) => {
@@ -63,7 +64,7 @@ const chat = async (messages, options = {}) => {
         const isReady = await checkLocalModel(NEURAL_MODEL);
         if (isReady) {
             try {
-                console.log(`[NeuralCore] Activating Local Expert Brain (${NEURAL_MODEL})...`);
+                console.log(`[NeuralCore] Activating Kevryn Neural Engine (${NEURAL_MODEL})...`);
                 const response = await axios.post(LOCAL_OLLAMA_URL, {
                     model: NEURAL_MODEL,
                     messages,
@@ -72,10 +73,10 @@ const chat = async (messages, options = {}) => {
                 
                 return { 
                     content: response.data.message.content, 
-                    model: `Local Neural Core (${NEURAL_MODEL})` 
+                    model: `Kevryn Neural Core` 
                 };
             } catch (e) {
-                console.warn(`[NeuralCore] Local engine offline, switching to cloud failover...`);
+                console.warn(`[NeuralCore] Neural engine offline, switching to cloud failover...`);
             }
         }
     }
@@ -83,7 +84,7 @@ const chat = async (messages, options = {}) => {
     // B. TRY CLOUD MIRRORS
     for (const mirror of mirrors) {
         try {
-            console.log(`[Mirror] Attempting ${mirror} for ${tier.mirror}...`);
+            console.log(`[Mirror] Attempting Kevryn Cloud Failover...`);
             const payload = { 
                 messages, 
                 model: tier.mirror === NEURAL_MODEL ? 'llama-3.1-8b-instruct' : tier.mirror, 
@@ -93,10 +94,10 @@ const chat = async (messages, options = {}) => {
             
             let content = response.data.choices?.[0]?.message?.content || response.data.content || response.data;
             if (content && content.length > 5) {
-                return { content, model: `Cloud ${tier.mirror}` };
+                return { content, model: tier.name };
             }
         } catch (error) {
-            console.warn(`[Mirror] ${mirror} failed:`, error.message);
+            console.warn(`[Mirror] failover failed:`, error.message);
         }
     }
 

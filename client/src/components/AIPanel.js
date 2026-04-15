@@ -258,12 +258,12 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                         value={modelSource} 
                         onChange={(e) => setModelSource(e.target.value)}
                     >
-                        <option value="cloud_gemini">🚀 Cloud Gemini 2.0 (Fastest)</option>
-                        <optgroup label="24/7 Open Models (No Key)">
-                            <option value="local_fast">⚡ Qwen-2.5 7B (Fast) 🟢</option>
-                            <option value="local_balanced">⚖️ Mistral (Balanced) 🟢</option>
-                            <option value="local_advanced">🧠 SearchGPT (Advanced) 🟢</option>
-                            <option value="local_expert">💻 Qwen-Coder (Expert) 🟢</option>
+                        <option value="cloud_gemini">🚀 Kevryn Cloud (Flash)</option>
+                        <optgroup label="Kevryn Neural Engine (24/7)">
+                            <option value="local_fast">⚡ Kevryn AI (Fast) 🟢</option>
+                            <option value="local_balanced">⚖️ Kevryn AI (Balanced) 🟢</option>
+                            <option value="local_advanced">🧠 Kevryn AI (Advanced) 🟢</option>
+                            <option value="local_expert">💻 Kevryn AI (Expert) 🟢</option>
                         </optgroup>
                     </select>
                 </div>
