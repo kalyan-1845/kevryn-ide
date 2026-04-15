@@ -8,7 +8,7 @@ const { authenticate } = require('../utils/authMiddleware');
 const aiTools = require('../utils/aiTools');
 
 // Use env var first, fallback to the provisioned key verified to work
-const API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBu9urHeQLzgfWhkgBJkJLu7ZmxrDRl1nY';
+const API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 // --- SESSIONS ---
