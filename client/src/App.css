@@ -204,7 +204,7 @@ body {
 /* --- LAYOUT --- */
 .ide-container {
   display: grid;
-  grid-template-rows: 38px 1fr;
+  grid-template-rows: 38px 1fr 32px;
   height: 100vh;
   width: 100vw;
   background: transparent;

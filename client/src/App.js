@@ -370,6 +370,7 @@ function App() {
     // --- GLOBAL SEARCH STATE ---
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isIssueReporterOpen, setIsIssueReporterOpen] = useState(false); // NEW: Issue Reporter State
+    const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null); // ACTIVE WORKSPACE ROOT
 
     const startResizingAi = useCallback((e) => {
         e.preventDefault(); // Prevent text selection
@@ -537,8 +538,10 @@ function App() {
                         nodeTree.children.push(map[node._id]);
                     }
                 });
-                // FIX: Display imported folder as root if it's the only one
-                if (nodeTree.children.length === 1 && nodeTree.children[0].type === 'folder') {
+                // WORKSPACE SCOPING FIX: Isolate tree to project folder if selected
+                if (activeWorkspaceFolderId && map[activeWorkspaceFolderId]) {
+                    setFileData(map[activeWorkspaceFolderId]);
+                } else if (nodeTree.children.length === 1 && nodeTree.children[0].type === 'folder') {
                     setFileData(nodeTree.children[0]);
                 } else {
                     setFileData(nodeTree);
@@ -564,7 +567,7 @@ function App() {
         } else {
             window.fetchFilesTimer = setTimeout(executeAction, 300); // 300ms debounce
         }
-    }, [token, api, activeSession, handleLogout]);
+    }, [token, api, activeSession, handleLogout, activeWorkspaceFolderId]);
 
     // Handle Global Shortcuts (Ctrl+S, F2, Ctrl+N, Ctrl+Shift+N, Ctrl+W, Ctrl+Tab)
     useEffect(() => {
@@ -761,7 +764,7 @@ function App() {
             s.off('session-ended');
             window.removeEventListener('click', closeMenu);
         };
-    }, [token, username, userId, fetchFiles, api, userRole]); // Simplified dependencies
+    }, [token, username, userId, fetchFiles, api, userRole, activeWorkspaceFolderId]); // Simplified dependencies
 
 
 
@@ -1026,8 +1029,11 @@ function App() {
             const res = await api.post('/templates/create', { templateId, folderName, userId });
             console.log("Template Created:", res.data);
             setIsTemplateModalOpen(false);
+            if (res.data.folderId) {
+                setActiveWorkspaceFolderId(res.data.folderId);
+            }
             fetchFiles();
-            alert(`Project ${folderName} created successfully!`);
+            alert(`Project ${folderName} created and workspace scoped!`);
         } catch (e) {
             alert("Error creating template: " + (e.response?.data?.error || e.message));
         } finally {
@@ -1090,7 +1096,14 @@ function App() {
             }
             return tree;
         };
-        try { await api.post('/project/upload', { tree: await buildTree(files) }); alert("Project uploaded!"); fetchFiles(); } catch (e) { alert("Upload failed."); }
+        try { 
+            const res = await api.post('/project/upload', { tree: await buildTree(files) }); 
+            if (res.data.folderId) {
+                setActiveWorkspaceFolderId(res.data.folderId);
+            }
+            alert("Project uploaded and workspace scoped!"); 
+            fetchFiles(); 
+        } catch (e) { alert("Upload failed."); }
     };
 
     const getLanguage = (fname) => {
@@ -2016,7 +2029,20 @@ function App() {
                                     </div>
                                     {/* Sidebar Tab Content Area (Ensure it takes space to push logout down) */}
                                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                                        {sidebarTab === 'files' && (<FileTree data={fileData} activeId={activeFileId} onFileClick={handleFileClick} onCreate={(parentId) => createNode('file', parentId)} onCreateFolder={createFolder} onDelete={handleDelete} onRename={handleRename} onDownload={handleDownload} onCopyPath={handleCopyPath} />)}
+                                        {sidebarTab === 'files' && (
+                                            <>
+                                                {activeWorkspaceFolderId && (
+                                                    <div 
+                                                        style={{ padding: '8px 12px', cursor: 'pointer', background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid var(--border-color)', fontWeight: 'bold' }}
+                                                        onClick={() => setActiveWorkspaceFolderId(null)}
+                                                        title="Return to full workspace view"
+                                                    >
+                                                        <FaFolderOpen /> ← Back to All Files
+                                                    </div>
+                                                )}
+                                                <FileTree data={fileData} activeId={activeFileId} onFileClick={handleFileClick} onCreate={(parentId) => createNode('file', parentId)} onCreateFolder={createFolder} onDelete={handleDelete} onRename={handleRename} onDownload={handleDownload} onCopyPath={handleCopyPath} onSetWorkspace={setActiveWorkspaceFolderId} />
+                                            </>
+                                        )}
                                         {sidebarTab === 'git' && (<GitPanel token={token} startRepo={activeRepo} />)}
                                         {sidebarTab === 'snippets' && (<SnippetsPanel token={token} editorRef={editorRef} getLanguage={getLanguage} fileName={fileName} />)}
                                         {sidebarTab === 'timeline' && (

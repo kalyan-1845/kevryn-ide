@@ -12,8 +12,10 @@ const execAsync = util.promisify(exec);
  */
 class GoldWorkspace {
     constructor(baseDir) {
-        this.globalCache = path.join(baseDir, 'global_cache');
-        this.userProjects = path.join(baseDir, 'user_projects');
+        const os = require('os');
+        const kevrynDir = path.join(os.homedir(), '.kevryn');
+        this.globalCache = process.env.KEVRYN_CACHE || path.join(kevrynDir, 'global_cache');
+        this.userProjects = process.env.KEVRYN_WORKSPACES || path.join(kevrynDir, 'workspaces');
         
         // Ensure directories exist
         fs.ensureDirSync(this.globalCache);

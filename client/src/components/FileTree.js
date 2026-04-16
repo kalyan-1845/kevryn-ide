@@ -15,7 +15,7 @@ const getFileIcon = (name) => {
 };
 
 // ── Context Menu ────────────────────────────────────────────────────────────
-const ContextMenu = ({ x, y, node, onClose, onCreate, onCreateFolder, onRename, onDelete, onDownload, onCopyPath }) => {
+const ContextMenu = ({ x, y, node, onClose, onCreate, onCreateFolder, onRename, onDelete, onDownload, onCopyPath, onSetWorkspace }) => {
   const menuRef = useRef(null);
 
   // Adjust position so menu doesn't overflow viewport
@@ -82,6 +82,7 @@ const ContextMenu = ({ x, y, node, onClose, onCreate, onCreateFolder, onRename, 
           <Separator />
           <Item icon="✏️" label="Rename" shortcut="F2" onClick={() => onRename(node)} />
           {!isFolder && <Item icon="⬇️" label="Download" onClick={() => onDownload(node)} />}
+          {isFolder && <Item icon="🎯" label="Open Workspace" onClick={() => onSetWorkspace(node._id)} />}
           <Item icon="📋" label="Copy Path" onClick={() => onCopyPath(node)} />
           <Separator />
           <Item icon="🗑️" label="Delete" shortcut="Del" onClick={() => onDelete(node._id)} danger />
@@ -98,10 +99,10 @@ const FileTree = ({
   onFileClick,
   onCreate,
   onCreateFolder,
-  onDelete,
   onRename,
   onDownload,
   onCopyPath,
+  onSetWorkspace,
   level = 0,
 }) => {
   const [isOpen, setIsOpen] = useState(level === 0); // root open by default
@@ -279,6 +280,7 @@ const FileTree = ({
           onRename={onRename}
           onDownload={onDownload}
           onCopyPath={onCopyPath}
+          onSetWorkspace={onSetWorkspace}
           level={level + 1}
         />
       ))}
@@ -296,6 +298,7 @@ const FileTree = ({
           onDelete={onDelete}
           onDownload={onDownload}
           onCopyPath={onCopyPath}
+          onSetWorkspace={onSetWorkspace}
         />
       )}
     </div>

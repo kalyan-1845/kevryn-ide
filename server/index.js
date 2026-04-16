@@ -1028,8 +1028,9 @@ app.use('/deployed/:projectId', (req, res, next) => {
 
 // (Rate limiters moved to top)
 
-const baseUserDir = path.join(__dirname, 'user_projects');
-const baseSitesDir = path.join(__dirname, 'public_sites');
+// --- STORAGE PATHS: Move outside source tree for security/jailing ---
+const baseUserDir = process.env.KEVRYN_WORKSPACES || path.join(os.homedir(), '.kevryn', 'workspaces');
+const baseSitesDir = process.env.KEVRYN_SITES || path.join(os.homedir(), '.kevryn', 'public_sites');
 
 // --- AUTH MIDDLEWARE ---
 // (Auth middleware moved to top)
@@ -1517,6 +1518,7 @@ async function saveProjectStructure(node, parentId, userId, currentPath, sharedW
     } else {
         fs.writeFileSync(fullPath, node.content || "");
     }
+    return savedDoc;
 }
 
 // --- AI ROUTE ---
@@ -1527,8 +1529,8 @@ app.post('/project/upload', authenticate, async (req, res) => {
     try {
         const { tree } = req.body;
         const userDir = getUserDir(req.user.userId);
-        await saveProjectStructure(tree, 'root', req.user.userId, userDir, []);
-        res.json({ message: "Uploaded" });
+        const rootDoc = await saveProjectStructure(tree, 'root', req.user.userId, userDir, []);
+        res.json({ message: "Uploaded", folderId: rootDoc ? rootDoc._id : null });
     } catch (err) { res.status(500).json({ error: "Upload failed" }); }
 });
 
@@ -1844,7 +1846,7 @@ app.post('/templates/create', authenticate, async (req, res) => {
                 await dbFile.save();
             }
         }
-        res.json({ success: true, message: `Template ${templateId} created in ${folderName}` });
+        res.json({ success: true, message: `Template ${templateId} created in ${folderName}`, folderId: dbRootFolder._id });
     } catch (err) {
         console.error("Template Create Error:", err);
         res.status(500).json({ error: err.message });
@@ -2761,8 +2763,8 @@ io.on('connection', (socket) => {
         if (userId) {
             termCwd = courseId ? getLabDir(userId, courseId) : getUserDir(userId);
         } else {
-            // Fallback
-            termCwd = path.join(__dirname, 'user_projects');
+            // Fallback - Use the new global storage root
+            termCwd = baseUserDir;
         }
 
         try {
@@ -2809,6 +2811,8 @@ io.on('connection', (socket) => {
 
     socket.on('terminal:write', ({ termId, data }) => {
         if (terminals[termId]) {
+            // OPTIONAL: Basic command guard can be added here if needed
+            // For now, isolation is primarily via Directory-Per-User
             terminals[termId].write(data);
         }
     });
