@@ -1039,6 +1039,29 @@ const baseSitesDir = process.env.KEVRYN_SITES || path.join(os.homedir(), '.kevry
 if (!fs.existsSync(baseUserDir)) fs.mkdirSync(baseUserDir, { recursive: true });
 if (!fs.existsSync(baseSitesDir)) fs.mkdirSync(baseSitesDir, { recursive: true });
 
+// --- LEGACY MIGRATION: Move old 'user_projects' to new location if found ---
+const legacyUserDir = path.join(__dirname, 'user_projects');
+if (fs.existsSync(legacyUserDir)) {
+    console.log(`[STORAGE] Legacy user_projects found at ${legacyUserDir}. Migrating...`);
+    try {
+        const users = fs.readdirSync(legacyUserDir);
+        for (const user of users) {
+            const oldPath = path.join(legacyUserDir, user);
+            const newPath = path.join(baseUserDir, user);
+            if (fs.statSync(oldPath).isDirectory() && !fs.existsSync(newPath)) {
+                console.log(`[MIGRATION] Moving ${user} storage to new home...`);
+                // Move instead of copy for performance
+                fs.renameSync(oldPath, newPath);
+            }
+        }
+        // Rename legacy dir to .old to avoid repeating or confusion
+        fs.renameSync(legacyUserDir, legacyUserDir + '.old');
+        console.log(`[STORAGE] Migration complete. Legacy folder renamed to ${legacyUserDir}.old`);
+    } catch (migErr) {
+        console.error(`[STORAGE ERROR] Migration failed:`, migErr.message);
+    }
+}
+
 // Helper: get per-user directories
 function getUserDir(userId) {
     const dir = path.join(baseUserDir, userId.toString());
