@@ -15,7 +15,7 @@ const getFileIcon = (name) => {
 };
 
 // ── Context Menu ────────────────────────────────────────────────────────────
-const ContextMenu = ({ x, y, node, onClose, onCreate, onCreateFolder, onRename, onDelete, onDownload, onCopyPath, onSetWorkspace }) => {
+const ContextMenu = React.memo(({ x, y, node, onClose, onCreate, onCreateFolder, onRename, onDelete, onDownload, onCopyPath, onSetWorkspace }) => {
   const menuRef = useRef(null);
 
   // Adjust position so menu doesn't overflow viewport
@@ -90,10 +90,10 @@ const ContextMenu = ({ x, y, node, onClose, onCreate, onCreateFolder, onRename, 
       )}
     </div>
   );
-};
+});
 
 // ── FileTree Node ────────────────────────────────────────────────────────────
-const FileTree = ({
+const FileTree = React.memo(({
   data,
   activeId,
   onFileClick,
@@ -304,6 +304,6 @@ const FileTree = ({
       )}
     </div>
   );
-};
+});
 
 export default FileTree;

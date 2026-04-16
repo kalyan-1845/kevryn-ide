@@ -403,7 +403,7 @@ app.get('/files', authenticate, async (req, res) => {
         console.log(`[FILES] Query for ${username} (${userId}):`, JSON.stringify(query, null, 2));
 
         const files = await File.find(query)
-            .select('name type parentId content owner sharedWith courseId lastActivity')
+            .select('name type parentId owner sharedWith courseId lastActivity') // Remove 'content' for performance
             .lean();
 
         console.log(`[FILES] Found ${files.length} files for ${username}`);
@@ -2815,8 +2815,18 @@ io.on('connection', (socket) => {
             terminals[termId] = ptyProcess;
             terminals[termId].lastCreation = Date.now();
 
+            let dataBuffer = '';
+            let bufferTimeout = null;
+
             const handleData = (data) => {
-                socket.emit('terminal:data', { termId, data });
+                dataBuffer += data;
+                if (!bufferTimeout) {
+                    bufferTimeout = setTimeout(() => {
+                        socket.emit('terminal:data', { termId, data: dataBuffer });
+                        dataBuffer = '';
+                        bufferTimeout = null;
+                    }, 25); // 25ms batching - great for both responsiveness and throughput
+                }
             };
             ptyProcess.on('data', handleData);
 

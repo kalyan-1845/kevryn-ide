@@ -126,10 +126,32 @@ function App() {
     const [activeFileId, setActiveFileId] = useState(null);
     const [openFiles, setOpenFiles] = useState([]); // { _id, name, content }
     const [fileName, setFileName] = useState("");
-    const [fileData, setFileData] = useState({ name: 'Initializing Workspace...', type: 'folder', children: [] });
-    const [activeMenu, setActiveMenu] = useState(null);
-    const [activeRepo] = useState(""); // Track active authenticated repo name
     const [files, setFiles] = useState([]); // Flat list of files for path resolution
+    const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null); // Moved up to use in memo
+
+    const fileData = useMemo(() => {
+        if (!files || files.length === 0) return { _id: "root", name: "My Workspace", type: "folder", children: [] };
+        
+        const map = {}, nodeTree = { _id: "root", name: "My Workspace", type: "folder", children: [] };
+        // Deep copy objects to avoid mutating state if someone accidentally tries to touch the tree
+        files.forEach(node => { map[node._id] = { ...node, children: [] }; });
+        files.forEach(node => {
+            if (node.parentId !== "root") {
+                if (map[node.parentId]) map[node.parentId].children.push(map[node._id]);
+            } else {
+                nodeTree.children.push(map[node._id]);
+            }
+        });
+
+        if (activeWorkspaceFolderId && map[activeWorkspaceFolderId]) {
+            return map[activeWorkspaceFolderId];
+        } else if (nodeTree.children.length === 1 && nodeTree.children[0].type === 'folder') {
+            return nodeTree.children[0];
+        } else {
+            return nodeTree;
+        }
+    }, [files, activeWorkspaceFolderId]);
+
 
     const [sidebarTab, setSidebarTab] = useState('files');
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -370,7 +392,7 @@ function App() {
     // --- GLOBAL SEARCH STATE ---
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isIssueReporterOpen, setIsIssueReporterOpen] = useState(false); // NEW: Issue Reporter State
-    const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null); // ACTIVE WORKSPACE ROOT
+    // activeWorkspaceFolderId moved up
 
     const startResizingAi = useCallback((e) => {
         e.preventDefault(); // Prevent text selection
@@ -528,24 +550,7 @@ function App() {
             // FIX: Pass courseId to /files to ensure we get lab files ONLY when in an active lab session
             const fetchUrl = (isLabOpen && activeSession?.courseId) ? `/files?courseId=${activeSession.courseId}` : '/files';
             api.get(fetchUrl).then(res => {
-                setFiles(res.data); // Store flat list
-                const map = {}, nodeTree = { _id: "root", name: "My Workspace", type: "folder", children: [] };
-                res.data.forEach(node => { map[node._id] = { ...node, children: [] }; });
-                res.data.forEach(node => {
-                    if (node.parentId !== "root") {
-                        if (map[node.parentId]) map[node.parentId].children.push(map[node._id]);
-                    } else {
-                        nodeTree.children.push(map[node._id]);
-                    }
-                });
-                // WORKSPACE SCOPING FIX: Isolate tree to project folder if selected
-                if (activeWorkspaceFolderId && map[activeWorkspaceFolderId]) {
-                    setFileData(map[activeWorkspaceFolderId]);
-                } else if (nodeTree.children.length === 1 && nodeTree.children[0].type === 'folder') {
-                    setFileData(nodeTree.children[0]);
-                } else {
-                    setFileData(nodeTree);
-                }
+                setFiles(res.data);
                 setIsAppLoading(false); // Boot sequence complete
             }).catch(err => {
                 const status = err.response?.status;
@@ -556,7 +561,7 @@ function App() {
                 } else {
                     console.error('[FILES] Failed to fetch files:', err.message);
                     // Show empty workspace instead of hanging on loading screen
-                    setFileData({ _id: 'root', name: 'My Workspace', type: 'folder', children: [] });
+                    setFiles([]); 
                     setIsAppLoading(false);
                 }
             });
@@ -1041,25 +1046,22 @@ function App() {
         }
     };
 
-    const createNode = (type, parentId = 'root') => {
+    const createNode = useCallback((type, parentId = 'root') => {
         if (!userId) return alert("Please login again (User ID missing).");
         const name = prompt(`Enter ${type} name:`);
         if (name) {
-            // FIX: Pass courseId so labs files are tagged correctly and appear in the lab file list. ONLY when in lab
             const courseId = (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined;
-            // FIX: Use a callback so we only refresh AFTER the server confirms creation (prevents race condition)
             safeEmit('create-node', { parentId, newNode: { name, type }, userId, courseId }, (ack) => {
                 if (ack?.success) {
-                    fetchFiles(true); // Refresh only after server confirms
+                    fetchFiles(true); 
                 } else if (ack?.error) {
                     alert("Failed to create file: " + ack.error);
                 } else {
-                    // Fallback if server doesn't ack (older build)
                     setTimeout(() => fetchFiles(true), 500);
                 }
             });
         }
-    };
+    }, [userId, isLabOpen, activeSession, fetchFiles]);
 
     const handleFileUpload = (e) => {
         const f = e.target.files[0];
@@ -1139,23 +1141,20 @@ function App() {
         }, 500);
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = useCallback(async (id) => {
         if (!window.confirm("Delete?")) return;
         try {
             const fileToDelete = files.find(f => f._id === id);
             await api.delete(`/files/${id}`);
             if (activeFileId === id) { setActiveFileId(null); setFileName(""); setCode(""); }
-            // Sync WebContainer: Simplest is re-mount or delete specifically
             if (wcBridgeRef.current && fileToDelete) {
-                // For now, re-fetch and re-mount ensures correctness
                 setTimeout(fetchFiles, 500);
             } else {
                 fetchFiles();
             }
         } catch (e) { }
-    };
-    const handleRename = async (f) => {
-        // Support both inline rename (f._newName) and prompt-based rename
+    }, [api, files, activeFileId, fetchFiles]);
+    const handleRename = useCallback(async (f) => {
         const n = f._newName || prompt("New name:", f.name);
         if (n && n !== f.name) {
             try {
@@ -1164,8 +1163,8 @@ function App() {
                 fetchFiles();
             } catch (e) { console.error('[Rename] Failed:', e); }
         }
-    };
-    const handleDownload = (file) => {
+    }, [api, activeFileId, setFileName, fetchFiles]);
+    const handleDownload = useCallback((file) => {
         if (!file || file.type !== 'file') return;
         const content = file.content || '';
         const blob = new Blob([content], { type: 'text/plain' });
@@ -1177,12 +1176,11 @@ function App() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    };
+    }, []);
     const createFolder = (parentId = 'root') => createNode('folder', parentId);
-    const handleCopyPath = (file) => {
+    const handleCopyPath = useCallback((file) => {
         const path = findFileFullPath(file._id) || file.name;
         navigator.clipboard.writeText(path).then(() => {
-            // Subtle toast instead of alert
             const toast = document.createElement('div');
             toast.textContent = `📋 Copied: ${path}`;
             Object.assign(toast.style, {
@@ -1197,28 +1195,17 @@ function App() {
             document.body.appendChild(toast);
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2000);
         }).catch(() => prompt('Copy this path:', path));
-    };
+    }, [findFileFullPath]);
 
-    const handleFileClick = async (file, lineToJump = null) => {
+    const handleFileClick = useCallback(async (file, lineToJump = null) => {
         try {
-            // STEP 1: FORCE SAVE CURRENT FILE BEFORE SWITCHING
             if (activeFileId) {
-                // Cancel any pending debounced saves to prevent stale overwrites
-                if (autoSaveTimeoutRef.current) {
-                    clearTimeout(autoSaveTimeoutRef.current);
-                    autoSaveTimeoutRef.current = null;
-                }
-                if (codeSyncTimeoutRef.current) {
-                    clearTimeout(codeSyncTimeoutRef.current);
-                    codeSyncTimeoutRef.current = null;
-                }
-                console.log(`[SWITCH] Saving current file ${activeFileId} before switching...`);
+                if (autoSaveTimeoutRef.current) { clearTimeout(autoSaveTimeoutRef.current); autoSaveTimeoutRef.current = null; }
+                if (codeSyncTimeoutRef.current) { clearTimeout(codeSyncTimeoutRef.current); codeSyncTimeoutRef.current = null; }
                 try {
                     await api.put(`/files/${activeFileId}`, { content: code });
                     safeEmit('save-file-disk', { fileName: fileName, code, userId, fileId: activeFileId });
-                } catch (saveErr) {
-                    console.error("[SWITCH] Pre-switch save failed:", saveErr);
-                }
+                } catch (saveErr) { }
             }
 
             let targetFile = file;
@@ -1231,8 +1218,6 @@ function App() {
 
             const res = await api.get(`/files/${targetFile._id}`);
             const content = res.data.content || "";
-
-            // Reset dirty sync state
             isRemoteUpdate.current = false;
 
             setActiveFileId(targetFile._id);
@@ -1240,13 +1225,9 @@ function App() {
             setCode(content);
 
             const existing = openFiles.find(f => f._id === targetFile._id);
-            if (!existing) {
-                setOpenFiles(prev => [...prev, { ...targetFile, content }]);
-            }
-
+            if (!existing) { setOpenFiles(prev => [...prev, { ...targetFile, content }]); }
             safeEmit('join-file', targetFile._id);
 
-            // Jump to line if provided (e.g., from search)
             if (lineToJump && editorRef.current) {
                 setTimeout(() => {
                     editorRef.current.revealLineInCenter(lineToJump);
@@ -1254,10 +1235,8 @@ function App() {
                     editorRef.current.focus();
                 }, 200);
             }
-        } catch (e) {
-            console.error("File loading error:", e);
-        }
-    };
+        } catch (e) { console.error("File loading error:", e); }
+    }, [activeFileId, code, fileName, userId, api, openFiles]);
 
     const closeTab = (e, id) => {
         e.stopPropagation();
