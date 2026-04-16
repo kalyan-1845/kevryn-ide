@@ -100,6 +100,7 @@ const FileTree = ({
   onCreate,
   onCreateFolder,
   onRename,
+  onDelete,
   onDownload,
   onCopyPath,
   onSetWorkspace,
