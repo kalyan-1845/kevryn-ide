@@ -507,8 +507,8 @@ app.post('/lab/create-session', authenticate, async (req, res) => {
         let whitelistedStudents = allowedStudents || [];
         console.log(`[Lab] Creating session: ${sessionName}, BatchID: ${batchId}, CourseID: ${courseId}`);
 
-        // NEW: If batchId is provided, pull students from the Batch roster (Higher priority than Course)
-        if (batchId) {
+        // NEW: If batchId is provided and valid, pull students from the Batch roster
+        if (batchId && mongoose.Types.ObjectId.isValid(batchId)) {
             const batch = await Batch.findById(batchId);
             if (batch && batch.students) {
                 whitelistedStudents = batch.students.map(s => s.username);
@@ -516,8 +516,8 @@ app.post('/lab/create-session', authenticate, async (req, res) => {
             } else {
                 console.log(`[Lab] Batch not found or no students in batch ${batchId}`);
             }
-        } else if (courseId) {
-            // Fallback to Course roster if no Batch is selected
+        } else if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+            // Fallback to Course roster if no Batch is selected or batchId is invalid string
             const course = await Course.findById(courseId);
             if (course && course.enrolledStudents) {
                 whitelistedStudents = course.enrolledStudents;

@@ -738,7 +738,11 @@ function App() {
                 if (sess.allowedStudents && sess.allowedStudents.includes(username)) {
                     setActiveSessionId(sess._id);
                     setActiveSession(sess);
-                    alert(`A new Lab Session "${sess.sessionName}" has started! Click 'Join Session' in the banner.`);
+                    showDialog({ 
+                        type: 'alert', 
+                        title: 'Lab Session Started!', 
+                        message: `A new Lab Session "${sess.sessionName}" has been started by the instructor. Click 'Join Session' in the top banner to enter the workspace.` 
+                    });
                 }
             }
         });

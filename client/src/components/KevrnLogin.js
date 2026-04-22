@@ -805,6 +805,7 @@ export default function KevrnLogin({
                   onChange={e => setAuthData({ ...authData, password: e.target.value })}
                   style={{ paddingRight: '44px' }}
                   required
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
