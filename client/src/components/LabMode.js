@@ -370,18 +370,22 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
     const getRunCommand = (filename) => {
         if (!filename) return null;
         const ext = filename.split('.').pop().toLowerCase();
+        
+        // Windows-friendly commands for cmd.exe
+        const isWin = true; // We know server is Windows from environment
+        
         const commands = {
-            'js': `node ${filename}`,
-            'py': `python3 ${filename} || python ${filename}`,
+            'js': `node "${filename}"`,
+            'py': `python "${filename}"`,
             'java': `javac "${filename}" && java "${filename.replace('.java', '')}"`,
-            'c': `gcc ${filename} -o output && ./output`,
-            'cpp': `g++ ${filename} -o output && ./output`,
-            'rb': `ruby ${filename}`,
-            'go': `go run ${filename}`,
-            'php': `php ${filename}`,
-            'sh': `bash ${filename}`,
-            'bash': `bash ${filename}`,
-            'ts': `npx ts-node ${filename}`,
+            'c': `gcc "${filename}" -o output && output`,
+            'cpp': `g++ "${filename}" -o output && output`,
+            'rb': `ruby "${filename}"`,
+            'go': `go run "${filename}"`,
+            'php': `php "${filename}"`,
+            'sh': `bash "${filename}"`,
+            'bash': `bash "${filename}"`,
+            'ts': `npx ts-node "${filename}"`,
         };
         return commands[ext] || null;
     };
@@ -538,34 +542,27 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const cmd = getRunCommand(fileName);
         if (!cmd) { alert("No run command for this file type"); return; }
 
-        const ext = fileName.split('.').pop().toLowerCase();
-        // Hybrid logic: Only C, C++, and Java use server terminal. Web and Python use local WebContainer.
-        const isServerLang = ['c', 'cpp', 'java', 'rb', 'go', 'php'].includes(ext);
-
         await handleSave();
-        
-        setSaving(false); // Ensure saving state is cleared
+        setSaving(false); 
+
+        // UPDATED: Enforce server-side execution for most languages as requested
+        const ext = fileName.split('.').pop().toLowerCase();
+        const serverLangs = ['c', 'cpp', 'java', 'py', 'js', 'ts', 'rb', 'go', 'php', 'sh', 'bash'];
+        const isServerLang = serverLangs.includes(ext);
 
         if (isServerLang) {
-            // Send to Server PTY
+            console.log(`[LabMode] Executing via Server PTY: ${cmd}`);
             socketRef.current.emit('terminal:write', {
                 termId: 1,
                 data: '\r' + cmd + '\r',
                 courseId: session?.courseId
             });
         } else {
-            // Send to Local WebContainer (if available)
+            // Fallback for others (HTML etc. handled above)
             const inputWriter = window.ideTerminalInputs && window.ideTerminalInputs[1];
             if (inputWriter) {
-                // Use padding \r to ensure execution
-                try {
-                    await inputWriter.write('\r' + cmd + '\r');
-                    console.log(`[LabMode] Executed: ${cmd}`);
-                } catch (err) {
-                    console.error("[LabMode] WebContainer execution failed:", err);
-                }
+                await inputWriter.write('\r' + cmd + '\r');
             } else {
-                // Fallback to server if local not ready
                 socketRef.current.emit('terminal:write', {
                     termId: 1,
                     data: '\r' + cmd + '\r',
@@ -604,7 +601,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
 
     const isServerLanguage = useMemo(() => {
         const ext = activeFile?.name?.split('.').pop()?.toLowerCase();
-        return ['c', 'cpp', 'java', 'rb', 'go', 'php'].includes(ext);
+        return ['c', 'cpp', 'java', 'py', 'js', 'ts', 'rb', 'go', 'php', 'sh', 'bash'].includes(ext);
     }, [activeFile?.name]);
 
     const terminalMode = isServerLanguage ? 'server' : 'local';
