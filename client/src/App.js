@@ -154,6 +154,8 @@ function App() {
 
 
     const [sidebarTab, setSidebarTab] = useState('files');
+    const [activeMenu, setActiveMenu] = useState(null);
+    const [activeRepo, setActiveRepo] = useState(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState("");
