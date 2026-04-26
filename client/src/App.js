@@ -1185,15 +1185,16 @@ function App() {
     const handleFileClick = useCallback(async (file, lineToJump = null) => {
         try {
             // FIRE-AND-FORGET SAVE: Don't block the UI for a DB save during tab switch
-            if (activeFileId) {
+            // MANDATORY SAVE: Capture latest content directly from editor instance
+            if (activeFileId && editorRef.current) {
+                const currentContent = editorRef.current.getValue();
                 if (autoSaveTimeoutRef.current) { clearTimeout(autoSaveTimeoutRef.current); autoSaveTimeoutRef.current = null; }
                 if (codeSyncTimeoutRef.current) { clearTimeout(codeSyncTimeoutRef.current); codeSyncTimeoutRef.current = null; }
                 
-                // Save to local state first to ensure consistency in openFiles
-                const currentContent = code;
+                // Update local state and cache synchronously
                 setOpenFiles(prev => prev.map(f => f._id === activeFileId ? { ...f, content: currentContent } : f));
                 
-                // Background save
+                // Background disk & DB sync
                 api.put(`/files/${activeFileId}`, { content: currentContent }).catch(() => {});
                 safeEmit('save-file-disk', { fileName: fileName, code: currentContent, userId, fileId: activeFileId });
             }
@@ -2142,31 +2143,30 @@ function App() {
 
                                         <Breadcrumbs fileName={fileName} />
 
-                                        {/* Editor */}
-                                                                             <Editor
-                                                height="100%"
-                                                theme={getMonacoTheme()}
-                                                path={fileName}
-                                                defaultLanguage={getLanguage(fileName)}
-                                                language={getLanguage(fileName)}
-                                                defaultValue={code}
-                                                beforeMount={handleEditorWillMount}
-                                                options={{
-                                                    fontSize: 14,
-                                                    fontFamily: 'JetBrains Mono',
-                                                    minimap: { enabled: true },
-                                                    automaticLayout: true,
-                                                    scrollBeyondLastLine: false,
-                                                    padding: { top: 10, bottom: 10 },
-                                                    formatOnPaste: true,
-                                                    suggestSelection: 'first',
-                                                    quickSuggestions: true
-                                                }}
-                                                onMount={(editor, monaco) => {
-                                                    editorRef.current = editor;
-                                                    
-                                                    // Instant switch model logic
-                                                    editor.onDidChangeModel(() => {
+                                        <Editor
+                                             key={activeFileId}
+                                             height="100%"
+                                             path={findFileFullPath(activeFileId) || fileName}
+                                             defaultLanguage={getLanguage(fileName)}
+                                             language={getLanguage(fileName)}
+                                             defaultValue={code}
+                                             beforeMount={handleEditorWillMount}
+                                             options={{
+                                                 fontSize: 14,
+                                                 fontFamily: 'JetBrains Mono',
+                                                 minimap: { enabled: true },
+                                                 automaticLayout: true,
+                                                 scrollBeyondLastLine: false,
+                                                 padding: { top: 10, bottom: 10 },
+                                                 formatOnPaste: true,
+                                                 suggestSelection: 'first',
+                                                 quickSuggestions: true
+                                             }}
+                                             onMount={(editor, monaco) => {
+                                                 editorRef.current = editor;
+                                                 
+                                                 // Instant switch model logic
+                                                 editor.onDidChangeModel(() => {
                                                         const model = editor.getModel();
                                                         if (model) {
                                                             // Match language to path manually if needed
