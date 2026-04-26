@@ -122,12 +122,25 @@ function App() {
         x.set(0); y.set(0);
     };
 
-    const [code, setCode] = useState("// Select a file to start coding...");
     const [activeFileId, setActiveFileId] = useState(null);
+    const activeFileIdRef = useRef(null);
+    useEffect(() => { activeFileIdRef.current = activeFileId; }, [activeFileId]);
+
     const [openFiles, setOpenFiles] = useState([]); // { _id, name, content }
+    const openFilesRef = useRef([]);
+    useEffect(() => { openFilesRef.current = openFiles; }, [openFiles]);
+
     const [fileName, setFileName] = useState("");
+
     const [files, setFiles] = useState([]); // Flat list of files for path resolution
-    const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null); // Moved up to use in memo
+    const filesRef = useRef([]);
+    useEffect(() => { filesRef.current = files; }, [files]);
+
+    const [code, setCode] = useState("// Select a file to start coding...");
+    const codeRef = useRef(code);
+    useEffect(() => { codeRef.current = code; }, [code]);
+
+    const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null);
 
     const fileData = useMemo(() => {
         if (!files || files.length === 0) return { _id: "root", name: "My Workspace", type: "folder", children: [] };
@@ -1184,40 +1197,45 @@ function App() {
 
     const handleFileClick = useCallback(async (file, lineToJump = null) => {
         try {
-            // FIRE-AND-FORGET SAVE: Don't block the UI for a DB save during tab switch
-            // MANDATORY SAVE: Capture latest content directly from editor instance
-            if (activeFileId && editorRef.current) {
-                const currentContent = editorRef.current.getValue();
+            const currentActiveId = activeFileIdRef.current;
+            const currentFileName = fileName; // Keep for the save-disk emit
+
+            // --- MANDATORY SYNC: Save current editor state before switching ---
+            if (currentActiveId && editorRef.current) {
+                const latestContent = editorRef.current.getValue();
+                
+                // Clear any pending debounced saves to prevent overwriting with old data later
                 if (autoSaveTimeoutRef.current) { clearTimeout(autoSaveTimeoutRef.current); autoSaveTimeoutRef.current = null; }
                 if (codeSyncTimeoutRef.current) { clearTimeout(codeSyncTimeoutRef.current); codeSyncTimeoutRef.current = null; }
+                if (window.codeUpdateTimer) { clearTimeout(window.codeUpdateTimer); window.codeUpdateTimer = null; }
+
+                // Synchronous update to cache/state
+                setOpenFiles(prev => prev.map(f => f._id === currentActiveId ? { ...f, content: latestContent } : f));
                 
-                // Update local state and cache synchronously
-                setOpenFiles(prev => prev.map(f => f._id === activeFileId ? { ...f, content: currentContent } : f));
-                
-                // Background disk & DB sync
-                api.put(`/files/${activeFileId}`, { content: currentContent }).catch(() => {});
-                safeEmit('save-file-disk', { fileName: fileName, code: currentContent, userId, fileId: activeFileId });
+                // Background persistence
+                api.put(`/files/${currentActiveId}`, { content: latestContent }).catch(() => {});
+                safeEmit('save-file-disk', { fileName: currentFileName, code: latestContent, userId, fileId: currentActiveId });
             }
 
             let targetFile = file;
             if (typeof file === 'string') {
-                const found = files.find(f => f.name === file);
+                const found = filesRef.current.find(f => f.name === file);
                 if (found) targetFile = found;
-                else return; // Silent fail or toast
+                else return;
             }
 
-            // CACHE CHECK: If file is already open, use cached content for instant switch
-            const existing = openFiles.find(f => f._id === targetFile._id);
+            // CACHE CHECK
+            const existing = openFilesRef.current.find(f => f._id === targetFile._id);
             let content = existing ? existing.content : null;
 
-            // OPTIMISTIC UPDATE: Switch tab immediately
+            // OPTIMISTIC SWITCH
             setActiveFileId(targetFile._id);
             setFileName(targetFile.name);
             if (content !== null) {
                 setCode(content);
             }
 
-            // FETCH IF MISSING: Only fetch from DB if not in memory
+            // FETCH IF MISSING
             if (content === null) {
                 const res = await api.get(`/files/${targetFile._id}`);
                 content = res.data.content || "";
@@ -1227,7 +1245,6 @@ function App() {
                     return [...prev, { ...targetFile, content }];
                 });
             } else {
-                // Ensure it's in openFiles if it was somehow missing from tabs (e.g. from FileTree click)
                 if (!existing) {
                     setOpenFiles(prev => [...prev, { ...targetFile, content }]);
                 }
@@ -1237,15 +1254,16 @@ function App() {
             safeEmit('join-file', targetFile._id);
 
             if (lineToJump && editorRef.current) {
-                // Reduced delay for focus
                 setTimeout(() => {
                     editorRef.current.revealLineInCenter(lineToJump);
                     editorRef.current.setPosition({ lineNumber: lineToJump, column: 1 });
                     editorRef.current.focus();
-                }, 50);
+                }, 100);
             }
-        } catch (e) { console.error("File loading error:", e); }
-    }, [activeFileId, code, fileName, userId, api, openFiles, files]);
+        } catch (e) {
+            console.error("File loading error:", e);
+        }
+    }, [userId, api, safeEmit]); // Minimal dependencies for stability
 
     const closeTab = (e, id) => {
         e.stopPropagation();
@@ -2144,9 +2162,9 @@ function App() {
                                         <Breadcrumbs fileName={fileName} />
 
                                         <Editor
-                                             key={activeFileId}
                                              height="100%"
-                                             path={findFileFullPath(activeFileId) || fileName}
+                                             theme={getMonacoTheme()}
+                                             path={activeFileId}
                                              defaultLanguage={getLanguage(fileName)}
                                              language={getLanguage(fileName)}
                                              defaultValue={code}
@@ -2164,6 +2182,7 @@ function App() {
                                              }}
                                              onMount={(editor, monaco) => {
                                                  editorRef.current = editor;
+        editorRef.current = editor;
                                                  
                                                  // Instant switch model logic
                                                  editor.onDidChangeModel(() => {
