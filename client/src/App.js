@@ -124,6 +124,7 @@ function App() {
 
     const [activeFileId, setActiveFileId] = useState(null);
     const activeFileIdRef = useRef(null);
+    // Sync ref manually in functions, but keep this for safety
     useEffect(() => { activeFileIdRef.current = activeFileId; }, [activeFileId]);
 
     const [openFiles, setOpenFiles] = useState([]); // { _id, name, content }
@@ -131,6 +132,8 @@ function App() {
     useEffect(() => { openFilesRef.current = openFiles; }, [openFiles]);
 
     const [fileName, setFileName] = useState("");
+    const fileNameRef = useRef("");
+    useEffect(() => { fileNameRef.current = fileName; }, [fileName]);
 
     const [files, setFiles] = useState([]); // Flat list of files for path resolution
     const filesRef = useRef([]);
@@ -339,25 +342,22 @@ function App() {
     }, [files]);
 
     const handleSave = useCallback(async () => {
-        if (!activeFileId) return;
+        if (!activeFileId || !editorRef.current) return;
         const fullPath = findFileFullPath(activeFileId);
+        const latestCode = editorRef.current.getValue();
         console.log(`[SAVE] Triggered for ${fullPath} (${activeFileId})`);
 
-        // GUARD: Prevent saving if code is null/undefined (rare but possible during transition)
-        if (code === null || code === undefined) return;
-
         try {
-            await api.put(`/files/${activeFileId}`, { content: code });
-            // FIX: Pass courseId from activeSession if available to ensure correct disk path
+            await api.put(`/files/${activeFileId}`, { content: latestCode });
             safeEmit('save-file-disk', {
                 fileName: fullPath,
-                code: code,
+                code: latestCode,
                 userId,
                 fileId: activeFileId,
                 courseId: activeSession?.courseId || undefined
             });
             if (wcBridgeRef.current) {
-                await wcBridgeRef.current.writeFile(fullPath, code);
+                await wcBridgeRef.current.writeFile(fullPath, latestCode);
             }
             // Non-intrusive toast instead of alert
             const toast = document.createElement('div');
@@ -737,12 +737,23 @@ function App() {
         const handleReceiveMessage = (msg) => { setChatMessages(prev => [...prev, msg]); };
         s.on('receive-message', handleReceiveMessage);
         s.on('previous-messages', (msgs) => setChatMessages(msgs));
-        s.on('receive-code', (newCode) => { isRemoteUpdate.current = true; setCode(newCode); });
+        s.on('receive-code', (data) => {
+            // Support both old string format and new object format
+            const incomingCode = typeof data === 'string' ? data : data.newCode;
+            const incomingFileId = typeof data === 'object' ? data.fileId : null;
+            
+            if (!incomingFileId || incomingFileId === activeFileIdRef.current) {
+                isRemoteUpdate.current = true;
+                setCode(incomingCode);
+            }
+        });
         s.on('node-created', fetchFiles);
         s.on('file-shared', (fname) => { alert(`New file synced: ${fname}`); fetchFiles(); });
 
-        s.on('cursor-update', ({ userId: rUserId, username: rUsername, position: rPosition }) => {
+        s.on('cursor-update', ({ userId: rUserId, username: rUsername, position: rPosition, fileId: rFileId }) => {
             if (rUserId === userId) return;
+            // Only show cursors for the currently active file
+            if (rFileId && rFileId !== activeFileIdRef.current) return;
             setRemoteCursors(prev => ({ ...prev, [rUserId]: { username: rUsername, position: rPosition, color: getRandomColor(rUserId) } }));
         });
 
@@ -1197,46 +1208,50 @@ function App() {
 
     const handleFileClick = useCallback(async (file, lineToJump = null) => {
         try {
-            const currentActiveId = activeFileIdRef.current;
-            const currentFileName = fileName; // Keep for the save-disk emit
+            const prevFileId = activeFileIdRef.current;
+            const prevFileName = fileNameRef.current;
 
-            // --- MANDATORY SYNC: Save current editor state before switching ---
-            if (currentActiveId && editorRef.current) {
+            // --- ATOMIC SAVE OF PREVIOUS FILE ---
+            if (prevFileId && editorRef.current) {
                 const latestContent = editorRef.current.getValue();
                 
-                // Clear any pending debounced saves to prevent overwriting with old data later
-                if (autoSaveTimeoutRef.current) { clearTimeout(autoSaveTimeoutRef.current); autoSaveTimeoutRef.current = null; }
-                if (codeSyncTimeoutRef.current) { clearTimeout(codeSyncTimeoutRef.current); codeSyncTimeoutRef.current = null; }
-                if (window.codeUpdateTimer) { clearTimeout(window.codeUpdateTimer); window.codeUpdateTimer = null; }
-
-                // Synchronous update to cache/state
-                setOpenFiles(prev => prev.map(f => f._id === currentActiveId ? { ...f, content: latestContent } : f));
+                // 1. Update cache in state
+                setOpenFiles(prev => prev.map(f => f._id === prevFileId ? { ...f, content: latestContent } : f));
                 
-                // Background persistence
-                api.put(`/files/${currentActiveId}`, { content: latestContent }).catch(() => {});
-                safeEmit('save-file-disk', { fileName: currentFileName, code: latestContent, userId, fileId: currentActiveId });
+                // 2. Persist to DB and Disk
+                api.put(`/files/${prevFileId}`, { content: latestContent }).catch(() => {});
+                safeEmit('save-file-disk', { fileName: prevFileName, code: latestContent, userId, fileId: prevFileId });
+                
+                // 3. Clear any pending auto-saves
+                if (autoSaveTimeoutRef.current) { clearTimeout(autoSaveTimeoutRef.current); autoSaveTimeoutRef.current = null; }
+                if (window.codeUpdateTimer) { clearTimeout(window.codeUpdateTimer); window.codeUpdateTimer = null; }
             }
 
+            // --- PREPARE NEW FILE ---
             let targetFile = file;
             if (typeof file === 'string') {
-                const found = filesRef.current.find(f => f.name === file);
-                if (found) targetFile = found;
-                else return;
+                targetFile = filesRef.current.find(f => f.name === file);
+                if (!targetFile) return;
             }
+
+            // Check if it's already the active one (avoid redundant resets)
+            if (targetFile._id === prevFileId) return;
 
             // CACHE CHECK
-            const existing = openFilesRef.current.find(f => f._id === targetFile._id);
-            let content = existing ? existing.content : null;
+            const cached = openFilesRef.current.find(f => f._id === targetFile._id);
+            let content = cached ? cached.content : null;
 
-            // OPTIMISTIC SWITCH
+            // SWITCH STATE ATOMICALLY
             setActiveFileId(targetFile._id);
             setFileName(targetFile.name);
+            activeFileIdRef.current = targetFile._id; // Manual sync for immediate next handleFileClick safety
+            fileNameRef.current = targetFile.name;
+
             if (content !== null) {
                 setCode(content);
-            }
-
-            // FETCH IF MISSING
-            if (content === null) {
+            } else {
+                // If it's a new file (not in cache), show a loading placeholder quickly or empty
+                setCode("// Loading...");
                 const res = await api.get(`/files/${targetFile._id}`);
                 content = res.data.content || "";
                 setCode(content);
@@ -1244,10 +1259,6 @@ function App() {
                     if (prev.find(f => f._id === targetFile._id)) return prev;
                     return [...prev, { ...targetFile, content }];
                 });
-            } else {
-                if (!existing) {
-                    setOpenFiles(prev => [...prev, { ...targetFile, content }]);
-                }
             }
 
             isRemoteUpdate.current = false;
@@ -1258,12 +1269,12 @@ function App() {
                     editorRef.current.revealLineInCenter(lineToJump);
                     editorRef.current.setPosition({ lineNumber: lineToJump, column: 1 });
                     editorRef.current.focus();
-                }, 100);
+                }, 150);
             }
         } catch (e) {
-            console.error("File loading error:", e);
+            console.error("[FileClick] Error:", e);
         }
-    }, [userId, api, safeEmit]); // Minimal dependencies for stability
+    }, [userId, api, safeEmit]);
 
     const closeTab = (e, id) => {
         e.stopPropagation();
@@ -1276,14 +1287,12 @@ function App() {
         setOpenFiles(newOpen);
         if (activeFileId === id) {
             if (newOpen.length > 0) {
-                const last = newOpen[newOpen.length - 1];
-                setActiveFileId(last._id);
-                setFileName(last.name);
-                setCode(last.content);
-                safeEmit('join-file', last._id);
+                handleFileClick(newOpen[newOpen.length - 1]);
             } else {
                 setActiveFileId(null);
+                activeFileIdRef.current = null;
                 setFileName("");
+                fileNameRef.current = "";
                 setCode("// Select a file to start coding...");
             }
         }
@@ -1295,12 +1304,14 @@ function App() {
         const activeFileName = fullPath;
         const ext = activeFileName.split('.').pop().toLowerCase();
 
+        const latestCode = editorRef.current ? editorRef.current.getValue() : code;
+
         // OPTIMIZED: Parallelize DB save and Disk sync for instant performance
-        const dbSavePromise = api.put(`/files/${activeFileId}`, { content: code }).catch(e => console.error("DB Save Failed:", e));
+        const dbSavePromise = api.put(`/files/${activeFileId}`, { content: latestCode }).catch(e => console.error("DB Save Failed:", e));
         
         const saveData = {
             fileName: fullPath,
-            code,
+            code: latestCode,
             userId,
             fileId: activeFileId,
             courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
@@ -1326,7 +1337,7 @@ function App() {
         await Promise.all([dbSavePromise, diskSavePromise]);
 
         if (wcBridgeRef.current) {
-            wcBridgeRef.current.writeFile(fullPath, code).catch(() => {});
+            wcBridgeRef.current.writeFile(fullPath, latestCode).catch(() => {});
         }
 
         if (activeFileName.endsWith('.html')) {
@@ -2157,17 +2168,17 @@ function App() {
                                                 ))}
                                                 {openFiles.length === 0 && <div style={{ padding: '8px 15px', color: 'var(--text-secondary)', fontSize: '13px' }}>No active files</div>}
                                             </div>
+                                            <Breadcrumbs fileName={fileName} />
                                         </div>
 
-                                        <Breadcrumbs fileName={fileName} />
-
-                                        <Editor
+                                         <Editor
+                                             key={activeFileId}
                                              height="100%"
                                              theme={getMonacoTheme()}
                                              path={activeFileId}
                                              defaultLanguage={getLanguage(fileName)}
                                              language={getLanguage(fileName)}
-                                             defaultValue={code}
+                                             value={code}
                                              beforeMount={handleEditorWillMount}
                                              options={{
                                                  fontSize: 14,
@@ -2178,11 +2189,14 @@ function App() {
                                                  padding: { top: 10, bottom: 10 },
                                                  formatOnPaste: true,
                                                  suggestSelection: 'first',
-                                                 quickSuggestions: true
+                                                 quickSuggestions: true,
+                                                 readOnly: activeFileId === null
                                              }}
                                              onMount={(editor, monaco) => {
                                                  editorRef.current = editor;
-        editorRef.current = editor;
+                                                 editor.onDidChangeModelContent(() => {
+                                                     codeRef.current = editor.getValue();
+                                                 });
                                                  
                                                  // Instant switch model logic
                                                  editor.onDidChangeModel(() => {
