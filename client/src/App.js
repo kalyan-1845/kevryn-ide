@@ -1407,6 +1407,11 @@ function App() {
         }
     };
 
+    const openPreview = useCallback(() => {
+        setBottomPanelTab('preview');
+        setIsBottomPanelOpen(true);
+    }, []);
+
     const openPort = () => { const p = prompt("Port:"); if (p) window.open(`http://localhost:${p}`, '_blank'); };
     const addTerm = () => {
         const nextId = terminals.length > 0 ? (Math.max(...terminals.filter(t => typeof t.id === 'number').map(t => t.id), 0) + 1) : 2;
@@ -2226,7 +2231,7 @@ function App() {
                                                         { id: 'output', label: 'Output', icon: null },
                                                         { id: 'debug-console', label: 'Debug Console', icon: null },
                                                         { id: 'terminal', label: 'Terminal', icon: <FaTerminal size={11} /> },
-
+                                                        { id: 'preview', label: 'Preview', icon: <FaEye size={11} /> },
                                                         { id: 'ports', label: 'Ports', icon: <FaNetworkWired size={11} /> },
                                                         { id: 'deployment', label: 'Deployment', icon: <FaServer size={11} /> },
                                                     ].map(tab => (
@@ -2327,6 +2332,22 @@ function App() {
                                                                 </motion.div>
                                                             )}
                                                         </div>
+                                                    </div>
+                                                )}
+                                                {bottomPanelTab === 'preview' && (
+                                                    <div style={{ height: '100%', background: '#fff', borderRadius: '4px', overflow: 'hidden' }}>
+                                                        {fileName.endsWith('.html') ? (
+                                                            <iframe
+                                                                title="HTML Preview"
+                                                                srcDoc={code}
+                                                                style={{ width: '100%', height: '100%', border: 'none' }}
+                                                            />
+                                                        ) : (
+                                                            <div className="panel-placeholder" style={{ color: '#000' }}>
+                                                                <FaEye size={20} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                                                                <div>Select an HTML file to see a preview.</div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {bottomPanelTab === 'ports' && (
