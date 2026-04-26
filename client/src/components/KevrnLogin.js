@@ -23,7 +23,7 @@ function ParticleCanvas() {
     const COLORS = ['#3b82f6', '#06b6d4', '#8b5cf6', '#60a5fa', '#22d3ee'];
 
     // Generate particles only client-side
-    const particles = Array.from({ length: 800 }, () => ({
+    const particles = Array.from({ length: 200 }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
       vx: (Math.random() - 0.5) * 0.45,

@@ -35,6 +35,7 @@ import AdminDashboard from './components/AdminDashboard'; // NEW: Admin Dashboar
 import IssueReporter from './components/IssueReporter'; // NEW: Issue Reporting
 import KevrnLogin from './components/KevrnLogin'; // NEW: Cinematic Login
 import LiveAptitudeTest from './components/LiveAptitudeTest'; // NEW: Aptitude Module
+import LabTimer from './components/LabTimer'; // OPTIMIZATION: Extract timer to prevent global re-renders
 
 // --- MONACO CDN SETUP (More Reliable) ---
 // Using CDN to avoid local worker resolution issues
@@ -102,7 +103,6 @@ function App() {
     const [activeAptitudeSession, setActiveAptitudeSession] = useState(null); // NEW: Aptitude Session
     const [isAptitudeOpen, setIsAptitudeOpen] = useState(false); // Controls opening the test environment
     const [isLabOpen, setIsLabOpen] = useState(false); // NEW: Explicitly control lab opening
-    const [currentLabTime, setCurrentLabTime] = useState(0); // For display
 
     // --- ANIMATION HOOKS (Moved to top) ---
     const x = useMotionValue(0);
@@ -834,27 +834,6 @@ function App() {
     // RE-IMPLEMENTING TIMER TO SEND DELTAS SAFELY
     const pendingTime = useRef({}); // { [fileName]: seconds_since_last_sync }
 
-    useEffect(() => {
-        let interval;
-        if (isLabOpen && activeFileId) {
-            interval = setInterval(() => {
-                const fname = openFiles.find(f => f._id === activeFileId)?.name;
-                if (fname) {
-                    if (!pendingTime.current[fname]) pendingTime.current[fname] = 0;
-                    pendingTime.current[fname] += 1;
-                    setCurrentLabTime((prev) => prev + 1);
-
-                    // Sync
-                    if (pendingTime.current[fname] >= 30) {
-                        saveLabReport(fname, code, 30, 'in-progress'); // Pass 30 as timeDelta
-                        pendingTime.current[fname] = 0;
-                    }
-                }
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [isLabOpen, activeFileId, openFiles, code]);
-
     // Update the session check to populate this state
     useEffect(() => {
         if (userRole === 'student' && token) {
@@ -1205,44 +1184,67 @@ function App() {
 
     const handleFileClick = useCallback(async (file, lineToJump = null) => {
         try {
+            // FIRE-AND-FORGET SAVE: Don't block the UI for a DB save during tab switch
             if (activeFileId) {
                 if (autoSaveTimeoutRef.current) { clearTimeout(autoSaveTimeoutRef.current); autoSaveTimeoutRef.current = null; }
                 if (codeSyncTimeoutRef.current) { clearTimeout(codeSyncTimeoutRef.current); codeSyncTimeoutRef.current = null; }
-                try {
-                    await api.put(`/files/${activeFileId}`, { content: code });
-                    safeEmit('save-file-disk', { fileName: fileName, code, userId, fileId: activeFileId });
-                } catch (saveErr) { }
+                
+                // Save to local state first to ensure consistency in openFiles
+                const currentContent = code;
+                setOpenFiles(prev => prev.map(f => f._id === activeFileId ? { ...f, content: currentContent } : f));
+                
+                // Background save
+                api.put(`/files/${activeFileId}`, { content: currentContent }).catch(() => {});
+                safeEmit('save-file-disk', { fileName: fileName, code: currentContent, userId, fileId: activeFileId });
             }
 
             let targetFile = file;
             if (typeof file === 'string') {
-                const res = await api.get('/files');
-                const found = res.data.find(f => f.name === file);
+                const found = files.find(f => f.name === file);
                 if (found) targetFile = found;
-                else return alert("File not found in project.");
+                else return; // Silent fail or toast
             }
 
-            const res = await api.get(`/files/${targetFile._id}`);
-            const content = res.data.content || "";
-            isRemoteUpdate.current = false;
+            // CACHE CHECK: If file is already open, use cached content for instant switch
+            const existing = openFiles.find(f => f._id === targetFile._id);
+            let content = existing ? existing.content : null;
 
+            // OPTIMISTIC UPDATE: Switch tab immediately
             setActiveFileId(targetFile._id);
             setFileName(targetFile.name);
-            setCode(content);
+            if (content !== null) {
+                setCode(content);
+            }
 
-            const existing = openFiles.find(f => f._id === targetFile._id);
-            if (!existing) { setOpenFiles(prev => [...prev, { ...targetFile, content }]); }
+            // FETCH IF MISSING: Only fetch from DB if not in memory
+            if (content === null) {
+                const res = await api.get(`/files/${targetFile._id}`);
+                content = res.data.content || "";
+                setCode(content);
+                setOpenFiles(prev => {
+                    if (prev.find(f => f._id === targetFile._id)) return prev;
+                    return [...prev, { ...targetFile, content }];
+                });
+            } else {
+                // Ensure it's in openFiles if it was somehow missing from tabs (e.g. from FileTree click)
+                if (!existing) {
+                    setOpenFiles(prev => [...prev, { ...targetFile, content }]);
+                }
+            }
+
+            isRemoteUpdate.current = false;
             safeEmit('join-file', targetFile._id);
 
             if (lineToJump && editorRef.current) {
+                // Reduced delay for focus
                 setTimeout(() => {
                     editorRef.current.revealLineInCenter(lineToJump);
                     editorRef.current.setPosition({ lineNumber: lineToJump, column: 1 });
                     editorRef.current.focus();
-                }, 200);
+                }, 50);
             }
         } catch (e) { console.error("File loading error:", e); }
-    }, [activeFileId, code, fileName, userId, api, openFiles]);
+    }, [activeFileId, code, fileName, userId, api, openFiles, files]);
 
     const closeTab = (e, id) => {
         e.stopPropagation();
@@ -1274,17 +1276,9 @@ function App() {
         const activeFileName = fullPath;
         const ext = activeFileName.split('.').pop().toLowerCase();
 
-        // FORCE SAVE BEFORE RUN
-        try {
-            await api.put(`/files/${activeFileId}`, { content: code });
-            if (wcBridgeRef.current) {
-                await wcBridgeRef.current.writeFile(fullPath, code);
-            }
-        } catch (e) {
-            console.error("Auto-save to DB before run failed:", e);
-        }
-
-        // Save to disk must happen even if DB save fails to allow terminal execution
+        // OPTIMIZED: Parallelize DB save and Disk sync for instant performance
+        const dbSavePromise = api.put(`/files/${activeFileId}`, { content: code }).catch(e => console.error("DB Save Failed:", e));
+        
         const saveData = {
             fileName: fullPath,
             code,
@@ -1293,32 +1287,28 @@ function App() {
             courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
         };
 
-        const openPreview = () => {
-            if (activeFileName.endsWith('.html')) {
-                let previewUrl = `${SERVER_URL}/preview/${userId}/${activeFileName}`;
-                if (isLabOpen && activeSession?.courseId) {
-                    previewUrl = `${SERVER_URL}/preview/${userId}/labs/${activeSession.courseId}/${activeFileName}`;
-                }
-                window.open(previewUrl, '_blank');
-                return true;
-            }
-            return false;
-        };
-
-        // Await disk save before executing — ensures file exists on disk when compiler runs
-        await new Promise((resolve) => {
+        const diskSavePromise = new Promise((resolve) => {
             if (!socketRef.current) {
                 console.warn("[RUN] Socket not connected, skipping disk save");
-                resolve();
-                return;
+                return resolve();
             }
             socketRef.current.emit('save-file-disk', saveData, (ack) => {
                 console.log("[RUN] Disk sync complete", ack);
                 resolve();
             });
-            // Timeout fallback: don't block forever if server doesn't ack
-            setTimeout(() => resolve(), 1500);
+            setTimeout(resolve, 800); // Faster timeout fallback
         });
+
+        // Show intent immediately
+        setBottomPanelTab('terminal');
+        setIsBottomPanelOpen(true);
+
+        // Wait for both in parallel (Disk sync is critical, DB save is best-effort for the run)
+        await Promise.all([dbSavePromise, diskSavePromise]);
+
+        if (wcBridgeRef.current) {
+            wcBridgeRef.current.writeFile(fullPath, code).catch(() => {});
+        }
 
         if (activeFileName.endsWith('.html')) {
             openPreview();
@@ -1768,32 +1758,57 @@ function App() {
             )}
 
             <div style={{ flex: 1, position: 'relative' }}>
+            <AnimatePresence mode="wait">
                 {!token ? (
-                    <KevrnLogin
-                        isFacultyLogin={isFacultyLogin}
-                        setIsFacultyLogin={setIsFacultyLogin}
-                        isLogin={isLogin}
-                        setIsLogin={setIsLogin}
-                        handleAuth={handleAuth}
-                        authData={authData}
-                        setAuthData={setAuthData}
-                        handleGoogleLoginSuccess={handleGoogleLoginSuccess}
-                        SERVER_URL={SERVER_URL}
-                        runConnectionCheck={runConnectionCheck}
-                    />
+                    <motion.div
+                        key="login"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+                        transition={{ duration: 0.6, ease: "circOut" }}
+                        style={{ height: '100%', width: '100%' }}
+                    >
+                        <KevrnLogin
+                            isFacultyLogin={isFacultyLogin}
+                            setIsFacultyLogin={setIsFacultyLogin}
+                            isLogin={isLogin}
+                            setIsLogin={setIsLogin}
+                            handleAuth={handleAuth}
+                            authData={authData}
+                            setAuthData={setAuthData}
+                            handleGoogleLoginSuccess={handleGoogleLoginSuccess}
+                            SERVER_URL={SERVER_URL}
+                            runConnectionCheck={runConnectionCheck}
+                        />
+                    </motion.div>
                 ) : userRole === 'student' && showStudentAssignments ? (
-                    <StudentAssignmentView
-                        token={token}
-                        serverUrl={SERVER_URL}
-                        userId={userId}
-                        onBack={() => setShowStudentAssignments(false)}
-                        activeSessionId={activeSessionId}
-                        onEnterLab={() => setIsLabOpen(true)}
-                        activeAptitudeSession={activeAptitudeSession}
-                        onEnterAptitude={() => setIsAptitudeOpen(true)}
-                    />
+                    <motion.div
+                        key="assignments"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.4 }}
+                        style={{ height: '100%', width: '100%' }}
+                    >
+                        <StudentAssignmentView
+                            token={token}
+                            serverUrl={SERVER_URL}
+                            userId={userId}
+                            onBack={() => setShowStudentAssignments(false)}
+                            activeSessionId={activeSessionId}
+                            onEnterLab={() => setIsLabOpen(true)}
+                            activeAptitudeSession={activeAptitudeSession}
+                            onEnterAptitude={() => setIsAptitudeOpen(true)}
+                        />
+                    </motion.div>
                 ) : (
-                    <>
+                    <motion.div
+                        key="ide"
+                        initial={{ opacity: 0, scale: 1.02 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                        style={{ height: '100%', width: '100%' }}
+                    >
                         <CloneModal isOpen={isCloneModalOpen} onClose={() => setIsCloneModalOpen(false)} onCloneSuccess={() => { showDialog({ type: 'alert', title: 'Cloned!', message: 'Repository cloned. Refreshing file tree...' }); fetchFiles(); }} token={token} />
                         <SwitchRepoModal isOpen={isSwitchRepoModalOpen} onClose={() => setIsSwitchRepoModalOpen(false)} onSwitch={(repoName) => { showDialog({ type: 'alert', title: 'Switched', message: `Now working on: ${repoName}` }); }} token={token} />
 
@@ -1962,19 +1977,15 @@ function App() {
                                         {fileName.endsWith('.html') ? <><FaEye size={13} /> Preview</> : <><FaPlay size={11} /> Run</>}
                                     </button>
                                     {isLabOpen && (
-                                        <div style={{ marginLeft: '10px', fontSize: '12px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <span>⏱ {new Date(currentLabTime * 1000).toISOString().substr(11, 8)}</span>
-                                            <button onClick={() => {
-                                                const fname = openFiles.find(f => f._id === activeFileId)?.name;
-                                                if (fname && pendingTime.current[fname] > 0) {
-                                                    saveLabReport(fname, code, pendingTime.current[fname], 'submitted');
-                                                    pendingTime.current[fname] = 0;
-                                                    showDialog({ type: 'alert', title: '✅ Submitted', message: 'Lab Report submitted successfully!' });
-                                                } else {
-                                                    showDialog({ type: 'alert', title: 'Nothing to Submit', message: 'No new changes to submit.' });
-                                                }
-                                            }} style={{ background: '#10b981', border: 'none', borderRadius: '4px', color: '#fff', padding: '2px 8px', cursor: 'pointer' }}>Submit</button>
-                                        </div>
+                                        <LabTimer
+                                            isLabOpen={isLabOpen}
+                                            activeFileId={activeFileId}
+                                            openFiles={openFiles}
+                                            code={code}
+                                            api={api}
+                                            saveLabReport={saveLabReport}
+                                            activeSessionCourseId={activeSession?.courseId}
+                                        />
                                     )}
                                     <div className="menubar-separator"></div>
                                     <button onClick={openPort} className="menubar-action-btn" title="Open Port"><FaGlobe size={14} /></button>
@@ -2520,8 +2531,9 @@ function App() {
                                 />
                             )}
                         </AnimatePresence>
-                    </>
+                    </motion.div>
                 )}
+            </AnimatePresence>
             </div>
         </div>
     );

@@ -132,149 +132,177 @@ const StudentAssignmentView = ({
         color: '#f8fafc',
         maxWidth: '1400px',
         margin: '0 auto',
-        height: '100vh',
-        overflowY: 'auto',
+        minHeight: '100%',
         position: 'relative',
         zIndex: 10,
         fontFamily: "'Outfit', sans-serif"
     };
 
+    const rootStyle = {
+        height: '100%',
+        width: '100%',
+        background: '#050505', // Solid background to obscure particles
+        overflowY: 'auto',
+        position: 'relative',
+        scrollBehavior: 'smooth'
+    };
+
+    const watermarkStyle = {
+        position: 'fixed',
+        bottom: '-5%',
+        right: '-5%',
+        fontSize: '25vw',
+        fontWeight: '900',
+        color: 'rgba(255, 255, 255, 0.02)',
+        pointerEvents: 'none',
+        zIndex: 1,
+        fontFamily: "'Outfit', sans-serif",
+        letterSpacing: '-1vw',
+        lineHeight: 1,
+        userSelect: 'none'
+    };
+
     // --- HUB SECTION RENDER ---
     const renderHub = () => (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={containerStyle}>
-            {/* Header / Hero */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '60px' }}>
-                <div>
-                    <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0 0 12px 0', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1.5px' }}>
-                        Student Command Center
-                    </h1>
-                    <p style={{ fontSize: '18px', color: '#94a3b8', margin: 0 }}>Welcome back, Operator. Stay sharp, your missions await.</p>
-                </div>
-                <button
-                    onClick={onBack}
-                    style={{
-                        padding: '14px 28px', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.3)',
-                        background: 'rgba(139, 92, 246, 0.05)', color: '#a78bfa', cursor: 'pointer',
-                        fontWeight: '700', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '12px',
-                        transition: 'all 0.2s', boxShadow: '0 0 20px rgba(139, 92, 246, 0.1)'
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'}}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'}}
-                >
-                    <FaCode /> OPEN PERSONAL WORKSPACE
-                </button>
-            </div>
+        <div style={rootStyle}>
+            {/* Watermark */}
+            <div style={watermarkStyle}>KEVRYN</div>
 
-            {/* Mission Control (Active) */}
-            {(activeAptitudeSession || activeSessionId) && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={containerStyle}>
+                {/* Header / Hero */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '60px' }}>
+                    <div>
+                        <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0 0 12px 0', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1.5px' }}>
+                            Student Command Center
+                        </h1>
+                        <p style={{ fontSize: '18px', color: '#94a3b8', margin: 0 }}>Welcome back, Operator. Stay sharp, your missions await.</p>
+                    </div>
+                    <button
+                        onClick={onBack}
+                        style={{
+                            padding: '14px 28px', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.3)',
+                            background: 'rgba(139, 92, 246, 0.05)', color: '#a78bfa', cursor: 'pointer',
+                            fontWeight: '700', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '12px',
+                            transition: 'all 0.2s', boxShadow: '0 0 20px rgba(139, 92, 246, 0.1)'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'}}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'}}
+                    >
+                        <FaCode /> OPEN PERSONAL WORKSPACE
+                    </button>
+                </div>
+
+                {/* Mission Control (Active) */}
+                {(activeAptitudeSession || activeSessionId) && (
+                    <div style={{ marginBottom: '60px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                            <FaBolt color="#fbbf24" size={16} />
+                            <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Mission Control: Active Now</h2>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+                            {activeAptitudeSession && (
+                                <motion.div
+                                    whileHover={{ scale: 1.02 }}
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(161, 98, 7, 0.05))',
+                                        border: '1px solid rgba(234, 179, 8, 0.4)', padding: '32px', borderRadius: '24px',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        boxShadow: '0 10px 40px -10px rgba(234, 179, 8, 0.1)'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                        <div style={{ width: '56px', height: '56px', background: 'rgba(234,179,8,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#eab308' }}><FaExclamationTriangle size={28} /></div>
+                                        <div>
+                                            <div style={{ color: '#eab308', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>STRICT EXAM ACTIVE</div>
+                                            <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800' }}>{activeAptitudeSession.title}</h3>
+                                        </div>
+                                    </div>
+                                    <button onClick={onEnterAptitude} style={{ padding: '12px 24px', background: '#eab308', color: '#000', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>ENGAGE MISSION</button>
+                                </motion.div>
+                            )}
+                            {activeSessionId && (
+                                <motion.div
+                                    whileHover={{ scale: 1.02 }}
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(91, 33, 182, 0.05))',
+                                        border: '1px solid rgba(124, 58, 237, 0.4)', padding: '32px', borderRadius: '24px',
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        boxShadow: '0 10px 40px -10px rgba(124, 58, 237, 0.1)'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                        <div style={{ width: '56px', height: '56px', background: 'rgba(124,58,237,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}><FaTerminal size={28} /></div>
+                                        <div>
+                                            <div style={{ color: '#a78bfa', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>LIVE LAB ACTIVE</div>
+                                            <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800' }}>Monitored Playground</h3>
+                                        </div>
+                                    </div>
+                                    <button onClick={onEnterLab} style={{ padding: '12px 24px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>JOIN SQUAD</button>
+                                </motion.div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Upcoming Missions (Placeholder) */}
                 <div style={{ marginBottom: '60px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <FaBolt color="#fbbf24" size={16} />
-                        <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Mission Control: Active Now</h2>
+                        <FaCalendarAlt color="#60a5fa" size={16} />
+                        <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Target Tracking: Upcoming Missions</h2>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-                        {activeAptitudeSession && (
-                            <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                style={{
-                                    background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(161, 98, 7, 0.05))',
-                                    border: '1px solid rgba(234, 179, 8, 0.4)', padding: '32px', borderRadius: '24px',
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    boxShadow: '0 10px 40px -10px rgba(234, 179, 8, 0.1)'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                    <div style={{ width: '56px', height: '56px', background: 'rgba(234,179,8,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#eab308' }}><FaExclamationTriangle size={28} /></div>
-                                    <div>
-                                        <div style={{ color: '#eab308', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>STRICT EXAM ACTIVE</div>
-                                        <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800' }}>{activeAptitudeSession.title}</h3>
-                                    </div>
-                                </div>
-                                <button onClick={onEnterAptitude} style={{ padding: '12px 24px', background: '#eab308', color: '#000', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>ENGAGE MISSION</button>
-                            </motion.div>
-                        )}
-                        {activeSessionId && (
-                            <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                style={{
-                                    background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(91, 33, 182, 0.05))',
-                                    border: '1px solid rgba(124, 58, 237, 0.4)', padding: '32px', borderRadius: '24px',
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    boxShadow: '0 10px 40px -10px rgba(124, 58, 237, 0.1)'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                    <div style={{ width: '56px', height: '56px', background: 'rgba(124,58,237,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}><FaTerminal size={28} /></div>
-                                    <div>
-                                        <div style={{ color: '#a78bfa', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>LIVE LAB ACTIVE</div>
-                                        <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800' }}>Monitored Playground</h3>
-                                    </div>
-                                </div>
-                                <button onClick={onEnterLab} style={{ padding: '12px 24px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>JOIN SQUAD</button>
-                            </motion.div>
-                        )}
+                    <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', paddingBottom: '20px' }}>
+                        <div style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>T-MINUS 2 DAYS</div>
+                            <h4 style={{ margin: 0, fontSize: '18px' }}>Python Mastery Test</h4>
+                            <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>Advanced Algorithms & Logic</p>
+                        </div>
+                        <div style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                            <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>NEXT WEEK</div>
+                            <h4 style={{ margin: 0, fontSize: '18px' }}>Semester Finals</h4>
+                            <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>Full Stack Development</p>
+                        </div>
+                        <div style={{ minWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'default' }}>
+                            Stay Tuned for More...
+                        </div>
                     </div>
                 </div>
-            )}
 
-            {/* Upcoming Missions (Placeholder) */}
-            <div style={{ marginBottom: '60px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                    <FaCalendarAlt color="#60a5fa" size={16} />
-                    <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Target Tracking: Upcoming Missions</h2>
+                {/* Core Navigation Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
+                    <HubCard 
+                        title="Aptitude Center" 
+                        desc="Take standardized tests, mock exams, and view your detailed performance analytics."
+                        icon={<FaTrophy size={24} />}
+                        color="#eab308"
+                        onClick={() => setViewMode('aptitude-list')}
+                        count={activeAptitudeSession ? 1 : 0}
+                    />
+                    <HubCard 
+                        title="Assignment Depot" 
+                        desc="Complete your coding missions, handle edge cases, and deploy your best solutions."
+                        icon={<FaClipboardList size={24} />}
+                        color="#3b82f6"
+                        onClick={() => setViewMode('courses')}
+                        count={assignments.length}
+                    />
+                    <HubCard 
+                        title="Academy Vault" 
+                        desc="Access your enrolled courses, lecture materials, and semester-wise documentation."
+                        icon={<FaGraduationCap size={24} />}
+                        color="#8b5cf6"
+                        onClick={() => setViewMode('courses')}
+                        count={courses.length}
+                    />
+                    <HubCard 
+                        title="Mission History" 
+                        desc="Review your past submissions, feedback from faculty, and grade progressions."
+                        icon={<FaHistory size={24} />}
+                        color="#10b981"
+                        onClick={() => { alert("History module coming soon!"); }}
+                    />
                 </div>
-                <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', paddingBottom: '20px' }}>
-                    <div style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                        <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>T-MINUS 2 DAYS</div>
-                        <h4 style={{ margin: 0, fontSize: '18px' }}>Python Mastery Test</h4>
-                        <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>Advanced Algorithms & Logic</p>
-                    </div>
-                    <div style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                        <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>NEXT WEEK</div>
-                        <h4 style={{ margin: 0, fontSize: '18px' }}>Semester Finals</h4>
-                        <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>Full Stack Development</p>
-                    </div>
-                    <div style={{ minWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'default' }}>
-                        Stay Tuned for More...
-                    </div>
-                </div>
-            </div>
-
-            {/* Core Navigation Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
-                <HubCard 
-                    title="Aptitude Center" 
-                    desc="Take standardized tests, mock exams, and view your detailed performance analytics."
-                    icon={<FaTrophy size={24} />}
-                    color="#eab308"
-                    onClick={() => setViewMode('aptitude-list')}
-                    count={activeAptitudeSession ? 1 : 0}
-                />
-                <HubCard 
-                    title="Assignment Depot" 
-                    desc="Complete your coding missions, handle edge cases, and deploy your best solutions."
-                    icon={<FaClipboardList size={24} />}
-                    color="#3b82f6"
-                    onClick={() => setViewMode('courses')}
-                    count={assignments.length}
-                />
-                <HubCard 
-                    title="Academy Vault" 
-                    desc="Access your enrolled courses, lecture materials, and semester-wise documentation."
-                    icon={<FaGraduationCap size={24} />}
-                    color="#8b5cf6"
-                    onClick={() => setViewMode('courses')}
-                    count={courses.length}
-                />
-                <HubCard 
-                    title="Mission History" 
-                    desc="Review your past submissions, feedback from faculty, and grade progressions."
-                    icon={<FaHistory size={24} />}
-                    color="#10b981"
-                    onClick={() => { alert("History module coming soon!"); }}
-                />
-            </div>
-        </motion.div>
+            </motion.div>
+        </div>
     );
 
     // --- SUB-COMPONENTS ---
@@ -300,50 +328,53 @@ const StudentAssignmentView = ({
 
     // --- RENDER APTITUDE LIST ---
     const renderAptitudeList = () => (
-        <div style={containerStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
-                <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Aptitude Test Center</h2>
-            </div>
-
-            {activeAptitudeSession && (
-                <div style={{ marginBottom: '40px' }}>
-                    <h3 style={{ fontSize: '14px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>Active Examination</h3>
-                    <motion.div
-                        whileHover={{ scale: 1.01 }}
-                        style={{ ...cardStyle, border: '1px solid rgba(234, 179, 8, 0.4)', background: 'rgba(234, 179, 8, 0.05)' }}
-                        onClick={onEnterAptitude}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                                <div style={{ color: '#eab308' }}><FaRocket size={32} /></div>
-                                <div>
-                                    <h4 style={{ margin: 0, fontSize: '20px' }}>{activeAptitudeSession.title}</h4>
-                                    <p style={{ margin: '4px 0 0 0', color: '#94a3b8' }}>Strict Environment • {activeAptitudeSession.duration} Minutes</p>
-                                </div>
-                            </div>
-                            <button style={{ padding: '10px 20px', background: '#eab308', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>START NOW</button>
-                        </div>
-                    </motion.div>
+        <div style={rootStyle}>
+            <div style={watermarkStyle}>TESTS</div>
+            <div style={containerStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                    <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
+                    <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Aptitude Test Center</h2>
                 </div>
-            )}
 
-            <h3 style={{ fontSize: '14px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>Test History & Results</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
-                {aptitudeHistory.length === 0 ? (
-                    <div style={{ color: '#64748b', gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>No past test records found.</div>
-                ) : (
-                    aptitudeHistory.map(test => (
-                        <div key={test._id} style={cardStyle}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>COMPLETED</span>
-                                <span style={{ color: '#64748b', fontSize: '11px' }}>{new Date(test.startTime).toLocaleDateString()}</span>
+                {activeAptitudeSession && (
+                    <div style={{ marginBottom: '40px' }}>
+                        <h3 style={{ fontSize: '14px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>Active Examination</h3>
+                        <motion.div
+                            whileHover={{ scale: 1.01 }}
+                            style={{ ...cardStyle, border: '1px solid rgba(234, 179, 8, 0.4)', background: 'rgba(234, 179, 8, 0.05)' }}
+                            onClick={onEnterAptitude}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                    <div style={{ color: '#eab308' }}><FaRocket size={32} /></div>
+                                    <div>
+                                        <h4 style={{ margin: 0, fontSize: '20px' }}>{activeAptitudeSession.title}</h4>
+                                        <p style={{ margin: '4px 0 0 0', color: '#94a3b8' }}>Strict Environment • {activeAptitudeSession.duration} Minutes</p>
+                                    </div>
+                                </div>
+                                <button style={{ padding: '10px 20px', background: '#eab308', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>START NOW</button>
                             </div>
-                            <h4 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>{test.title}</h4>
-                            <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Score: {test.submission?.score || 'N/A'}</p>
-                        </div>
-                    ))
+                        </motion.div>
+                    </div>
                 )}
+
+                <h3 style={{ fontSize: '14px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '20px' }}>Test History & Results</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
+                    {aptitudeHistory.length === 0 ? (
+                        <div style={{ color: '#64748b', gridColumn: '1/-1', textAlign: 'center', padding: '40px' }}>No past test records found.</div>
+                    ) : (
+                        aptitudeHistory.map(test => (
+                            <div key={test._id} style={cardStyle}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                    <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>COMPLETED</span>
+                                    <span style={{ color: '#64748b', fontSize: '11px' }}>{new Date(test.startTime).toLocaleDateString()}</span>
+                                </div>
+                                <h4 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>{test.title}</h4>
+                                <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Score: {test.submission?.score || 'N/A'}</p>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -396,24 +427,27 @@ const StudentAssignmentView = ({
     // RENDER ASSIGNMENTS LIST
     if (viewMode === 'assignments') {
         return (
-            <div style={containerStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                    <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
-                    <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>{selectedCourse?.name} Missions</h2>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px' }}>
-                    {assignments.map(a => {
-                        const submission = submissions.find(s => s.assignmentId?._id === a._id);
-                    return (
-                        <motion.div key={a._id} onClick={() => openAssignment(a)} whileHover={{ y: -5 }} style={cardStyle}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Assignment</span>
-                                {submission && <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '12px', fontSize: '10px', fontWeight: '800' }}>SUBMITTED</span>}
-                            </div>
-                            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>{a.title}</h3>
-                            <div style={{ color: '#94a3b8', fontSize: '13px' }}><FaCode size={10} /> {a.language} • {submission ? 'Achieved Score' : 'Target Score'}: {submission ? calcMarks(submission.score, submission.maxScore, a.maxPoints).earned : Math.round((a.maxPoints||100)/10)} Marks</div>
-                        </motion.div>
-                    );})}
+            <div style={rootStyle}>
+                <div style={watermarkStyle}>TASKS</div>
+                <div style={containerStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                        <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
+                        <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>{selectedCourse?.name} Missions</h2>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px' }}>
+                        {assignments.map(a => {
+                            const submission = submissions.find(s => s.assignmentId?._id === a._id);
+                        return (
+                            <motion.div key={a._id} onClick={() => openAssignment(a)} whileHover={{ y: -5 }} style={cardStyle}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Assignment</span>
+                                    {submission && <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '12px', fontSize: '10px', fontWeight: '800' }}>SUBMITTED</span>}
+                                </div>
+                                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>{a.title}</h3>
+                                <div style={{ color: '#94a3b8', fontSize: '13px' }}><FaCode size={10} /> {a.language} • {submission ? 'Achieved Score' : 'Target Score'}: {submission ? calcMarks(submission.score, submission.maxScore, a.maxPoints).earned : Math.round((a.maxPoints||100)/10)} Marks</div>
+                            </motion.div>
+                        );})}
+                    </div>
                 </div>
             </div>
         );
@@ -421,19 +455,22 @@ const StudentAssignmentView = ({
 
     // RENDER COURSE LIST
     return (
-        <div style={containerStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
-                <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Academy Vault (Courses)</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
-                {courses.map(course => (
-                    <motion.div key={course._id} onClick={() => handleCourseClick(course)} whileHover={{ y: -5 }} style={cardStyle}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}></div>
-                        <h3 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>{course.name}</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>{course.code} • Sem {course.semester}</p>
-                    </motion.div>
-                ))}
+        <div style={rootStyle}>
+            <div style={watermarkStyle}>ACADEMY</div>
+            <div style={containerStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                    <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
+                    <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Academy Vault (Courses)</h2>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
+                    {courses.map(course => (
+                        <motion.div key={course._id} onClick={() => handleCourseClick(course)} whileHover={{ y: -5 }} style={cardStyle}>
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}></div>
+                            <h3 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>{course.name}</h3>
+                            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>{course.code} • Sem {course.semester}</p>
+                        </motion.div>
+                    ))}
+                </div>
             </div>
         </div>
     );

@@ -23,8 +23,8 @@ const KevrynBackground = React.memo(() => {
 
         const createElements = () => {
             particles = [];
-            // Fixed high density beast mode
-            const particleCount = 1000;
+            // Beast Mode but optimized for smooth performance
+            const particleCount = 150;
             for (let i = 0; i < particleCount; i++) {
                 particles.push({
                     x: Math.random() * width,

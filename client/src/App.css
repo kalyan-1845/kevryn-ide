@@ -24,7 +24,7 @@
   --mouse-y: 50%;
   --editor-bg: rgba(5, 5, 10, 0.65);
   --glass-bg: rgba(10, 10, 15, 0.45);
-  --glass-blur: blur(45px) saturate(220%);
+  --glass-blur: blur(20px) saturate(180%);
 }
 
 [data-theme='light'] {
@@ -308,6 +308,9 @@ body {
   backdrop-filter: var(--glass-blur) !important;
   -webkit-backdrop-filter: var(--glass-blur) !important;
   border-left: 1px solid var(--border-color) !important;
+  will-change: transform, width;
+  contain: strict;
+  transform: translateZ(0); /* Force GPU layer */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2308,8 +2311,12 @@ body.resizing-row .panel-resize-handle {
 .right-sidebar,
 .top-bar,
 .bottom-panel-header {
-  backdrop-filter: blur(25px) !important;
-  -webkit-backdrop-filter: blur(25px) !important;
+    backdrop-filter: blur(15px); /* Optimized from 45px for GPU performance */
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    contain: content; /* Layout isolation */
+    will-change: backdrop-filter, background;
 }
 
 .ide-container {

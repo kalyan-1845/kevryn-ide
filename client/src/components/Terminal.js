@@ -61,11 +61,15 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
             return lines.join('\n');
         };
 
-        // Resize Handling
+        // Resize Handling with Debounce for Smoothness
+        let resizeTimeout;
         const resizeObserver = new ResizeObserver(() => {
-            if (fitAddonRef.current) {
-                try { fitAddonRef.current.fit(); } catch (e) { }
-            }
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (fitAddonRef.current && xtermRef.current) {
+                    try { fitAddonRef.current.fit(); } catch (e) { }
+                }
+            }, 100); // 100ms debounce
         });
         if (terminalRef.current) resizeObserver.observe(terminalRef.current);
 
@@ -95,21 +99,31 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
                 if (!active) { shellProcess.kill(); return; }
                 shellProcessRef.current = shellProcess;
 
+                // OPTIMIZED: Buffered writing for smooth rendering
+                let buffer = '';
+                let timeout;
                 shellProcess.output.pipeTo(
                     new WritableStream({
                         write(data) {
                             if (active) {
-                                term.write(data);
-                                if (socket) socket.emit('terminal:mirror', { termId, data });
-
-                                // Error Heuristics
-                                const errorPatterns = [/ReferenceError:/i, /TypeError:/i, /SyntaxError:/i, /npm ERR!/i, /Error:/i, /sh: .*: not found/i, /failed to compile/i];
-                                if (errorPatterns.some(pattern => pattern.test(data)) && onErrorRef.current) {
-                                    const now = Date.now();
-                                    if (!window._lastErrorTime || now - window._lastErrorTime > 2000) {
-                                        window._lastErrorTime = now;
-                                        onErrorRef.current({ termId, output: data, lastCommand: "" });
-                                    }
+                                buffer += data;
+                                if (!timeout) {
+                                    timeout = setTimeout(() => {
+                                        term.write(buffer);
+                                        if (socket) socket.emit('terminal:mirror', { termId, data: buffer });
+                                        
+                                        // Error Heuristics on the buffered data
+                                        const errorPatterns = [/ReferenceError:/i, /TypeError:/i, /SyntaxError:/i, /npm ERR!/i, /Error:/i, /sh: .*: not found/i, /failed to compile/i];
+                                        if (errorPatterns.some(pattern => pattern.test(buffer)) && onErrorRef.current) {
+                                            const now = Date.now();
+                                            if (!window._lastErrorTime || now - window._lastErrorTime > 2000) {
+                                                window._lastErrorTime = now;
+                                                onErrorRef.current({ termId, output: buffer, lastCommand: "" });
+                                            }
+                                        }
+                                        buffer = '';
+                                        timeout = null;
+                                    }, 10); // 10ms batching
                                 }
                             }
                         },
