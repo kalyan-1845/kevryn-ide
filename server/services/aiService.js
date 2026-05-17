@@ -41,6 +41,7 @@ const chat = async (messages) => {
                 timeout: 30000
             });
 
+            console.log(`[NeuralCore] Key ${i+1} response status: ${response.status}`);
             const content = response.data?.choices?.[0]?.message?.content;
             if (!content) throw new Error('Model returned empty response');
 

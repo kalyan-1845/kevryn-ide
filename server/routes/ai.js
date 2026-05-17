@@ -42,12 +42,9 @@ router.delete('/sessions/:id', authenticate, async (req, res, next) => {
 // ── CHAT ─────────────────────────────────────────────────────────
 router.post('/chat', authenticate, async (req, res, next) => {
     try {
-        const { messages, sessionId } = req.body;
-        if (!messages || !messages.length) {
-            return res.status(400).json({ error: 'Messages are required' });
-        }
-
+        console.log(`[AI-CHAT] Messages:`, messages.length);
         const result = await aiService.chat(messages);
+        console.log(`[AI-CHAT] Result received`);
 
         // Persist session
         let session;
@@ -64,7 +61,9 @@ router.post('/chat', authenticate, async (req, res, next) => {
             session.messages.push(messages[messages.length - 1]);
             session.messages.push({ role: 'assistant', content: result.content });
         }
+        console.log(`[AI-CHAT] Saving session...`);
         await session.save();
+        console.log(`[AI-CHAT] Session saved: ${session._id}`);
 
         res.json({
             response: result.content,

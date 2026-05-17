@@ -13,9 +13,8 @@ const ChatSessionSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
-ChatSessionSchema.pre('save', function(next) {
+ChatSessionSchema.pre('save', async function() {
     this.updatedAt = Date.now();
-    next();
 });
 
 module.exports = mongoose.model('ChatSession', ChatSessionSchema);
