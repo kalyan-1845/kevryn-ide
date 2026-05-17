@@ -5,51 +5,58 @@
  */
 const axios = require('axios');
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_KEYS = [
+    process.env.GROQ_API_KEY_1,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY // Fallback
+].filter(Boolean);
+
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // ── CHAT ─────────────────────────────────────────────────────────
 const chat = async (messages) => {
-    if (!GROQ_API_KEY) {
-        throw new Error('GROQ_API_KEY is not set. Please add it to your environment variables.');
+    if (GROQ_KEYS.length === 0) {
+        throw new Error('No Groq API keys found. Please check your environment variables.');
     }
 
-    try {
-        console.log(`[NeuralCore] Calling Kevryn Neural Core (Groq)...`);
+    let lastError = null;
+    for (let i = 0; i < GROQ_KEYS.length; i++) {
+        const key = GROQ_KEYS[i];
+        try {
+            console.log(`[NeuralCore] Attempting Kevryn Neural Core with Key ${i+1}...`);
 
-        const response = await axios.post(GROQ_URL, {
-            model: GROQ_MODEL,
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 2048,
-            top_p: 0.9,
-            stream: false
-        }, {
-            headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 30000
-        });
+            const response = await axios.post(GROQ_URL, {
+                model: GROQ_MODEL,
+                messages: messages,
+                temperature: 0.7,
+                max_tokens: 2048,
+                top_p: 0.9,
+                stream: false
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 30000
+            });
 
-        const content = response.data?.choices?.[0]?.message?.content;
-        if (!content) {
-            throw new Error('Model returned empty response');
-        }
+            const content = response.data?.choices?.[0]?.message?.content;
+            if (!content) throw new Error('Model returned empty response');
 
-        return { content, model: 'Kevryn Neural Core' };
-    } catch (e) {
-        // Handle Groq-specific errors
-        if (e.response?.data?.error) {
-            const err = e.response.data.error;
-            throw new Error(`AI Error: ${err.message || JSON.stringify(err)}`);
+            return { content, model: 'Kevryn Neural Core' };
+        } catch (e) {
+            console.error(`[NeuralCore] Key ${i+1} failed: ${e.message}`);
+            lastError = e;
+            // Continue to next key
         }
-        if (e.code === 'ECONNABORTED') {
-            throw new Error('Request timed out. Please try again.');
-        }
-        throw new Error(`AI Service Error: ${e.message}`);
     }
+
+    // If all keys fail
+    if (lastError?.response?.data?.error) {
+        throw new Error(`AI Error: ${lastError.response.data.error.message || JSON.stringify(lastError.response.data.error)}`);
+    }
+    throw new Error(`AI Service Error (All keys failed): ${lastError?.message || 'Unknown error'}`);
 };
 
 // ── ANALYZE ERROR (for terminal self-healing) ────────────────────

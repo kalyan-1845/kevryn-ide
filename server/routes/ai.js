@@ -9,7 +9,7 @@ const aiTools = require('../utils/aiTools');
 try { setTimeout(() => aiService.startKeepAlive(), 10000); } catch(e) { console.warn('[AI] Keep-alive init error:', e.message); }
 
 // ── SESSION CRUD ─────────────────────────────────────────────────
-router.get('/sessions', authenticate, async (req, res) => {
+router.get('/sessions', authenticate, async (req, res, next) => {
     try {
         const sessions = await ChatSession.find({ userId: req.user.userId })
             .select('title updatedAt')
@@ -20,7 +20,7 @@ router.get('/sessions', authenticate, async (req, res) => {
     }
 });
 
-router.get('/sessions/:id', authenticate, async (req, res) => {
+router.get('/sessions/:id', authenticate, async (req, res, next) => {
     try {
         const session = await ChatSession.findOne({ _id: req.params.id, userId: req.user.userId });
         if (!session) return res.status(404).json({ error: 'Session not found' });
@@ -30,7 +30,7 @@ router.get('/sessions/:id', authenticate, async (req, res) => {
     }
 });
 
-router.delete('/sessions/:id', authenticate, async (req, res) => {
+router.delete('/sessions/:id', authenticate, async (req, res, next) => {
     try {
         await ChatSession.findOneAndDelete({ _id: req.params.id, userId: req.user.userId });
         res.json({ success: true });
@@ -40,7 +40,7 @@ router.delete('/sessions/:id', authenticate, async (req, res) => {
 });
 
 // ── CHAT ─────────────────────────────────────────────────────────
-router.post('/chat', authenticate, async (req, res) => {
+router.post('/chat', authenticate, async (req, res, next) => {
     try {
         const { messages, sessionId } = req.body;
         if (!messages || !messages.length) {
@@ -78,7 +78,7 @@ router.post('/chat', authenticate, async (req, res) => {
 });
 
 // ── AGENTIC LOOP (with workspace tools) ──────────────────────────
-router.post('/agent/run', authenticate, async (req, res) => {
+router.post('/agent/run', authenticate, async (req, res, next) => {
     try {
         const { prompt, sessionId } = req.body;
         if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
@@ -134,7 +134,7 @@ Always aim for zero-bug delivery.`;
 });
 
 // ── TERMINAL SELF-HEALING ────────────────────────────────────────
-router.post('/fix-terminal-error', authenticate, async (req, res) => {
+router.post('/fix-terminal-error', authenticate, async (req, res, next) => {
     try {
         const { code, terminalOutput, language } = req.body;
         if (!code || !terminalOutput) {
