@@ -42,7 +42,8 @@ router.delete('/sessions/:id', authenticate, async (req, res, next) => {
 // ── CHAT ─────────────────────────────────────────────────────────
 router.post('/chat', authenticate, async (req, res, next) => {
     try {
-        console.log(`[AI-CHAT] Messages:`, messages.length);
+        const { messages, sessionId } = req.body;
+        console.log(`[AI-CHAT] Messages:`, messages ? messages.length : 0);
         const result = await aiService.chat(messages);
         console.log(`[AI-CHAT] Result received`);
 
