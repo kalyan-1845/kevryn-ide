@@ -114,7 +114,7 @@ const courseManager = require('./routes/courseManager');
 const assignmentManager = require('./routes/assignmentManager');
 const goldWorkspace = require('./utils/GoldWorkspace');
 
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // --- GLOBAL STATE ---
 let io;
