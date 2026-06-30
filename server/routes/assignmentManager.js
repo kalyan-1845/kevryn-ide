@@ -242,8 +242,17 @@ router.get('/student/active', authenticate, async (req, res) => {
             .populate('courseId', 'name')
             .sort({ dueDate: 1 }); // Sort by due date (closest first)
 
-        // Optionally, could fetch submissions here to filter out completed ones, but returning all is fine for now
-        res.json(assignments);
+        // Fetch submissions to filter out completed ones
+        const assignmentIds = assignments.map(a => a._id);
+        const submissions = await Submission.find({ 
+            assignmentId: { $in: assignmentIds },
+            studentUsername: req.user.username
+        });
+        
+        const submittedAssignmentIds = submissions.map(s => s.assignmentId.toString());
+        const unsubmittedAssignments = assignments.filter(a => !submittedAssignmentIds.includes(a._id.toString()));
+
+        res.json(unsubmittedAssignments);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

@@ -103,6 +103,7 @@ function App() {
     const [activeAptitudeSession, setActiveAptitudeSession] = useState(null); // NEW: Aptitude Session
     const [isAptitudeOpen, setIsAptitudeOpen] = useState(false); // Controls opening the test environment
     const [isLabOpen, setIsLabOpen] = useState(false); // NEW: Explicitly control lab opening
+    const [newAssignmentAlert, setNewAssignmentAlert] = useState(null); // Alert banner for assignments
 
     // --- ANIMATION HOOKS (Moved to top) ---
     const x = useMotionValue(0);
@@ -773,6 +774,20 @@ function App() {
             }
         });
 
+        // Listen for new assignments
+        s.on('assignment-created', async (data) => {
+            if (userRole === 'student') {
+                try {
+                    // Check if this student is supposed to receive this assignment
+                    const res = await api.get('/api/assignments/student/active');
+                    const isForMe = res.data.some(a => a._id === data.assignmentId);
+                    if (isForMe) {
+                        setNewAssignmentAlert(data);
+                    }
+                } catch (e) { console.error("Error checking assignment", e); }
+            }
+        });
+
 
         // Listen for session end from faculty (global broadcast)
         s.on('session-ended', () => {
@@ -796,6 +811,7 @@ function App() {
             s.off('file-shared');
             s.off('cursor-update');
             s.off('session-started');
+            s.off('assignment-created');
             s.off('session-ended');
             window.removeEventListener('click', closeMenu);
         };
@@ -1752,6 +1768,35 @@ function App() {
                     onConfirm={dialog.onConfirm}
                     onCancel={dialog.onCancel}
                 />
+            )}
+
+            {token && userRole === 'student' && newAssignmentAlert && !isLabOpen && (
+                <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    style={{ background: '#3b82f6', color: 'white', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold', zIndex: 1000, position: 'relative' }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FaClipboardList /> <span>New Assignment: {newAssignmentAlert.title}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={() => {
+                                setNewAssignmentAlert(null);
+                                setShowStudentAssignments(true);
+                            }}
+                            style={{ background: 'white', color: '#3b82f6', border: 'none', padding: '6px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            View Mission
+                        </button>
+                        <button
+                            onClick={() => setNewAssignmentAlert(null)}
+                            style={{ background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.5)', padding: '6px 16px', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                </motion.div>
             )}
 
             {token && <KevrynBackground />}
