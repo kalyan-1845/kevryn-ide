@@ -323,7 +323,7 @@ app.post('/auth/register', async (req, res) => {
         const user = new User({
             username,
             password: hashedPassword,
-            email,
+            email: email || undefined,
             role: role || 'student',
             collegeId: collegeId || undefined
         });
@@ -429,8 +429,16 @@ app.post('/auth/google', async (req, res) => {
 
         let user = await User.findOne({ email });
         if (!user) {
+            let baseUsername = (name || email.split('@')[0]).replace(/\s+/g, '').toLowerCase();
+            let proposedUsername = baseUsername;
+            let counter = 1;
+            while (await User.findOne({ username: proposedUsername })) {
+                proposedUsername = `${baseUsername}${counter}`;
+                counter++;
+            }
+
             user = new User({
-                username: name || email.split('@')[0],
+                username: proposedUsername,
                 email,
                 googleId: sub,
                 picture,
@@ -445,7 +453,8 @@ app.post('/auth/google', async (req, res) => {
         const jwtToken = jwt.sign({ userId: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token: jwtToken, username: user.username, userId: user._id, picture: user.picture, role: user.role });
     } catch (e) {
-        res.status(500).json({ error: "Google Auth Failed" });
+        console.error("Google Auth Failed:", e);
+        res.status(500).json({ error: "Google Auth Failed", details: e.message });
     }
 });
 
@@ -479,8 +488,16 @@ app.get('/auth/github/callback', async (req, res) => {
         let user = await User.findOne({ githubId: profile.id.toString() });
 
         if (!user) {
+            let baseUsername = (profile.login || profile.name || 'github_user').replace(/\s+/g, '').toLowerCase();
+            let proposedUsername = baseUsername;
+            let counter = 1;
+            while (await User.findOne({ username: proposedUsername })) {
+                proposedUsername = `${baseUsername}${counter}`;
+                counter++;
+            }
+
             user = new User({
-                username: profile.login || profile.name,
+                username: proposedUsername,
                 githubId: profile.id.toString(),
                 picture: profile.avatar_url,
                 role: 'student'
