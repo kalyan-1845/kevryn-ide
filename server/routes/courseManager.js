@@ -176,6 +176,12 @@ router.post('/batches/:id/enroll', authenticate, async (req, res) => {
                 await student.save();
             }
 
+            // Add to Course's enrolledStudents to ensure "All Enrolled Students" works
+            if (!batch.courseId.enrolledStudents.includes(username)) {
+                batch.courseId.enrolledStudents.push(username);
+                await batch.courseId.save();
+            }
+
             stats.success.push(username);
         }
 
