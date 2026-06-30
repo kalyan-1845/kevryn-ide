@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FaCalendarAlt, FaClock, FaUsers, FaChartBar, FaTimes, FaFileCode } from 'react-icons/fa';
-import { SERVER_FALLBACK } from '../config';
+
 
 const LabReports = ({ token, serverUrl, onClose }) => {
     const [sessions, setSessions] = useState([]);
@@ -12,7 +12,7 @@ const LabReports = ({ token, serverUrl, onClose }) => {
     useEffect(() => {
         const fetchSessions = async () => {
             try {
-                const api = axios.create({ baseURL: serverUrl || SERVER_FALLBACK, headers: { Authorization: token } });
+                const api = axios.create({ baseURL: serverUrl || 'http://localhost:5000', headers: { Authorization: token } });
                 const res = await api.get('/lab/sessions/past');
                 setSessions(res.data.sessions || []);
             } catch (err) {
@@ -27,7 +27,7 @@ const LabReports = ({ token, serverUrl, onClose }) => {
     const handleViewReport = async (sessionId) => {
         setReportLoading(true);
         try {
-            const api = axios.create({ baseURL: serverUrl || SERVER_FALLBACK, headers: { Authorization: token } });
+            const api = axios.create({ baseURL: serverUrl || 'http://localhost:5000', headers: { Authorization: token } });
             const res = await api.get(`/lab/sessions/${sessionId}/report`);
             setSelectedReport(res.data);
         } catch (err) {
