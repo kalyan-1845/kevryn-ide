@@ -603,7 +603,14 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
     }, [handleSave]);
 
     // --- Logout Handler ---
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // Ensure the active file is saved before the student exits
+        try {
+            await handleSave();
+        } catch (e) {
+            console.error("[LabMode] Failed to save before logout:", e);
+        }
+
         if (socketRef.current && (session?.sessionId || session?._id) && username) {
             socketRef.current.emit('student-leave-lab', {
                 sessionId: session.sessionId || session._id,
