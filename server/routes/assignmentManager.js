@@ -10,7 +10,7 @@ const { runAutoGrader } = require('../utils/autoGrader');
 // 1. Create Assignment (Faculty Only)
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { courseId, title, description, language, starterCode, testCases, points, dueDate } = req.body;
+        const { courseId, batchId, title, description, language, starterCode, testCases, points, dueDate } = req.body;
 
         // Verify Faculty Role
         if (req.user.role !== 'faculty') return res.status(403).json({ error: "Only faculty can create assignments" });
@@ -24,6 +24,7 @@ router.post('/', authenticate, async (req, res) => {
         const newAssignment = new Assignment({
             collegeId: req.user.collegeId || undefined,
             courseId,
+            batchId: batchId || undefined,
             title,
             description,
             language,
@@ -34,6 +35,18 @@ router.post('/', authenticate, async (req, res) => {
         });
 
         await newAssignment.save();
+
+        // Broadcast to clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('assignment-created', {
+                assignmentId: newAssignment._id,
+                title: newAssignment.title,
+                courseId: newAssignment.courseId,
+                batchId: newAssignment.batchId
+            });
+        }
+
         res.json({ success: true, assignment: newAssignment });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -118,6 +131,9 @@ router.post('/:id/submit', authenticate, async (req, res) => {
         });
 
         // Create/Update Submission
+        const customMax = assignment.maxPoints || 100;
+        const scaledScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * customMax) : 0;
+
         const submission = await Submission.findOneAndUpdate(
             { assignmentId: assignment._id, studentUsername: req.user.username },
             {
@@ -128,8 +144,8 @@ router.post('/:id/submit', authenticate, async (req, res) => {
                     actualOutput: r.actual || '',
                     error: r.error || ''
                 })),
-                score: earnedPoints,
-                maxScore: totalPoints,
+                score: scaledScore,
+                maxScore: customMax,
                 status: 'submitted',
                 submittedAt: new Date()
             },
@@ -160,6 +176,31 @@ router.get('/course/:courseId/student/:username', authenticate, async (req, res)
     }
 });
 
+// 5.5 Update Assignment
+router.put('/:id', authenticate, async (req, res) => {
+    try {
+        if (req.user.role !== 'faculty') return res.status(403).json({ error: "Unauthorized" });
+        
+        const { title, description, language, starterCode, testCases, points, dueDate, batchId } = req.body;
+        
+        const updated = await Assignment.findByIdAndUpdate(req.params.id, {
+            title,
+            description,
+            language,
+            starterCode,
+            testCases,
+            maxPoints: points,
+            dueDate,
+            batchId: batchId || null
+        }, { new: true });
+        
+        if (!updated) return res.status(404).json({ error: "Assignment not found" });
+        res.json({ message: "Assignment updated successfully", assignment: updated });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 6. Get All Submissions for a Course (Gradebook)
 router.get('/course/:courseId/submissions', authenticate, async (req, res) => {
     try {
@@ -173,6 +214,36 @@ router.get('/course/:courseId/submissions', authenticate, async (req, res) => {
             .sort({ submittedAt: -1 });
 
         res.json(submissions);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 8. Get all assignments for all courses a student is enrolled in (for Student Dashboard)
+router.get('/student/active', authenticate, async (req, res) => {
+    try {
+        if (req.user.role !== 'student') return res.status(403).json({ error: "Only students can view their active assignments globally" });
+        // Find courses and batches student is enrolled in
+        const user = await User.findById(req.user.userId);
+        const enrolledBatches = user.enrolledBatches || [];
+
+        const courses = await Course.find({ enrolledStudents: req.user.username });
+        const courseIds = courses.map(c => c._id);
+
+        // Find assignments for those courses, restricted by batch if applicable
+        const assignments = await Assignment.find({ 
+            courseId: { $in: courseIds },
+            $or: [
+                { batchId: null },
+                { batchId: { $exists: false } },
+                { batchId: { $in: enrolledBatches } }
+            ]
+        })
+            .populate('courseId', 'name')
+            .sort({ dueDate: 1 }); // Sort by due date (closest first)
+
+        // Optionally, could fetch submissions here to filter out completed ones, but returning all is fine for now
+        res.json(assignments);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

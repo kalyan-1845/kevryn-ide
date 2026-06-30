@@ -21,11 +21,13 @@ const StudentAssignmentView = ({
     const [assignments, setAssignments] = useState([]);
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const [submissions, setSubmissions] = useState([]);
+    const [activeAssignments, setActiveAssignments] = useState([]);
     const [aptitudeHistory, setAptitudeHistory] = useState([]);
     const [userStats, setUserStats] = useState({ completed: 0, points: 0, rank: 'Novice' });
 
     // Solver & Test States
     const [code, setCode] = useState('');
+    const [studentLanguage, setStudentLanguage] = useState('python'); // Default if 'any'
     const [testResults, setTestResults] = useState(null);
     const [submissionStatus, setSubmissionStatus] = useState(null);
 
@@ -34,9 +36,17 @@ const StudentAssignmentView = ({
     useEffect(() => {
         fetchEnrolledCourses();
         fetchAptitudeHistory();
+        fetchActiveAssignments();
         // Mock stats or fetch from backend if available
         setUserStats({ completed: 12, points: 450, rank: 'Pro Code-Warrior' });
     }, []);
+
+    const fetchActiveAssignments = async () => {
+        try {
+            const res = await api.get('/api/assignments/student/active');
+            setActiveAssignments(res.data);
+        } catch (e) { console.error("Failed to fetch active assignments", e); }
+    };
 
     const fetchEnrolledCourses = async () => {
         try {
@@ -86,7 +96,7 @@ const StudentAssignmentView = ({
         setSubmissionStatus('Running Tests...');
         try {
             const res = await api.post(`/api/assignments/${selectedAssignment._id}/run-tests`, {
-                code, language: selectedAssignment.language
+                code, language: selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language
             });
             setTestResults(res.data.results);
             setSubmissionStatus('Tests Completed');
@@ -98,20 +108,12 @@ const StudentAssignmentView = ({
         setSubmissionStatus('Submitting...');
         try {
             const res = await api.post(`/api/assignments/${selectedAssignment._id}/submit`, {
-                code, language: selectedAssignment.language
+                code, language: selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language
             });
             setTestResults(res.data.results);
             const { score, maxScore } = res.data.submission;
-            const fullMarks = Math.round((selectedAssignment.maxPoints || 100) / 10);
-            const earnedMarks = maxScore > 0 ? Math.round((score / maxScore) * fullMarks) : 0;
-            setSubmissionStatus(`Submitted Successfully! Marks: ${earnedMarks}/${fullMarks}`);
+            setSubmissionStatus(`Submitted Successfully! Marks: ${score}/${maxScore}`);
         } catch (e) { setSubmissionStatus('Submission Error: ' + e.message); }
-    };
-
-    const calcMarks = (score, maxScore, maxPoints) => {
-        const fullMarks = Math.round((maxPoints || 100) / 10);
-        const earned = maxScore > 0 ? Math.round((score / maxScore) * fullMarks) : 0;
-        return { earned, fullMarks };
     };
 
     // --- STYLES ---
@@ -244,26 +246,32 @@ const StudentAssignmentView = ({
                     </div>
                 )}
 
-                {/* Upcoming Missions (Placeholder) */}
+                {/* Upcoming Missions */}
                 <div style={{ marginBottom: '60px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <FaCalendarAlt color="#60a5fa" size={16} />
                         <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Target Tracking: Upcoming Missions</h2>
                     </div>
                     <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', paddingBottom: '20px' }}>
-                        <div style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>T-MINUS 2 DAYS</div>
-                            <h4 style={{ margin: 0, fontSize: '18px' }}>Python Mastery Test</h4>
-                            <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>Advanced Algorithms & Logic</p>
-                        </div>
-                        <div style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                            <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>NEXT WEEK</div>
-                            <h4 style={{ margin: 0, fontSize: '18px' }}>Semester Finals</h4>
-                            <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>Full Stack Development</p>
-                        </div>
-                        <div style={{ minWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'default' }}>
-                            Stay Tuned for More...
-                        </div>
+                        {activeAssignments.length === 0 ? (
+                            <div style={{ minWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'default' }}>
+                                No Upcoming Missions. Stay Tuned...
+                            </div>
+                        ) : (
+                            activeAssignments.map(a => {
+                                const daysLeft = Math.ceil((new Date(a.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                const urgencyLabel = daysLeft < 0 ? 'OVERDUE' : (daysLeft === 0 ? 'DUE TODAY' : `T-MINUS ${daysLeft} DAYS`);
+                                const urgencyColor = daysLeft < 0 ? '#ef4444' : (daysLeft <= 2 ? '#f59e0b' : '#64748b');
+
+                                return (
+                                    <div key={a._id} style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: `1px dashed rgba(255,255,255,0.1)` }}>
+                                        <div style={{ color: urgencyColor, fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>{urgencyLabel}</div>
+                                        <h4 style={{ margin: 0, fontSize: '18px' }}>{a.title}</h4>
+                                        <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>{a.courseId?.name || 'Unknown Course'}</p>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
 
@@ -283,7 +291,7 @@ const StudentAssignmentView = ({
                         icon={<FaClipboardList size={24} />}
                         color="#3b82f6"
                         onClick={() => setViewMode('courses')}
-                        count={assignments.length}
+                        count={activeAssignments.length}
                     />
                     <HubCard 
                         title="Academy Vault" 
@@ -395,7 +403,24 @@ const StudentAssignmentView = ({
                                 <span style={{ padding: '2px 8px', background: 'rgba(99,102,241,0.1)', color: '#818cf8', borderRadius: '12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.5px' }}>MISSION</span>
                                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>{selectedAssignment.title}</h3>
                             </div>
-                            <span style={{ fontSize: '12px', color: '#475569' }}>{selectedAssignment.courseName} • {selectedAssignment.language.toUpperCase()} ENGINE</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '12px', color: '#475569' }}>{selectedAssignment.courseName} • </span>
+                                {selectedAssignment.language === 'any' ? (
+                                    <select 
+                                        value={studentLanguage} 
+                                        onChange={e => setStudentLanguage(e.target.value)}
+                                        style={{ background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', outline: 'none' }}
+                                    >
+                                        <option value="python">PYTHON</option>
+                                        <option value="javascript">JAVASCRIPT</option>
+                                        <option value="c">C</option>
+                                        <option value="cpp">C++</option>
+                                        <option value="java">JAVA</option>
+                                    </select>
+                                ) : (
+                                    <span style={{ fontSize: '12px', color: '#475569' }}>{selectedAssignment.language.toUpperCase()} ENGINE</span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '16px' }}>
@@ -418,7 +443,7 @@ const StudentAssignmentView = ({
                             ))}
                         </div>
                     </div>
-                    <div style={{ flex: 1 }}><Editor height="100%" theme="vs-dark" defaultValue={code} onChange={v => setCode(v)} language={selectedAssignment.language} options={{ fontSize: 16, fontFamily: 'JetBrains Mono', minimap: { enabled: false } }} /></div>
+                    <div style={{ flex: 1 }}><Editor height="100%" theme="vs-dark" defaultValue={code} onChange={v => setCode(v)} language={selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language} options={{ fontSize: 16, fontFamily: 'JetBrains Mono', minimap: { enabled: false } }} /></div>
                 </div>
             </div>
         );
@@ -444,7 +469,7 @@ const StudentAssignmentView = ({
                                     {submission && <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '12px', fontSize: '10px', fontWeight: '800' }}>SUBMITTED</span>}
                                 </div>
                                 <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>{a.title}</h3>
-                                <div style={{ color: '#94a3b8', fontSize: '13px' }}><FaCode size={10} /> {a.language} • {submission ? 'Achieved Score' : 'Target Score'}: {submission ? calcMarks(submission.score, submission.maxScore, a.maxPoints).earned : Math.round((a.maxPoints||100)/10)} Marks</div>
+                                <div style={{ color: '#94a3b8', fontSize: '13px' }}><FaCode size={10} /> {a.language} • {submission ? 'Achieved Score' : 'Target Score'}: {submission ? `${submission.score} / ${submission.maxScore}` : `${a.maxPoints || 100} Marks`}</div>
                             </motion.div>
                         );})}
                     </div>
