@@ -649,6 +649,75 @@ app.post('/lab/end-session', authenticate, async (req, res) => {
     }
 });
 
+// --- Lab Session Reports ---
+app.get('/lab/sessions/past', authenticate, async (req, res) => {
+    try {
+        const sessions = await LabSession.find({ facultyId: req.user.userId, isActive: false })
+            .populate('courseId', 'name')
+            .populate('batchId', 'name')
+            .sort({ endTime: -1 });
+        res.json({ sessions });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/lab/sessions/:id/report', authenticate, async (req, res) => {
+    try {
+        const session = await LabSession.findById(req.params.id)
+            .populate('courseId', 'name')
+            .populate('batchId', 'name');
+            
+        if (!session) return res.status(404).json({ error: "Session not found" });
+        if (session.facultyId.toString() !== req.user.userId) return res.status(403).json({ error: "Unauthorized" });
+
+        const attendedUsernames = session.activeStudents.map(s => s.username);
+        const offlineStudents = session.allowedStudents.filter(u => !attendedUsernames.includes(u));
+
+        const sessionFiles = await File.find({
+            courseId: session.courseId?._id,
+            $or: [
+                { createdAt: { $gte: session.startTime, $lte: session.endTime || new Date() } },
+                { updatedAt: { $gte: session.startTime, $lte: session.endTime || new Date() } }
+            ]
+        }).populate('owner', 'username');
+
+        const filesByStudent = {};
+        sessionFiles.forEach(f => {
+            if (f.owner && f.owner.username) {
+                if (!filesByStudent[f.owner.username]) filesByStudent[f.owner.username] = [];
+                filesByStudent[f.owner.username].push({ name: f.name, type: f.type, lastRunTime: f.lastRunTime });
+            }
+        });
+
+        // Compute active vs idle time per student (approx based on loginTime and lastHeartbeat)
+        const attendedStudentsData = session.activeStudents.map(student => {
+            // Rough approximation if activityLog is too complex to parse right now
+            // Active time = difference between first login and last heartbeat (minus any big idle gaps if we had them)
+            const activeMs = new Date(student.lastHeartbeat || session.endTime).getTime() - new Date(student.loginTime || session.startTime).getTime();
+            const activeMinutes = Math.max(0, Math.floor(activeMs / 60000));
+            const totalSessionMinutes = Math.max(1, Math.floor((new Date(session.endTime || new Date()).getTime() - new Date(session.startTime).getTime()) / 60000));
+            const idleMinutes = Math.max(0, totalSessionMinutes - activeMinutes);
+
+            return {
+                username: student.username,
+                tabSwitches: student.tabSwitchCount || 0,
+                activeMinutes,
+                idleMinutes,
+                files: filesByStudent[student.username] || []
+            };
+        });
+
+        res.json({
+            session,
+            attendedStudents: attendedStudentsData,
+            offlineStudents
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 
 // --- Course Roster Management (Phase 18) ---
 
