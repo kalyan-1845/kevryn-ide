@@ -523,6 +523,20 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
 
 
     // --- Run File ---
+    const getLanguage = (fileName) => {
+        const ext = fileName.split('.').pop().toLowerCase();
+        switch (ext) {
+            case 'js': return 'javascript';
+            case 'py': return 'python';
+            case 'java': return 'java';
+            case 'c': return 'c';
+            case 'cpp': return 'cpp';
+            case 'html': return 'html';
+            case 'css': return 'css';
+            default: return 'javascript';
+        }
+    };
+
     const handleRun = useCallback(async () => {
         if (!activeFile || !socketRef.current) return;
 
