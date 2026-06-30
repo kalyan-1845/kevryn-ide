@@ -547,8 +547,8 @@ app.post('/lab/create-session', authenticate, async (req, res) => {
         const session = new LabSession({
             facultyId,
             collegeId: collegeId || undefined,
-            courseId,
-            batchId,
+            courseId: courseId || undefined,
+            batchId: batchId || undefined,
             sessionName,
             subject: subject || 'General',
             semester: semester || 'Sem 1',
@@ -2127,10 +2127,12 @@ app.delete('/files/:id', authenticate, async (req, res) => {
 });
 app.put('/files/:id', authenticate, async (req, res) => {
     try {
-        const { newName, content } = req.body;
+        const { newName, content, lastRunOutput, lastRunTime } = req.body;
         const updateFields = {};
         if (newName !== undefined) updateFields.name = newName;
         if (content !== undefined) updateFields.content = content;
+        if (lastRunOutput !== undefined) updateFields.lastRunOutput = lastRunOutput;
+        if (lastRunTime !== undefined) updateFields.lastRunTime = lastRunTime;
 
         // --- TIMELINE: Save snapshot on explicit save if different from last history ---
         if (content !== undefined) {

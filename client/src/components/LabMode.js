@@ -376,10 +376,10 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         
         const commands = {
             'js': `node "${filename}"`,
-            'py': `python "${filename}"`,
+            'py': `python3 "${filename}"`,
             'java': `javac "${filename}" && java "${filename.replace('.java', '')}"`,
-            'c': `gcc "${filename}" -o output && output`,
-            'cpp': `g++ "${filename}" -o output && output`,
+            'c': `gcc "${filename}" -o output && ./output`,
+            'cpp': `g++ "${filename}" -o output && ./output`,
             'rb': `ruby "${filename}"`,
             'go': `go run "${filename}"`,
             'php': `php "${filename}"`,
@@ -557,6 +557,24 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                 data: '\r' + cmd + '\r',
                 courseId: session?.courseId
             });
+
+            // NEW: Also run silently in background to capture raw output for Faculty Monitor
+            try {
+                const res = await api.post('/run-code', { 
+                    code: activeFile.content || code, 
+                    language: getLanguage(activeFile.name), 
+                    fileName 
+                });
+                if (res.data && res.data.output !== undefined) {
+                    // Update file record with last run output
+                    await api.put(`/files/${activeFile._id}`, { 
+                        lastRunOutput: res.data.output || res.data.error || 'Ran successfully (no output)',
+                        lastRunTime: new Date()
+                    });
+                }
+            } catch (err) {
+                console.error("[LabMode] Background execution recording failed:", err);
+            }
         } else {
             // Fallback for others (HTML etc. handled above)
             const inputWriter = window.ideTerminalInputs && window.ideTerminalInputs[1];
@@ -915,15 +933,15 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
 
             {/* Warning Footer (Floating) */}
             <div style={{
-                position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
-                padding: '10px 24px', background: 'rgba(69, 10, 10, 0.8)',
-                backdropFilter: 'blur(10px)', border: '1px solid #ef4444',
-                color: '#fca5a5', borderRadius: '30px', fontSize: '12px', fontWeight: '600',
-                display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                zIndex: 1000
+                position: 'fixed', top: '15px', right: '20px',
+                padding: '6px 12px', background: 'rgba(69, 10, 10, 0.4)',
+                backdropFilter: 'blur(4px)', border: '1px solid rgba(239, 68, 68, 0.5)',
+                color: '#fca5a5', borderRadius: '6px', fontSize: '10px', fontWeight: '500',
+                display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                zIndex: 1000, pointerEvents: 'none'
             }}>
-                <FaExclamationTriangle color="#ef4444" size={14} />
-                <span>EXAM PROTOCOL ACTIVE: ALL ACTIVITY IS BEING LOGGED</span>
+                <FaExclamationTriangle color="#ef4444" size={10} />
+                <span>EXAM PROTOCOL ACTIVE</span>
             </div>
         </div>
     );

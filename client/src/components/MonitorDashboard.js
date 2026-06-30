@@ -740,6 +740,25 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                                         }}>
                                             {selectedFileContent ? selectedFileContent.content : (students[selectedStudent]?.code || '// Waiting for code...')}
                                         </pre>
+                                        
+                                        {/* NEW: Execution Output Viewer */}
+                                        {selectedFileContent && selectedFileContent.lastRunOutput && (
+                                            <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', height: '150px', flexShrink: 0, borderTop: '1px solid #334155', paddingTop: '10px' }}>
+                                                <div style={{ color: '#10b981', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span>TERMINAL OUTPUT</span>
+                                                    <span style={{ color: '#64748b', fontWeight: 'normal' }}>
+                                                        Ran at {new Date(selectedFileContent.lastRunTime).toLocaleTimeString()}
+                                                    </span>
+                                                </div>
+                                                <pre style={{
+                                                    margin: 0, flex: 1, fontFamily: "'JetBrains Mono', monospace",
+                                                    fontSize: '12px', color: '#cbd5e1', lineHeight: '1.5',
+                                                    whiteSpace: 'pre-wrap', overflowY: 'auto', background: '#0f172a', padding: '10px', borderRadius: '4px', border: '1px solid #1e293b'
+                                                }}>
+                                                    {selectedFileContent.lastRunOutput}
+                                                </pre>
+                                            </div>
+                                        )}
                                     </div>
                                     {/* File List */}
                                     <div style={{ width: '250px', borderLeft: '1px solid #334155', background: '#0f172a', padding: '15px', overflowY: 'auto' }}>

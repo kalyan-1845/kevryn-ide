@@ -13,7 +13,10 @@ const FileSchema = new mongoose.Schema({
   keystrokes: { type: Number, default: 0 },
   pasteCount: { type: Number, default: 0 },
   activeTimeFull: { type: Number, default: 0 }, // Total minutes or seconds
-  lastActivity: { type: Date, default: Date.now }
+  lastActivity: { type: Date, default: Date.now },
+  // Code Execution History
+  lastRunOutput: { type: String, default: null },
+  lastRunTime: { type: Date, default: null }
 });
 
 // PERFORMANCE: Indexes for frequent queries
