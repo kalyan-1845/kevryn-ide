@@ -10,8 +10,8 @@
       <stop offset="100%" stop-color="#0055FF" />
     </linearGradient>
     <linearGradient id="glass-fill" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.25)" />
-      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.05)" />
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.2)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0.02)" />
     </linearGradient>
     <linearGradient id="glass-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="rgba(255, 255, 255, 0.7)" />
@@ -26,11 +26,18 @@
     <filter id="ambient-glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="40" result="blur" />
     </filter>
+
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    </pattern>
   </defs>
 
-  <!-- Ambient Glow Behind Logo (Kept for rich colors, removed dark solid background) -->
-  <circle cx="256" cy="256" r="140" fill="#0055FF" filter="url(#ambient-glow)" opacity="0.45" />
-  <circle cx="256" cy="256" r="100" fill="#FF007A" filter="url(#ambient-glow)" opacity="0.35" />
+  <rect width="512" height="512" fill="#06070B" />
+  <rect width="512" height="512" fill="url(#grid)" />
+
+  <!-- Ambient Glow Behind Logo -->
+  <circle cx="256" cy="256" r="140" fill="#0055FF" filter="url(#ambient-glow)" opacity="0.35" />
+  <circle cx="256" cy="256" r="100" fill="#FF007A" filter="url(#ambient-glow)" opacity="0.25" />
 
   <g transform="translate(23, 56)">
     <!-- 1. Upper Arm (Behind layer) -->
@@ -51,7 +58,7 @@
     </g>
 
     <!-- 4. Glassmorphic Lower Leg (Front Layer) -->
-    <g>
+    <g style="backdrop-filter: blur(12px);">
       <polygon points="136,186 320,370 320,302 136,118" fill="url(#glass-fill)" stroke="url(#glass-stroke)" stroke-width="2" />
       <polyline points="136,118 320,302 320,370" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.8" />
     </g>
