@@ -536,12 +536,22 @@ app.post('/lab/create-session', authenticate, async (req, res) => {
                 console.log(`[Lab] Batch not found or no students in batch ${batchId}`);
             }
         } else if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
-            // Fallback to Course roster if no Batch is selected or batchId is invalid string
+            // Fallback to Course roster: Gather all students from all batches in this course
+            const batches = await Batch.find({ courseId: courseId });
+            const allUsernames = new Set();
+            batches.forEach(b => {
+                 if (b.students) {
+                     b.students.forEach(s => allUsernames.add(s.username));
+                 }
+            });
+            // Also append any generic enrolledStudents just in case
             const course = await Course.findById(courseId);
             if (course && course.enrolledStudents) {
-                whitelistedStudents = course.enrolledStudents;
-                console.log(`[Lab] Found Course students: ${whitelistedStudents.join(', ')}`);
+                course.enrolledStudents.forEach(u => allUsernames.add(u));
             }
+            
+            whitelistedStudents = Array.from(allUsernames);
+            console.log(`[Lab] Found ${whitelistedStudents.length} students across all batches for course.`);
         }
 
         console.log(`[Lab] Final whitelisted students: ${whitelistedStudents.length}`);
@@ -849,7 +859,7 @@ app.get('/lab/reports/:courseId', authenticate, async (req, res) => {
              if (!filesByStudent[ownerId]) filesByStudent[ownerId] = [];
              filesByStudent[ownerId].push({
                   fileName: file.name,
-                  content: file.content,
+                  code: file.content,
                   lastUpdated: file.updatedAt || file.createdAt,
                   timeSpent: file.timeSpent || 0
              });
