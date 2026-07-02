@@ -445,8 +445,7 @@ const StudentReports = ({ token, serverUrl }) => {
                                     </div>
                                 </div>
 
-                            </div>
-                        </motion.div>
+                            </motion.div>
                     )}
                 </AnimatePresence>
             </div>
