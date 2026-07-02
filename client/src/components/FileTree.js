@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaFolder, FaFolderOpen, FaJs, FaPython, FaCode, FaFile, FaPlus } from 'react-icons/fa';
+import { FaFolder, FaFolderOpen, FaJs, FaPython, FaCode, FaFile, FaPlus, FaFilePlus, FaFolderPlus } from 'react-icons/fa';
 import { SiCplusplus } from 'react-icons/si';
 
 const getFileIcon = (name) => {
@@ -243,26 +243,26 @@ const FileTree = React.memo(({
           </span>
         )}
 
-        {/* Action icons on hover — only for folders */}
-        {isFolder && (hovered || isActive) && !isRenaming && (
-          <span style={{ display: 'flex', gap: '4px', marginLeft: 'auto', opacity: 0.7 }}>
+        {/* Action icons */}
+        {isFolder && (data._id === 'root' || hovered || isActive) && !isRenaming && (
+          <span style={{ display: 'flex', gap: '8px', marginLeft: 'auto', paddingRight: '4px' }}>
             <span
               title="New File (Ctrl+N)"
-              style={{ padding: '2px 5px', borderRadius: '3px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '2px' }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+              style={{ padding: '2px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', color: '#888', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={e => e.currentTarget.style.color = '#888'}
               onClick={e => { e.stopPropagation(); onCreate(data._id); }}
             >
-              <FaPlus style={{ fontSize: '8px' }} /><span style={{ fontSize: '9px' }}>F</span>
+              <FaFilePlus />
             </span>
             <span
               title="New Folder (Ctrl+Shift+N)"
-              style={{ padding: '2px 5px', borderRadius: '3px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '2px' }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+              style={{ padding: '2px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', color: '#888', transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={e => e.currentTarget.style.color = '#888'}
               onClick={e => { e.stopPropagation(); onCreateFolder(data._id); }}
             >
-              <FaPlus style={{ fontSize: '8px' }} /><FaFolder style={{ fontSize: '9px' }} />
+              <FaFolderPlus />
             </span>
           </span>
         )}

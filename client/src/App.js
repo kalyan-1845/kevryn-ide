@@ -176,6 +176,7 @@ function App() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState("");
+    const [chatVisibility, setChatVisibility] = useState("public");
     const chatEndRef = useRef(null);
 
     const [terminals, setTerminals] = useState([
@@ -731,7 +732,7 @@ function App() {
 
         s.emit('register-user', username);
         fetchFiles();
-        safeEmit('join-chat', { username });
+        safeEmit('join-chat', { username, sessionId: activeSessionId });
         api.get('/deploy/status').then(res => setDeployStatus(res.data)).catch(() => { });
         // Removed: /api/debug-env health check (unnecessary API call on every login)
 
@@ -1470,7 +1471,7 @@ function App() {
         setTerminals(n);
         if (activeTermId === id && n.length > 0) setActiveTermId(n[0].id);
     };
-    const sendChatMessage = (e) => { e.preventDefault(); if (!chatInput.trim()) return; safeEmit('send-message', { sender: username, text: chatInput }); setChatInput(""); };
+    const sendChatMessage = (e) => { e.preventDefault(); if (!chatInput.trim()) return; safeEmit('send-message', { sender: username, text: chatInput, visibility: chatVisibility, sessionId: activeSessionId }); setChatInput(""); };
     const shareSingleFile = async () => {
         if (!activeFileId) return alert("Select a file first!");
         const target = prompt("Enter username to share THIS file with:");
@@ -1811,7 +1812,12 @@ function App() {
                         <FaNetworkWired /> <span>Live Lab Session Active</span>
                     </div>
                     <button
-                        onClick={() => setIsLabOpen(true)}
+                        onClick={() => {
+                            setIsLabOpen(true);
+                            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                                document.documentElement.requestFullscreen().catch(e => console.warn("Fullscreen request denied:", e));
+                            }
+                        }}
                         style={{ background: 'white', color: '#7c3aed', border: 'none', padding: '6px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                     >
                         Join Session
@@ -1876,7 +1882,12 @@ function App() {
                             userId={userId}
                             onBack={() => setShowStudentAssignments(false)}
                             activeSessionId={activeSessionId}
-                            onEnterLab={() => setIsLabOpen(true)}
+                            onEnterLab={() => {
+                                setIsLabOpen(true);
+                                if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                                    document.documentElement.requestFullscreen().catch(e => console.warn("Fullscreen request denied:", e));
+                                }
+                            }}
                             activeAptitudeSession={activeAptitudeSession}
                             onEnterAptitude={() => setIsAptitudeOpen(true)}
                         />
@@ -2133,7 +2144,40 @@ function App() {
                                                 }}
                                             />
                                         )}
-                                        {sidebarTab === 'chat' && (<div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}><div style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>{chatMessages.map((msg, i) => (<div key={i} style={{ alignSelf: msg.sender === username ? 'flex-end' : 'flex-start', maxWidth: '85%' }}><div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px', textAlign: msg.sender === username ? 'right' : 'left' }}>{msg.sender}</div><div style={{ padding: '8px', borderRadius: '6px', background: msg.sender === username ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: 'white', fontSize: '12px', wordWrap: 'break-word' }}>{msg.text}</div></div>))}<div ref={chatEndRef} /></div><form onSubmit={sendChatMessage} style={{ padding: '10px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '5px', background: 'var(--bg-secondary)' }}><input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Type a message..." style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }} /><button type="submit" style={{ background: 'var(--accent-primary)', border: 'none', borderRadius: '4px', color: 'white', padding: '0 10px', cursor: 'pointer' }}><FaPaperPlane size={12} /></button></form></div>)}
+                                        {sidebarTab === 'chat' && (
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                                <div style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    {chatMessages.map((msg, i) => (
+                                                        <div key={i} style={{ alignSelf: msg.sender === username ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                                                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px', textAlign: msg.sender === username ? 'right' : 'left', display: 'flex', justifyContent: msg.sender === username ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '4px' }}>
+                                                                {msg.visibility === 'private' && <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '2px 4px', borderRadius: '4px', fontSize: '8px', fontWeight: 'bold' }}>PRIVATE</span>}
+                                                                {msg.sender}
+                                                            </div>
+                                                            <div style={{ padding: '8px', borderRadius: '6px', background: msg.sender === username ? 'var(--accent-primary)' : 'var(--bg-tertiary)', color: 'white', fontSize: '12px', wordWrap: 'break-word', border: msg.visibility === 'private' ? '1px solid #eab308' : 'none' }}>
+                                                                {msg.text}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <div ref={chatEndRef} />
+                                                </div>
+                                                <form onSubmit={sendChatMessage} style={{ padding: '10px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '5px', background: 'var(--bg-secondary)' }}>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <select 
+                                                            value={chatVisibility} 
+                                                            onChange={e => setChatVisibility(e.target.value)}
+                                                            style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px', fontSize: '11px', outline: 'none', cursor: 'pointer' }}
+                                                        >
+                                                            <option value="public">Public</option>
+                                                            <option value="private">Private (Project Only)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '5px' }}>
+                                                        <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Type a message..." style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }} />
+                                                        <button type="submit" style={{ background: 'var(--accent-primary)', border: 'none', borderRadius: '4px', color: 'white', padding: '0 10px', cursor: 'pointer' }}><FaPaperPlane size={12} /></button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Sidebar Bottom Row (User Info & Logout) */}
