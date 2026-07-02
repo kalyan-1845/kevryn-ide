@@ -405,7 +405,6 @@ const StudentReports = ({ token, serverUrl }) => {
                                                 }
                                             </div>
                                         </div>
-                                        </div>
                                     </div>
                                 </div>
 

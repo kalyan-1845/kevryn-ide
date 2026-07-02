@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaFolder, FaFolderOpen, FaJs, FaPython, FaCode, FaFile, FaPlus, FaFilePlus, FaFolderPlus } from 'react-icons/fa';
+import { FaFolder, FaFolderOpen, FaJs, FaPython, FaCode, FaFile, FaPlus } from 'react-icons/fa';
+import { FiFilePlus, FiFolderPlus } from 'react-icons/fi';
 import { SiCplusplus } from 'react-icons/si';
 
 const getFileIcon = (name) => {
@@ -253,7 +254,7 @@ const FileTree = React.memo(({
               onMouseLeave={e => e.currentTarget.style.color = '#888'}
               onClick={e => { e.stopPropagation(); onCreate(data._id); }}
             >
-              <FaFilePlus />
+              <FiFilePlus />
             </span>
             <span
               title="New Folder (Ctrl+Shift+N)"
@@ -262,7 +263,7 @@ const FileTree = React.memo(({
               onMouseLeave={e => e.currentTarget.style.color = '#888'}
               onClick={e => { e.stopPropagation(); onCreateFolder(data._id); }}
             >
-              <FaFolderPlus />
+              <FiFolderPlus />
             </span>
           </span>
         )}

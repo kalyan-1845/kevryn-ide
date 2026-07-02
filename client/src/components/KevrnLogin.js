@@ -736,11 +736,7 @@ export default function KevrnLogin({
 
             {/* Logo */}
             <div className="kl-logo-wrap">
-              <div className="kl-logo-ring">
-                <div className="kl-logo-inner">
-                  <span className="kl-logo-text">KR</span>
-                </div>
-              </div>
+              <img src="/logo.svg" alt="Kevryn Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 15px rgba(59, 130, 246, 0.4))' }} />
             </div>
 
             {/* Heading */}
