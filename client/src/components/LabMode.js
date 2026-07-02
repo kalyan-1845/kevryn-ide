@@ -397,8 +397,8 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             'js': `node "${filename}"`,
             'py': `python3 "${filename}"`,
             'java': `javac "${filename}" && java "${filename.replace('.java', '')}"`,
-            'c': `gcc "${filename}" -o output && ./output`,
-            'cpp': `g++ "${filename}" -o output && ./output`,
+            'c': `gcc "${filename}" -o output && ./output; echo ""`,
+            'cpp': `g++ "${filename}" -o output && ./output; echo ""`,
             'rb': `ruby "${filename}"`,
             'go': `go run "${filename}"`,
             'php': `php "${filename}"`,
@@ -431,9 +431,19 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             }
         }
 
-        setActiveFile(file);
-        setCode(file.content || '');
-        setLanguage(detectLanguage(file.name));
+        try {
+            const res = await api.get(`/files/${file._id}`);
+            const fullFile = res.data;
+            setActiveFile(fullFile);
+            setCode(fullFile.content || '');
+            setLanguage(detectLanguage(fullFile.name));
+        } catch (e) {
+            console.error("[LAB-SWITCH] Failed to fetch file content:", e);
+            setActiveFile(file);
+            setCode(file.content || '');
+            setLanguage(detectLanguage(file.name));
+        }
+
         // Immediate sync to faculty
         setTimeout(() => emitCodeUpdate(), 50);
     };

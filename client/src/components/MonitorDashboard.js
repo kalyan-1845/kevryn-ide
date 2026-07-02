@@ -249,7 +249,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
     // --- DATA FETCHING ---
     const fetchStudentFiles = useCallback(async (username) => {
         try {
-            const res = await api.get(`/lab/student-files/${username}`);
+            const res = await api.get(`/lab/student-files/${username}?sessionId=${sessionId}`);
             setStudentFiles(res.data || []);
         } catch (e) { setStudentFiles([]); }
     }, [api]);

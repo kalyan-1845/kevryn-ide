@@ -841,15 +841,29 @@ app.get('/lab/reports/:courseId', authenticate, async (req, res) => {
             : [];
         const missingUsersMap = Object.fromEntries(missingUsers.map(u => [u.username, u]));
 
+        // NEW: Fetch all files for this course to populate the Development Archive
+        const courseFiles = await File.find({ courseId: course._id }).lean();
+        const filesByStudent = {};
+        for (const file of courseFiles) {
+             const ownerId = file.owner.toString();
+             if (!filesByStudent[ownerId]) filesByStudent[ownerId] = [];
+             filesByStudent[ownerId].push({
+                  fileName: file.name,
+                  content: file.content,
+                  lastUpdated: file.updatedAt || file.createdAt,
+                  timeSpent: file.timeSpent || 0
+             });
+        }
+
         const mergedReports = [
-            ...reports,
+            ...reports.map(r => ({ ...r, files: filesByStudent[r.studentId?._id?.toString()] || [] })),
             ...unmatchedUsernames.map(username => ({
                 _id: 'temp_' + username,
                 studentId: missingUsersMap[username] || { username, picture: null },
                 courseName: course.name,
                 totalTimeSpent: 0,
                 lastActive: null,
-                files: []
+                files: filesByStudent[missingUsersMap[username]?._id?.toString()] || []
             }))
         ];
 
@@ -1036,9 +1050,21 @@ app.get('/api/users/students', authenticate, async (req, res) => {
 app.get('/lab/student-files/:username', async (req, res) => {
     try {
         const { username } = req.params;
+        const { sessionId } = req.query;
         const user = await User.findOne({ username });
         if (!user) return res.status(404).json({ error: 'Student not found' });
-        const files = await File.find({ owner: user._id }).select('name content updatedAt createdAt');
+        
+        let query = { owner: user._id };
+        if (sessionId) {
+            const session = await LabSession.findById(sessionId);
+            if (session && session.courseId) {
+                query.courseId = session.courseId;
+            } else if (session && !session.courseId) {
+                 query.$or = [{ courseId: { $exists: false } }, { courseId: null }];
+            }
+        }
+        
+        const files = await File.find(query).select('name content updatedAt createdAt');
         res.json(files || []);
     } catch (e) {
         console.error('[LAB] Student files error:', e.message);
