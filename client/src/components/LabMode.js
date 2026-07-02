@@ -540,6 +540,18 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         setSaving(false);
     }, [activeFile, code, emitCodeUpdate, api, userId, session?.courseId, findFileFullPath]);
 
+    // Capture Ctrl+S
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleSave]);
+
 
     // --- Run File ---
     const getLanguage = (fileName) => {
