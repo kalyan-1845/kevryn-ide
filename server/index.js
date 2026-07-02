@@ -1065,7 +1065,7 @@ app.get('/lab/student-files/:username', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'Student not found' });
         
         let query = { owner: user._id };
-        if (sessionId) {
+        if (sessionId && sessionId !== 'null' && sessionId !== 'undefined') {
             const session = await LabSession.findById(sessionId);
             if (session && session.courseId) {
                 query.courseId = session.courseId;

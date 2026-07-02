@@ -252,7 +252,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
             const res = await api.get(`/lab/student-files/${username}?sessionId=${sessionId}`);
             setStudentFiles(res.data || []);
         } catch (e) { setStudentFiles([]); }
-    }, [api]);
+    }, [api, sessionId]);
 
     const fetchPortfolio = useCallback(async (username) => {
         try {
