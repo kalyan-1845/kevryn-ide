@@ -17,7 +17,7 @@ const FileSchema = new mongoose.Schema({
   // Code Execution History
   lastRunOutput: { type: String, default: null },
   lastRunTime: { type: Date, default: null }
-});
+}, { timestamps: true });
 
 // PERFORMANCE: Indexes for frequent queries
 FileSchema.index({ owner: 1, courseId: 1 }); // Main file list query

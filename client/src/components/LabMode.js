@@ -344,11 +344,30 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
 
     // Debounced code change handler
     const codeChangeTimeoutRef = useRef(null);
+    const autoSaveTimeoutRef = useRef(null); // NEW: 5s DB Auto-Save Ref
+
     const handleCodeChange = (newValue) => {
         setCode(newValue || '');
-        // Debounce emit to avoid flooding
+        
+        // 1. Instant Emit to Faculty (100ms Debounce)
         if (codeChangeTimeoutRef.current) clearTimeout(codeChangeTimeoutRef.current);
-        codeChangeTimeoutRef.current = setTimeout(() => emitCodeUpdate(), 100); // 100ms for "Instant" feel
+        codeChangeTimeoutRef.current = setTimeout(() => emitCodeUpdate(), 100); 
+
+        // 2. Persistent DB Auto-Save (5000ms Debounce)
+        if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = setTimeout(async () => {
+            const currentFile = activeFileRef.current;
+            if (!currentFile || !currentFile._id) return;
+            try {
+                // Background quiet save
+                await api.put(`/files/${currentFile._id}`, { content: newValue });
+                // Update local files state without causing full re-renders
+                setFiles(prev => prev.map(f => f._id === currentFile._id ? { ...f, content: newValue } : f));
+                console.log(`[LabMode] Auto-saved ${currentFile.name} to database.`);
+            } catch (e) {
+                console.error("[LabMode] Auto-save failed:", e);
+            }
+        }, 5000);
     };
 
 

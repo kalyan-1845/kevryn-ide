@@ -405,8 +405,46 @@ const StudentReports = ({ token, serverUrl }) => {
                                                 }
                                             </div>
                                         </div>
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Live Lab Workspace Code Rendering */}
+                                <div style={{ marginTop: '40px' }}>
+                                    <SectionTitle icon={<FaCode />} title="Live Lab Workspace" subtitle="Source code captured during lab sessions" />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {!selectedReport.files || selectedReport.files.length === 0 ? (
+                                            <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                No files created during live lab sessions.
+                                            </div>
+                                        ) : (
+                                            selectedReport.files.map((file, idx) => (
+                                                <div key={idx} style={{
+                                                    background: '#020617', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden'
+                                                }}>
+                                                    <div style={{
+                                                        padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <FaFilePdf color="#3b82f6" /> {/* Just an icon */}
+                                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc' }}>{file.fileName}</span>
+                                                        </div>
+                                                        <span style={{ fontSize: '11px', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '12px' }}>
+                                                            {file.status} | ⏱ {Math.ceil(file.timeSpent / 60)}m
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ padding: '16px', overflowX: 'auto' }}>
+                                                        <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '13px', fontFamily: 'monospace' }}>
+                                                            {file.code || "// No code content available"}
+                                                        </pre>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
                             </div>
                         </motion.div>
                     )}

@@ -862,7 +862,7 @@ function App() {
 
         try {
             await api.post('/lab/update-report', {
-                courseName: "General Lab",
+                courseName: activeSession?.courseId?.name || "General Lab",
                 fileName: fname,
                 code: fcode,
                 timeSpent: timeDelta, // Send the DELTA, not total
