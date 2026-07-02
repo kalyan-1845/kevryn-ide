@@ -598,11 +598,18 @@ app.get('/lab/active-session', authenticate, async (req, res) => {
 // 1.5.1 Get Active Session (Student Check)
 app.get('/lab/student/active-session', authenticate, async (req, res) => {
     try {
-        const query = { isActive: true, allowedStudents: req.user.username };
+        const query = { 
+            isActive: true, 
+            $or: [
+                { allowedStudents: req.user.username },
+                { allowedStudents: { $size: 0 } },
+                { allowedStudents: { $exists: false } }
+            ]
+        };
         // If student is bound to a college, they can only see sessions from their college
         if (req.user.collegeId) query.collegeId = req.user.collegeId;
 
-        // Find an active session where this student is whitelisted
+        // Find an active session where this student is whitelisted (or if it's a general college lab)
         const session = await LabSession.findOne(query).sort({ startTime: -1 });
 
         if (session && session.duration) {

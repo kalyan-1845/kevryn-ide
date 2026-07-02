@@ -761,8 +761,8 @@ function App() {
         // NEW: Listen for new sessions (Real-time join)
         s.on('session-started', (sess) => {
             if (userRole === 'student' && sess) {
-                // Verify student is allowed
-                if (sess.allowedStudents && sess.allowedStudents.includes(username)) {
+                // Verify student is allowed (empty array means general college lab available to everyone)
+                if (!sess.allowedStudents || sess.allowedStudents.length === 0 || sess.allowedStudents.includes(username)) {
                     setActiveSessionId(sess._id);
                     setActiveSession(sess);
                     showDialog({ 
