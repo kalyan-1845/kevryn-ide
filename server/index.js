@@ -181,6 +181,8 @@ io = new Server(server, {
     }
 });
 
+app.set('io', io);
+
 server.on('error', (err) => {
     console.error('!!! SERVER ERROR !!!', err);
 });
@@ -2204,7 +2206,7 @@ app.put('/files/:id', authenticate, async (req, res) => {
         if (lastRunTime !== undefined) updateFields.lastRunTime = lastRunTime;
 
         // --- TIMELINE: Save snapshot on explicit save if different from last history ---
-        if (content !== undefined) {
+        if (content !== undefined && req.query.autoSave !== 'true') {
             const latestHistory = await FileHistory.findOne({ fileId: req.params.id }).sort({ savedAt: -1 });
             if (!latestHistory || latestHistory.content !== content) {
                 const history = new FileHistory({
@@ -2232,15 +2234,19 @@ app.put('/files/:id', authenticate, async (req, res) => {
         );
         if (!file) return res.status(404).json({ error: "File not found or access denied" });
 
-        // SYNC TO DISK: Write updated content to user's project directory
+        // SYNC TO DISK: Write updated content to user's project directory asynchronously
         if (content !== undefined) {
             try {
                 const userDir = file.courseId ? getLabDir(file.owner || req.user.userId, file.courseId) : getUserDir(file.owner || req.user.userId);
                 const filePath = path.join(userDir, file.name);
-                fs.writeFileSync(filePath, content);
-                console.log(`[FILE SYNC] Synced ${file.name} to disk at ${filePath}`);
-            } catch (diskErr) {
-                console.error(`[FILE SYNC] Disk write failed for ${file.name}:`, diskErr.message);
+                // PERFORMANCE FIX: Use async writeFile to avoid blocking the event loop on auto-saves
+                fs.promises.writeFile(filePath, content).then(() => {
+                    console.log(`[FILE SYNC] Synced ${file.name} to disk at ${filePath}`);
+                }).catch(diskErr => {
+                    console.error(`[FILE SYNC] Async disk write failed for ${file.name}:`, diskErr.message);
+                });
+            } catch (syncErr) {
+                console.error(`[FILE SYNC] Path resolution failed for ${file.name}:`, syncErr.message);
             }
         }
 

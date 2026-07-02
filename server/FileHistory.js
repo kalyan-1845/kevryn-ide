@@ -7,4 +7,7 @@ const FileHistorySchema = new mongoose.Schema({
     savedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } // Who made the edit
 });
 
+// PERFORMANCE FIX: Prevent Full Collection Scans which caused OOMs on auto-save
+FileHistorySchema.index({ fileId: 1, savedAt: -1 });
+
 module.exports = mongoose.model('FileHistory', FileHistorySchema);

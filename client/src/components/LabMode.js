@@ -359,8 +359,8 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             const currentFile = activeFileRef.current;
             if (!currentFile || !currentFile._id) return;
             try {
-                // Background quiet save
-                await api.put(`/files/${currentFile._id}`, { content: newValue });
+                // Background quiet save - passing autoSave=true skips timeline history clutter
+                await api.put(`/files/${currentFile._id}?autoSave=true`, { content: newValue });
                 // Update local files state without causing full re-renders
                 setFiles(prev => prev.map(f => f._id === currentFile._id ? { ...f, content: newValue } : f));
                 console.log(`[LabMode] Auto-saved ${currentFile.name} to database.`);
