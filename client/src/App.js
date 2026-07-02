@@ -1905,10 +1905,8 @@ function App() {
 
                         <div className="ide-container" style={{ position: 'relative', zIndex: 10 }}>
                             <div className="menubar">
-                                <div className="beast-logo-wrap" onClick={() => setActiveMenu(null)}>
-                                    <div className="beast-logo-ring">
-                                        <span className="beast-logo-inner">KR</span>
-                                    </div>
+                                <div className="beast-logo-wrap" onClick={() => setActiveMenu(null)} style={{ padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                    <img src="/logo.svg" alt="Kevryn Logo" style={{ width: '26px', height: '26px', filter: 'drop-shadow(0 0 5px rgba(59, 130, 246, 0.5))' }} />
                                 </div>
 
                                 {/* File Menu */}
