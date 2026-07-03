@@ -2484,7 +2484,38 @@ io.on('connection', (socket) => {
             console.error(`[SYNC ERROR] Failed to update file ${fileId}:`, e);
         }
     });
-    socket.on('join-chat', async () => { const m = await Message.find().limit(50); socket.emit('previous-messages', m); });
+    socket.on('join-chat', async (data) => { 
+        const sessionId = data?.sessionId;
+        let query = { visibility: 'public' };
+        if (sessionId) {
+            query = {
+                $or: [
+                    { visibility: 'public' },
+                    { visibility: 'private', sessionId: sessionId }
+                ]
+            };
+        }
+        const m = await Message.find(query).sort({ timestamp: 1 }).limit(50); 
+        socket.emit('previous-messages', m); 
+    });
+
+    socket.on('send-message', async (data) => {
+        try {
+            const { sender, text, visibility = 'public', sessionId } = data;
+            const msg = new Message({ sender, text, visibility, sessionId });
+            await msg.save();
+            
+            if (visibility === 'private' && sessionId) {
+                // Emit only to users in this specific lab session
+                io.to(`lab-${sessionId}`).emit('receive-message', msg);
+            } else {
+                // Public message, emit to everyone
+                io.emit('receive-message', msg);
+            }
+        } catch (e) {
+            console.error('[CHAT ERROR]', e);
+        }
+    });
 
     // --- VAYU LAB MONITOR: API ROUTES ---
     // (Moved to top level)

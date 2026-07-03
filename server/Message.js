@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const MessageSchema = new mongoose.Schema({
     sender: { type: String, required: true },
     text: { type: String, required: true },
+    visibility: { type: String, enum: ['public', 'private'], default: 'public' },
+    sessionId: { type: String, default: null },
     timestamp: { type: Date, default: Date.now }
 });
 

@@ -1,20 +1,21 @@
 {
   "short_name": "Kevryn IDE",
-  "name": "Create React App Sample",
+  "name": "Kevryn IDE",
   "icons": [
     {
-      "src": "logoide.jpeg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/jpeg"
+      "src": "logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     },
     {
-      "src": "logoide.jpeg",
-      "type": "image/jpeg",
+      "src": "logo192.png",
+      "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logoide.jpeg",
-      "type": "image/jpeg",
+      "src": "logo512.png",
+      "type": "image/png",
       "sizes": "512x512"
     }
   ],
