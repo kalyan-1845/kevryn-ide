@@ -44,7 +44,11 @@ router.post('/chat', authenticate, async (req, res, next) => {
     try {
         const { messages, sessionId } = req.body;
         console.log(`[AI-CHAT] Messages:`, messages ? messages.length : 0);
-        const result = await aiService.chat(messages);
+        
+        // Strip out MongoDB _id or other internal properties before sending to Groq API
+        const cleanMessages = messages.map(m => ({ role: m.role, content: m.content }));
+        
+        const result = await aiService.chat(cleanMessages);
         console.log(`[AI-CHAT] Result received`);
 
         // Persist session
