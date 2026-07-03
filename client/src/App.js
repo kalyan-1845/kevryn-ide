@@ -180,9 +180,11 @@ function App() {
     const chatEndRef = useRef(null);
 
     const [terminals, setTerminals] = useState([
+        { id: 'server-1', name: 'Server Terminal', type: 'server' },
         { id: 1, name: 'Local Terminal', type: 'local' }
     ]);
     const [activeTermId, setActiveTermId] = useState(1);
+    const [previewKey, setPreviewKey] = useState(Date.now());
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [deployStatus, setDeployStatus] = useState(null);
     const [activePorts, setActivePorts] = useState([]); // NEW: For full-stack framework detection
@@ -1388,11 +1390,11 @@ function App() {
 
             // Minimal delay for UI to render the terminal panel
             await new Promise(r => setTimeout(r, 50));
-            const termIdToUse = activeTermId || 1;
+            setActiveTermId('server-1');
 
             // Server PTY execution — works for all languages
             safeEmit('terminal:write', {
-                termId: termIdToUse,
+                termId: 'server-1',
                 data: '\r' + cmd + '\r',
                 courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
             });
@@ -1455,6 +1457,7 @@ function App() {
     };
 
     const openPreview = useCallback(() => {
+        setPreviewKey(Date.now());
         setBottomPanelTab('preview');
         setIsBottomPanelOpen(true);
     }, []);
@@ -2423,7 +2426,7 @@ function App() {
                                                                             termId={t.id}
                                                                             userId={userId}
                                                                             onError={(err) => setTerminalError(err)}
-                                                                            webcontainer={null}
+                                                                            webcontainer={t.type === 'server' ? null : webcontainerInstance}
                                                                         />
                                                                     </div>
                                                                 );
@@ -2458,8 +2461,9 @@ function App() {
                                                     <div style={{ height: '100%', background: '#fff', borderRadius: '4px', overflow: 'hidden' }}>
                                                         {fileName.endsWith('.html') ? (
                                                             <iframe
+                                                                key={previewKey}
                                                                 title="HTML Preview"
-                                                                srcDoc={code}
+                                                                src={`${SERVER_URL}/preview/${userId}/${fileName}?t=${previewKey}`}
                                                                 style={{ width: '100%', height: '100%', border: 'none' }}
                                                             />
                                                         ) : (
