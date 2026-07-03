@@ -1457,10 +1457,9 @@ function App() {
     };
 
     const openPreview = useCallback(() => {
-        setPreviewKey(Date.now());
-        setBottomPanelTab('preview');
-        setIsBottomPanelOpen(true);
-    }, []);
+        const previewUrl = `${SERVER_URL}/preview/${userId}/${fileName}?t=${Date.now()}`;
+        window.open(previewUrl, '_blank');
+    }, [userId, fileName]);
 
     const openPort = () => { const p = prompt("Port:"); if (p) window.open(`http://localhost:${p}`, '_blank'); };
     const addTerm = () => {
