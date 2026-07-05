@@ -2976,7 +2976,7 @@ io.on('connection', (socket) => {
                     TERM: 'xterm-256color',
                     PS1: '\\u@\\h:\\w$ ',
                     // FIX: Ensure correct path separator and avoid hardcoded Unix paths on Windows
-                    PATH: (process.env.PATH || '') + (os.platform() === 'win32' ? '' : ':/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin')
+                    PATH: path.join(__dirname, 'jdk', 'bin') + (os.platform() === 'win32' ? ';' : ':') + (process.env.PATH || '') + (os.platform() === 'win32' ? '' : ':/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin')
                 },
                 handleFlowControl: true
             });
