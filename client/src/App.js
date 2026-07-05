@@ -1271,27 +1271,34 @@ function App() {
             } else {
                 // If it's a new file (not in cache), show a loading placeholder quickly or empty
                 setCode("// Loading...");
-                const res = await api.get(`/files/${targetFile._id}`);
-                content = res.data.content || "";
-                setCode(content);
-                setOpenFiles(prev => {
-                    if (prev.find(f => f._id === targetFile._id)) return prev;
-                    return [...prev, { ...targetFile, content }];
-                });
+                try {
+                    const res = await api.get(`/files/${targetFile._id}`);
+                    content = res.data.content || "";
+                    setCode(content);
+                    setOpenFiles(prev => {
+                        if (prev.find(f => f._id === targetFile._id)) return prev;
+                        return [...prev, { ...targetFile, content }];
+                    });
+                } catch (apiErr) {
+                    setCode(`// Error: Failed to load file content from server.\n// Please try reopening the file or check your internet connection.\n// Details: ${apiErr.message}`);
+                    throw apiErr; // Throw so the outer catch can log it
+                }
             }
 
             isRemoteUpdate.current = false;
             safeEmit('join-file', targetFile._id);
 
             // --- SMART TERMINAL SWITCHING ---
-            const ext = targetFile.name.split('.').pop().toLowerCase();
-            const serverExts = ['java', 'c', 'cpp', 'py', 'go', 'rs', 'php', 'rb'];
-            const webExts = ['html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json'];
-            
-            if (serverExts.includes(ext)) {
-                setActiveTermId('server-1');
-            } else if (webExts.includes(ext)) {
-                setActiveTermId(1); // Local WebContainer
+            if (targetFile && targetFile.name) {
+                const ext = targetFile.name.split('.').pop().toLowerCase();
+                const serverExts = ['java', 'c', 'cpp', 'py', 'go', 'rs', 'php', 'rb'];
+                const webExts = ['html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json'];
+                
+                if (serverExts.includes(ext)) {
+                    setActiveTermId('server-1');
+                } else if (webExts.includes(ext)) {
+                    setActiveTermId(1); // Local WebContainer
+                }
             }
 
             if (lineToJump && editorRef.current) {
