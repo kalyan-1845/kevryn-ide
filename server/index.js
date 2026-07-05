@@ -2965,7 +2965,8 @@ io.on('connection', (socket) => {
                 fs.mkdirSync(termCwd, { recursive: true });
             }
 
-            const ptyProcess = pty.spawn(shell, [], {
+            const shellArgs = os.platform() === 'win32' ? [] : ['--noprofile', '--norc'];
+            const ptyProcess = pty.spawn(shell, shellArgs, {
                 name: 'xterm-color',
                 cols: 80,
                 rows: 30,
@@ -2973,6 +2974,7 @@ io.on('connection', (socket) => {
                 env: {
                     ...process.env,
                     TERM: 'xterm-256color',
+                    PS1: '\\u@\\h:\\w$ ',
                     // FIX: Ensure correct path separator and avoid hardcoded Unix paths on Windows
                     PATH: (process.env.PATH || '') + (os.platform() === 'win32' ? '' : ':/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin')
                 },
