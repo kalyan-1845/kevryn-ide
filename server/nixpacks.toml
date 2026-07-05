@@ -1,2 +1,5 @@
+[variables]
+NIXPACKS_JDK_VERSION = "21"
+
 [phases.setup]
-nixPkgs = ["nodePackages.nodejs", "python3", "gcc", "openjdk"]
+nixPkgs = ["nodePackages.nodejs", "python3", "gcc", "jdk21"]
