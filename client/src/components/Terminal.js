@@ -170,13 +170,24 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
             const onDataHandler = term.onData((data) => {
                 if (active) socket.emit('terminal:write', { termId, data });
             });
+            const onResizeHandler = term.onResize((size) => {
+                if (active) socket.emit('terminal:resize', { termId, cols: size.cols, rows: size.rows });
+            });
 
             console.log("[Terminal] Socket-based Terminal Connected");
+            
+            // Initial explicit fit when connecting
+            setTimeout(() => {
+                if (fitAddonRef.current) {
+                    try { fitAddonRef.current.fit(); } catch(e){}
+                }
+            }, 300);
 
             return () => {
                 socket.emit('terminal:close', { termId });
                 socket.off('terminal:data', handleData);
                 onDataHandler.dispose();
+                onResizeHandler.dispose();
             };
         };
 

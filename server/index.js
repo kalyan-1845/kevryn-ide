@@ -3018,6 +3018,16 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('terminal:resize', ({ termId, cols, rows }) => {
+        if (terminals[termId]) {
+            try {
+                terminals[termId].resize(cols, rows);
+            } catch (err) {
+                console.error(`[TERMINAL] Failed to resize terminal ${termId}:`, err);
+            }
+        }
+    });
+
     // --- TERMINAL MIRRORING (WebContainer Support) ---
     socket.on('terminal:mirror', ({ termId, data }) => {
         if (socketToUser[socket.id]) {

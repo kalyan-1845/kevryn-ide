@@ -1283,6 +1283,17 @@ function App() {
             isRemoteUpdate.current = false;
             safeEmit('join-file', targetFile._id);
 
+            // --- SMART TERMINAL SWITCHING ---
+            const ext = targetFile.name.split('.').pop().toLowerCase();
+            const serverExts = ['java', 'c', 'cpp', 'py', 'go', 'rs', 'php', 'rb'];
+            const webExts = ['html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json'];
+            
+            if (serverExts.includes(ext)) {
+                setActiveTermId('server-1');
+            } else if (webExts.includes(ext)) {
+                setActiveTermId(1); // Local WebContainer
+            }
+
             if (lineToJump && editorRef.current) {
                 setTimeout(() => {
                     editorRef.current.revealLineInCenter(lineToJump);

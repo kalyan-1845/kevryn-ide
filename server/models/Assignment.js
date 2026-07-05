@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const AssignmentSchema = new mongoose.Schema({
     collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+    batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }, // Targeted batch (optional)
     title: { type: String, required: true }, // "Lab 1: Hello World"
     description: { type: String }, // Markdown supported
 
