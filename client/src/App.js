@@ -144,6 +144,10 @@ function App() {
     const codeRef = useRef(code);
     useEffect(() => { codeRef.current = code; }, [code]);
 
+    const [dirtyFiles, setDirtyFiles] = useState({}); // Tracks unsaved changes (educational lock)
+    const dirtyFilesRef = useRef(dirtyFiles);
+    useEffect(() => { dirtyFilesRef.current = dirtyFiles; }, [dirtyFiles]);
+
     const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null);
 
     const fileData = useMemo(() => {
@@ -350,6 +354,9 @@ function App() {
         const fullPath = findFileFullPath(activeFileId);
         const latestCode = editorRef.current.getValue();
         console.log(`[SAVE] Triggered for ${fullPath} (${activeFileId})`);
+        
+        // Clear dirty state on save
+        setDirtyFiles(prev => ({ ...prev, [activeFileId]: false }));
 
         try {
             await api.put(`/files/${activeFileId}`, { content: latestCode });
@@ -2010,7 +2017,13 @@ function App() {
                                     Run
                                     {activeMenu === 'run' && (
                                         <div className="dropdown-menu">
-                                            <div className="dropdown-option" onClick={runCode}><FaPlay size={10} /> Run File</div>
+                                            <div className={`dropdown-option ${dirtyFiles[activeFileId] ? 'disabled-option' : ''}`} onClick={() => {
+                                                if (dirtyFiles[activeFileId]) return alert("Please save your file before running! (Educational Lock)");
+                                                runCode();
+                                            }}>
+                                                <FaPlay size={10} style={{ opacity: dirtyFiles[activeFileId] ? 0.5 : 1 }} /> 
+                                                {dirtyFiles[activeFileId] ? "Save to Run" : "Run File"}
+                                            </div>
                                             <div className="dropdown-separator"></div>
                                             <div className="dropdown-option" onClick={handleAIFix}><FaMagic size={10} /> AI Fix / Generate</div>
                                         </div>
@@ -2082,8 +2095,16 @@ function App() {
                                         <option value="forest">Forest</option>
                                         <option value="high-contrast">High Contrast</option>
                                     </select>
-                                    <button onClick={runCode} className="menubar-action-btn run-btn" title="Run">
-                                        {fileName.endsWith('.html') ? <><FaEye size={13} /> Preview</> : <><FaPlay size={11} /> Run</>}
+                                    <button 
+                                        onClick={() => {
+                                            if (dirtyFiles[activeFileId]) return alert("Please save your file before running! (Educational Lock)");
+                                            runCode();
+                                        }} 
+                                        className={`menubar-action-btn run-btn ${dirtyFiles[activeFileId] ? 'disabled' : ''}`} 
+                                        title={dirtyFiles[activeFileId] ? "Save file first" : "Run"}
+                                        style={dirtyFiles[activeFileId] ? { opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(100%)' } : {}}
+                                    >
+                                        {fileName.endsWith('.html') ? <><FaEye size={13} /> Preview</> : <><FaPlay size={11} /> {dirtyFiles[activeFileId] ? "Unsaved" : "Run"}</>}
                                     </button>
                                     {isLabOpen && (
                                         <LabTimer
@@ -2269,7 +2290,7 @@ function App() {
                                                         }}
                                                     >
                                                         {activeFileId === f._id && <div className="neon-indicator" style={{ position: 'absolute', left: '6px', top: '50%', transform: 'translateY(-50%)' }} />}
-                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: activeFileId === f._id ? '10px' : '0' }}>{f.name}</span>
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginLeft: activeFileId === f._id ? '10px' : '0' }}>{f.name}{dirtyFiles[f._id] ? <span style={{color: 'var(--accent-primary)'}}> *</span> : ''}</span>
                                                         <span onClick={(e) => closeTab(e, f._id)} style={{ borderRadius: '50%', padding: '2px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', marginLeft: 'auto' }}>✕</span>
                                                     </div>
                                                 ))}
@@ -2303,6 +2324,9 @@ function App() {
                                                  editorRef.current = editor;
                                                  editor.onDidChangeModelContent(() => {
                                                      codeRef.current = editor.getValue();
+                                                     if (activeFileIdRef.current) {
+                                                         setDirtyFiles(prev => ({ ...prev, [activeFileIdRef.current]: true }));
+                                                     }
                                                  });
                                                  
                                                  // Instant switch model logic
