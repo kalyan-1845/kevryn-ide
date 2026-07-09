@@ -575,8 +575,24 @@ function App() {
         const executeAction = () => {
             // FIX: Pass courseId to /files to ensure we get lab files ONLY when in an active lab session
             const fetchUrl = (isLabOpen && activeSession?.courseId) ? `/files?courseId=${activeSession.courseId}` : '/files';
-            api.get(fetchUrl).then(res => {
-                setFiles(res.data);
+            api.get(fetchUrl).then(async res => {
+                let fetchedFiles = res.data;
+                if (fetchedFiles.length === 0) {
+                    // Auto-generate a default file for beginners
+                    try {
+                        const defaultPayload = { 
+                            name: 'hello.py', 
+                            content: 'print("Hello, Kevryn IDE!")\n',
+                            type: 'file',
+                            courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
+                        };
+                        const createRes = await api.post('/files', defaultPayload);
+                        fetchedFiles = [createRes.data];
+                    } catch (e) {
+                        console.error('Failed to create default hello file', e);
+                    }
+                }
+                setFiles(fetchedFiles);
                 setIsAppLoading(false); // Boot sequence complete
             }).catch(err => {
                 const status = err.response?.status;
