@@ -26,10 +26,9 @@ const GlobalSessionTimer = ({ startTime, duration }) => {
                 return;
             }
 
-            const h = Math.floor(remaining / 3600);
-            const m = Math.floor((remaining % 3600) / 60);
+            const m = Math.floor(remaining / 60);
             const s = remaining % 60;
-            setTimeLeft(`${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+            setTimeLeft(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
         };
 
         const timer = setInterval(tick, 1000);
