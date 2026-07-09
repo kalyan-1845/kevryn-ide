@@ -3147,6 +3147,17 @@ io.on('connection', (socket) => {
     // LEGACY REDUNDANT HANDLERS REMOVED (Consolidated above)
 });
 
+// --- MOVED API ROUTES ---
+app.get('/lab/session-activity-log/:sessionId', authenticate, async (req, res) => {
+    try {
+        const session = await LabSession.findById(req.params.sessionId).select('activityLog');
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+        res.json(session.activityLog);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- LAST RESORT 404 HANDLER (For Debugging) ---
 app.use((req, res) => {
     console.log(`[404] Unhandled request: ${req.method} ${req.url}`);
@@ -3158,16 +3169,6 @@ app.use((req, res) => {
     });
 });
 
-// --- MOVED API ROUTES ---
-app.get('/lab/session-activity-log/:sessionId', authenticate, async (req, res) => {
-    try {
-        const session = await LabSession.findById(req.params.sessionId).select('activityLog');
-        if (!session) return res.status(404).json({ error: 'Session not found' });
-        res.json(session.activityLog);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 // ============================================================
 // FINAL BOOT: MOVED TO TOP OF DB CONNECTION BLOCK
