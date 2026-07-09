@@ -2228,7 +2228,8 @@ app.delete('/files/:id', authenticate, async (req, res) => {
             // IF OWNER: Delete from DB and disk
             await File.findByIdAndDelete(req.params.id);
             const userDir = file.courseId ? getLabDir(req.user.userId, file.courseId) : getUserDir(req.user.userId);
-            const p = path.join(userDir, file.name);
+            const relativePath = await getFileRelativePath(file._id);
+            const p = path.join(userDir, relativePath || file.name);
             if (fs.existsSync(p)) fs.unlinkSync(p);
             return res.json({ message: "Deleted" });
         } else if (file.sharedWith.includes(req.user.username)) {
@@ -2313,9 +2314,15 @@ app.put('/files/:id', authenticate, async (req, res) => {
         if (content !== undefined) {
             try {
                 const userDir = file.courseId ? getLabDir(file.owner || req.user.userId, file.courseId) : getUserDir(file.owner || req.user.userId);
-                const filePath = path.join(userDir, file.name);
+                const relativePath = await getFileRelativePath(file._id);
+                const filePath = path.join(userDir, relativePath || file.name);
+                
+                // Ensure directory exists
+                const dir = path.dirname(filePath);
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
                 await fs.promises.writeFile(filePath, content);
-                console.log(`[FILE SYNC] Synced ${file.name} to disk at ${filePath}`);
+                console.log(`[FILE SYNC] Synced ${relativePath || file.name} to disk at ${filePath}`);
             } catch (syncErr) {
                 console.error(`[FILE SYNC] Async disk write failed for ${file?.name}:`, syncErr.message);
             }
