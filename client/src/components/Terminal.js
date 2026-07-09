@@ -100,21 +100,30 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
                 shellProcessRef.current = shellProcess;
 
                 // OPTIMIZED: Buffered writing for smooth rendering
+                let buffer = '';
+                let timeout;
                 shellProcess.output.pipeTo(
                     new WritableStream({
                         write(data) {
                             if (active) {
-                                term.write(data);
-                                if (socket) socket.emit('terminal:mirror', { termId, data });
-                                
-                                // Error Heuristics on the buffered data
-                                const errorPatterns = [/ReferenceError:/i, /TypeError:/i, /SyntaxError:/i, /npm ERR!/i, /Error:/i, /sh: .*: not found/i, /failed to compile/i];
-                                if (errorPatterns.some(pattern => pattern.test(data)) && onErrorRef.current) {
-                                    const now = Date.now();
-                                    if (!window._lastErrorTime || now - window._lastErrorTime > 2000) {
-                                        window._lastErrorTime = now;
-                                        onErrorRef.current({ termId, output: data, lastCommand: "" });
-                                    }
+                                buffer += data;
+                                if (!timeout) {
+                                    timeout = setTimeout(() => {
+                                        term.write(buffer);
+                                        if (socket) socket.emit('terminal:mirror', { termId, data: buffer });
+                                        
+                                        // Error Heuristics on the buffered data
+                                        const errorPatterns = [/ReferenceError:/i, /TypeError:/i, /SyntaxError:/i, /npm ERR!/i, /Error:/i, /sh: .*: not found/i, /failed to compile/i];
+                                        if (errorPatterns.some(pattern => pattern.test(buffer)) && onErrorRef.current) {
+                                            const now = Date.now();
+                                            if (!window._lastErrorTime || now - window._lastErrorTime > 2000) {
+                                                window._lastErrorTime = now;
+                                                onErrorRef.current({ termId, output: buffer, lastCommand: "" });
+                                            }
+                                        }
+                                        buffer = '';
+                                        timeout = null;
+                                    }, 10); // 10ms batching
                                 }
                             }
                         },
