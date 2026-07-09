@@ -187,25 +187,8 @@ function TypewriterSubtitle({ text, speed = 60 }) {
 // ── 3D Tilt Hook ─────────────────────────────────────────────
 function useTilt(ref) {
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const onMove = (e) => {
-      const rect = el.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const rx = ((e.clientY - cy) / rect.height) * -8;
-      const ry = ((e.clientX - cx) / rect.width) * 8;
-      el.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg)`;
-    };
-    const onLeave = () => {
-      el.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
-    };
-    el.addEventListener('mousemove', onMove);
-    el.addEventListener('mouseleave', onLeave);
-    return () => {
-      el.removeEventListener('mousemove', onMove);
-      el.removeEventListener('mouseleave', onLeave);
-    };
+    // Disabled for performance and stability
+    return;
   }, [ref]);
 }
 
@@ -664,57 +647,7 @@ export default function KevrnLogin({
         }
       `}</style>
 
-      {/* ── Canvas particles ── */}
-      <ParticleCanvas />
-
-      {/* ── Aurora ── */}
-      <div className="kl-aurora">
-        <div className="kl-aurora-wave" />
-        <div className="kl-aurora-wave" />
-        <div className="kl-aurora-wave" />
-      </div>
-
-      {/* ── Nebula orbs ── */}
-      {[
-        { w: 700, h: 700, top: '-15%', left: '-10%', color: '#3b82f6', dur: '30s', opacity: 0.07 },
-        { w: 600, h: 600, top: '20%', right: '-8%', color: '#06b6d4', dur: '38s', opacity: 0.07 },
-        { w: 800, h: 800, bottom: '-20%', left: '20%', color: '#8b5cf6', dur: '45s', opacity: 0.06 },
-      ].map((n, i) => (
-        <div
-          key={i}
-          className="kl-nebula"
-          style={{
-            width: n.w, height: n.h,
-            top: n.top, left: n.left, right: n.right, bottom: n.bottom,
-            background: n.color,
-            opacity: n.opacity,
-            animationDuration: n.dur,
-            animationDelay: `${i * 3}s`,
-          }}
-        />
-      ))}
-
-      {/* ── Small glowing orbs ── */}
-      {[
-        { size: 12, top: '20%', left: '10%', color: '#3b82f6', dur: '4s' },
-        { size: 8, top: '70%', left: '8%', color: '#06b6d4', dur: '5.5s' },
-        { size: 14, top: '15%', right: '12%', color: '#8b5cf6', dur: '3.5s' },
-        { size: 9, top: '75%', right: '9%', color: '#60a5fa', dur: '6s' },
-      ].map((o, i) => (
-        <div
-          key={i}
-          className="kl-orb"
-          style={{
-            width: o.size, height: o.size,
-            top: o.top, left: o.left, right: o.right,
-            background: o.color,
-            color: o.color,
-            boxShadow: `0 0 20px ${o.color}`,
-            animationDuration: o.dur,
-            animationDelay: `${i * 1.2}s`,
-          }}
-        />
-      ))}
+      {/* Background animations removed for performance and stability */}
 
       {/* ── Login Card ── */}
       <div className="kl-root">
