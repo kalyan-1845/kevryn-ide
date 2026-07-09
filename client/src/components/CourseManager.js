@@ -45,7 +45,7 @@ const CourseManager = ({ token, serverUrl, userId }) => {
         if (!newCourse.name || !newCourse.code) return alert("Name and Code are required");
         try {
             const res = await api.post('/api/courses', newCourse);
-            setCourses([...courses, res.data]);
+            setCourses([...courses, res.data.course]);
             setShowCreateModal(false);
             setNewCourse({ name: '', code: '', semester: 'Sem 1', description: '' });
         } catch (e) {
