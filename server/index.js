@@ -2268,67 +2268,65 @@ class ConcurrencyLimiter {
 }
 const fileSaveQueue = new ConcurrencyLimiter(15);
 
-app.put('/files/:id', authenticate, (req, res) => {
-    // 1. Immediately acknowledge the save request for zero lag on the client
-    res.status(202).json({ message: "Save accepted and queued" });
+app.put('/files/:id', authenticate, async (req, res) => {
+    try {
+        const { newName, content, lastRunOutput, lastRunTime } = req.body;
+        const updateFields = {};
+        if (newName !== undefined) updateFields.name = newName;
+        if (content !== undefined) updateFields.content = content;
+        if (lastRunOutput !== undefined) updateFields.lastRunOutput = lastRunOutput;
+        if (lastRunTime !== undefined) updateFields.lastRunTime = lastRunTime;
 
-    // 2. Queue the heavy lifting in the background with a max concurrency of 15
-    fileSaveQueue.add(async () => {
-        try {
-            const { newName, content, lastRunOutput, lastRunTime } = req.body;
-            const updateFields = {};
-            if (newName !== undefined) updateFields.name = newName;
-            if (content !== undefined) updateFields.content = content;
-            if (lastRunOutput !== undefined) updateFields.lastRunOutput = lastRunOutput;
-            if (lastRunTime !== undefined) updateFields.lastRunTime = lastRunTime;
-
-            // --- TIMELINE: Save snapshot on explicit save if different from last history ---
-            if (content !== undefined && req.query.autoSave !== 'true') {
-                const latestHistory = await FileHistory.findOne({ fileId: req.params.id }).sort({ savedAt: -1 });
-                if (!latestHistory || latestHistory.content !== content) {
-                    const history = new FileHistory({
-                        fileId: req.params.id,
-                        content: content,
-                        savedBy: req.user.userId
-                    });
-                    await history.save();
-                    console.log(`[TIMELINE] Snapshot created for file ${req.params.id} by user ${req.user.userId}`);
-                } else {
-                    console.log(`[TIMELINE] Snapshot skipped for file ${req.params.id} (content identical to last history)`);
-                }
+        // --- TIMELINE: Save snapshot on explicit save if different from last history ---
+        if (content !== undefined && req.query.autoSave !== 'true') {
+            const latestHistory = await FileHistory.findOne({ fileId: req.params.id }).sort({ savedAt: -1 });
+            if (!latestHistory || latestHistory.content !== content) {
+                const history = new FileHistory({
+                    fileId: req.params.id,
+                    content: content,
+                    savedBy: req.user.userId
+                });
+                await history.save();
+                console.log(`[TIMELINE] Snapshot created for file ${req.params.id} by user ${req.user.userId}`);
+            } else {
+                console.log(`[TIMELINE] Snapshot skipped for file ${req.params.id} (content identical to last history)`);
             }
-
-            const file = await File.findOneAndUpdate(
-                {
-                    _id: req.params.id,
-                    $or: [
-                        { owner: req.user.userId },
-                        { sharedWith: req.user.username }
-                    ]
-                },
-                updateFields,
-                { new: true }
-            );
-            if (!file) {
-                console.error(`[SAVE QUEUE ERROR] File not found or access denied for ID: ${req.params.id}`);
-                return;
-            }
-
-            // SYNC TO DISK: Write updated content to user's project directory asynchronously
-            if (content !== undefined) {
-                try {
-                    const userDir = file.courseId ? getLabDir(file.owner || req.user.userId, file.courseId) : getUserDir(file.owner || req.user.userId);
-                    const filePath = path.join(userDir, file.name);
-                    await fs.promises.writeFile(filePath, content);
-                    console.log(`[FILE SYNC] Synced ${file.name} to disk at ${filePath}`);
-                } catch (syncErr) {
-                    console.error(`[FILE SYNC] Async disk write failed for ${file?.name}:`, syncErr.message);
-                }
-            }
-        } catch (err) { 
-            console.error("[SAVE QUEUE ERROR] Error updating file in background:", err); 
         }
-    });
+
+        const file = await File.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                $or: [
+                    { owner: req.user.userId },
+                    { sharedWith: req.user.username }
+                ]
+            },
+            updateFields,
+            { new: true }
+        );
+        if (!file) {
+            console.error(`[SAVE ERROR] File not found or access denied for ID: ${req.params.id}`);
+            return res.status(404).json({ error: "File not found" });
+        }
+
+        // SYNC TO DISK: Write updated content to user's project directory asynchronously
+        if (content !== undefined) {
+            try {
+                const userDir = file.courseId ? getLabDir(file.owner || req.user.userId, file.courseId) : getUserDir(file.owner || req.user.userId);
+                const filePath = path.join(userDir, file.name);
+                await fs.promises.writeFile(filePath, content);
+                console.log(`[FILE SYNC] Synced ${file.name} to disk at ${filePath}`);
+            } catch (syncErr) {
+                console.error(`[FILE SYNC] Async disk write failed for ${file?.name}:`, syncErr.message);
+            }
+        }
+        
+        // Immediate response with updated file data
+        res.json(file);
+    } catch (err) {
+        console.error("Save Error:", err);
+        res.status(500).json({ error: "Error updating file" });
+    }
 });
 
 app.get('/files/:id/timeline', authenticate, async (req, res) => {
@@ -2921,8 +2919,8 @@ io.on('connection', (socket) => {
                 fs.mkdirSync(dir, { recursive: true });
             }
 
-            console.log(`[SAVE] Writing to disk: ${filePathOnDisk} | Content Length: ${code?.length || 0}`);
-            fs.writeFileSync(filePathOnDisk, code || "");
+            console.log(`[SAVE] Writing to disk asynchronously: ${filePathOnDisk} | Content Length: ${code?.length || 0}`);
+            await fs.promises.writeFile(filePathOnDisk, code || "");
             console.log(`[FILE SUCCESS] Saved at ${filePathOnDisk}`);
 
             socket.emit('save-complete', fileName || fileId);
