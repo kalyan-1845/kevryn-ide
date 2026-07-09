@@ -164,7 +164,7 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
                 }
             };
 
-            socket.emit('terminal:create', { termId, userId });
+            socket.emit('terminal:create', { termId, userId, courseId: activeSessionCourseId });
             socket.on('terminal:data', handleData);
 
             const onDataHandler = term.onData((data) => {

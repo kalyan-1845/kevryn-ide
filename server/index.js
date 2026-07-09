@@ -2948,7 +2948,7 @@ io.on('connection', (socket) => {
     // --- TERMINAL HANDLING ---
     const terminals = {}; // Store active terminals for this socket
 
-    socket.on('terminal:create', ({ termId, userId }) => {
+    socket.on('terminal:create', ({ termId, userId, courseId: payloadCourseId }) => {
         console.log(`[TERMINAL] Request to create terminal ${termId} for user ${userId}`);
 
         // CHECK: Debounce creation to prevent rapid crash loops
@@ -2977,7 +2977,8 @@ io.on('connection', (socket) => {
         // FIX: Use cmd.exe for better stability on this environment
         const shell = os.platform() === 'win32' ? 'cmd.exe' : 'bash';
 
-        let { courseId } = socket.handshake.query || {};
+        let { courseId: handshakeCourseId } = socket.handshake.query || {};
+        let courseId = payloadCourseId || handshakeCourseId;
         console.log(`[TERMINAL] CourseId check: '${courseId}' (${typeof courseId})`);
 
         // FIX: Sanitize courseId
