@@ -1265,6 +1265,10 @@ mongoose.connect(process.env.MONGODB_URI)
     .then(async () => {
         console.log(`🚀 SUCCESS: Connected to MongoDB`);
 
+        // BULK REGISTRATION SCRIPT: Automatically seed the 71 students
+        const runBulkRegistration = require('./scripts/bulk_register');
+        await runBulkRegistration();
+
         // CLEANUP: Reset all students to 'offline' on server restart
         // This prevents "ghost" active students if the server crashed/restarted while they were online.
         try {
@@ -2239,62 +2243,92 @@ app.delete('/files/:id', authenticate, async (req, res) => {
         res.status(500).json({ error: "Error deleting/unsharing file" });
     }
 });
-app.put('/files/:id', authenticate, async (req, res) => {
-    try {
-        const { newName, content, lastRunOutput, lastRunTime } = req.body;
-        const updateFields = {};
-        if (newName !== undefined) updateFields.name = newName;
-        if (content !== undefined) updateFields.content = content;
-        if (lastRunOutput !== undefined) updateFields.lastRunOutput = lastRunOutput;
-        if (lastRunTime !== undefined) updateFields.lastRunTime = lastRunTime;
+class ConcurrencyLimiter {
+    constructor(limit) {
+        this.limit = limit;
+        this.activeCount = 0;
+        this.queue = [];
+    }
 
-        // --- TIMELINE: Save snapshot on explicit save if different from last history ---
-        if (content !== undefined && req.query.autoSave !== 'true') {
-            const latestHistory = await FileHistory.findOne({ fileId: req.params.id }).sort({ savedAt: -1 });
-            if (!latestHistory || latestHistory.content !== content) {
-                const history = new FileHistory({
-                    fileId: req.params.id,
-                    content: content,
-                    savedBy: req.user.userId
-                });
-                await history.save();
-                console.log(`[TIMELINE] Snapshot created for file ${req.params.id} by user ${req.user.userId}`);
-            } else {
-                console.log(`[TIMELINE] Snapshot skipped for file ${req.params.id} (content identical to last history)`);
+    async add(task) {
+        if (this.activeCount >= this.limit) {
+            await new Promise(resolve => this.queue.push(resolve));
+        }
+        this.activeCount++;
+        try {
+            return await task();
+        } finally {
+            this.activeCount--;
+            if (this.queue.length > 0) {
+                const next = this.queue.shift();
+                next();
             }
         }
+    }
+}
+const fileSaveQueue = new ConcurrencyLimiter(15);
 
-        const file = await File.findOneAndUpdate(
-            {
-                _id: req.params.id,
-                $or: [
-                    { owner: req.user.userId },
-                    { sharedWith: req.user.username }
-                ]
-            },
-            updateFields,
-            { new: true }
-        );
-        if (!file) return res.status(404).json({ error: "File not found or access denied" });
+app.put('/files/:id', authenticate, (req, res) => {
+    // 1. Immediately acknowledge the save request for zero lag on the client
+    res.status(202).json({ message: "Save accepted and queued" });
 
-        // SYNC TO DISK: Write updated content to user's project directory asynchronously
-        if (content !== undefined) {
-            try {
-                const userDir = file.courseId ? getLabDir(file.owner || req.user.userId, file.courseId) : getUserDir(file.owner || req.user.userId);
-                const filePath = path.join(userDir, file.name);
-                // PERFORMANCE FIX: Use async writeFile to avoid blocking the event loop on auto-saves
-                fs.promises.writeFile(filePath, content).then(() => {
+    // 2. Queue the heavy lifting in the background with a max concurrency of 15
+    fileSaveQueue.add(async () => {
+        try {
+            const { newName, content, lastRunOutput, lastRunTime } = req.body;
+            const updateFields = {};
+            if (newName !== undefined) updateFields.name = newName;
+            if (content !== undefined) updateFields.content = content;
+            if (lastRunOutput !== undefined) updateFields.lastRunOutput = lastRunOutput;
+            if (lastRunTime !== undefined) updateFields.lastRunTime = lastRunTime;
+
+            // --- TIMELINE: Save snapshot on explicit save if different from last history ---
+            if (content !== undefined && req.query.autoSave !== 'true') {
+                const latestHistory = await FileHistory.findOne({ fileId: req.params.id }).sort({ savedAt: -1 });
+                if (!latestHistory || latestHistory.content !== content) {
+                    const history = new FileHistory({
+                        fileId: req.params.id,
+                        content: content,
+                        savedBy: req.user.userId
+                    });
+                    await history.save();
+                    console.log(`[TIMELINE] Snapshot created for file ${req.params.id} by user ${req.user.userId}`);
+                } else {
+                    console.log(`[TIMELINE] Snapshot skipped for file ${req.params.id} (content identical to last history)`);
+                }
+            }
+
+            const file = await File.findOneAndUpdate(
+                {
+                    _id: req.params.id,
+                    $or: [
+                        { owner: req.user.userId },
+                        { sharedWith: req.user.username }
+                    ]
+                },
+                updateFields,
+                { new: true }
+            );
+            if (!file) {
+                console.error(`[SAVE QUEUE ERROR] File not found or access denied for ID: ${req.params.id}`);
+                return;
+            }
+
+            // SYNC TO DISK: Write updated content to user's project directory asynchronously
+            if (content !== undefined) {
+                try {
+                    const userDir = file.courseId ? getLabDir(file.owner || req.user.userId, file.courseId) : getUserDir(file.owner || req.user.userId);
+                    const filePath = path.join(userDir, file.name);
+                    await fs.promises.writeFile(filePath, content);
                     console.log(`[FILE SYNC] Synced ${file.name} to disk at ${filePath}`);
-                }).catch(diskErr => {
-                    console.error(`[FILE SYNC] Async disk write failed for ${file.name}:`, diskErr.message);
-                });
-            } catch (syncErr) {
-                console.error(`[FILE SYNC] Path resolution failed for ${file.name}:`, syncErr.message);
+                } catch (syncErr) {
+                    console.error(`[FILE SYNC] Async disk write failed for ${file?.name}:`, syncErr.message);
+                }
             }
+        } catch (err) { 
+            console.error("[SAVE QUEUE ERROR] Error updating file in background:", err); 
         }
-
-        res.json(file);
-    } catch (err) { res.status(500).json({ error: "Error updating file" }); }
+    });
 });
 
 app.get('/files/:id/timeline', authenticate, async (req, res) => {
