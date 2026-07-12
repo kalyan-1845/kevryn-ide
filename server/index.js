@@ -2762,7 +2762,7 @@ io.on('connection', (socket) => {
 
     // Paste Event (Consolidated & Persisted)
     socket.on('student-raise-hand', async ({ sessionId, username }) => {
-        io.to(sessionId).emit('student-raise-hand', { username });
+        io.to(`lab-${sessionId}`).emit('student-raise-hand', { username });
 
         // Update DB timeline
         const session = await LabSession.findById(sessionId);
@@ -2782,7 +2782,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('faculty-acknowledge', async ({ sessionId, username }) => {
-        io.to(sessionId).emit('faculty-acknowledge', { username });
+        io.to(`lab-${sessionId}`).emit('faculty-acknowledge', { username });
 
         // Update DB timeline and set raiseHand to false
         const session = await LabSession.findById(sessionId);
