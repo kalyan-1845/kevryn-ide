@@ -5,11 +5,12 @@ import Terminal from './Terminal';
 import io from 'socket.io-client';
 import axios from 'axios';
 import { WebContainerBridge } from '../services/WebContainerBridge';
+import { ExecutionService } from '../services/execution/ExecutionService';
 
 const _raw = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
 const SERVER_URL = _raw.startsWith('http') ? _raw : `https://${_raw}`;
 
-const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogout }) => {
+const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogout, localWorkspacePath }) => {
     const [timeLeft, setTimeLeft] = useState(null);
     const [files, setFiles] = useState([]);
     const [activeFile, setActiveFile] = useState(null);
@@ -159,8 +160,10 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             setTimeout(() => setAnnouncement(null), 10000);
         });
 
-        sock.on('faculty-acknowledge', () => {
-            setHandRaised(false);
+        sock.on('faculty-acknowledge', ({ username: ackUsername }) => {
+            if (ackUsername === username) {
+                setHandRaised(false);
+            }
         });
 
         return () => {
@@ -241,8 +244,42 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const interval = setInterval(() => sendHeartbeat(), 15000); // 15s backup
         sendHeartbeat(); // Immediate
 
-        const onFocus = () => { sendHeartbeat('active'); updateStatus('active'); };
-        const onBlur = () => { sendHeartbeat('idle'); updateStatus('idle'); };
+        const onFocus = () => { 
+            sendHeartbeat('active'); 
+            updateStatus('active'); 
+            // Return from Alt+Tab in Desktop App
+            if (localWorkspacePath && window.electronAPI) {
+                const sId = session.sessionId || session._id;
+                if (socketRef.current) {
+                    socketRef.current.emit('student-tab-switch', {
+                        sessionId: sId,
+                        username,
+                        direction: 'returned',
+                        count: tabCountRef.current,
+                        type: 'alt-tab'
+                    });
+                }
+            }
+        };
+        const onBlur = () => { 
+            sendHeartbeat('idle'); 
+            updateStatus('idle'); 
+            // Track Alt+Tab in Desktop App
+            if (localWorkspacePath && window.electronAPI) {
+                const sId = session.sessionId || session._id;
+                tabCountRef.current += 1;
+                setTabSwitches(tabCountRef.current);
+                if (socketRef.current) {
+                    socketRef.current.emit('student-tab-switch', {
+                        sessionId: sId,
+                        username,
+                        direction: 'left',
+                        count: tabCountRef.current,
+                        type: 'alt-tab'
+                    });
+                }
+            }
+        };
 
         window.addEventListener('focus', onFocus);
         window.addEventListener('blur', onBlur);
@@ -300,11 +337,14 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         };
         document.addEventListener('paste', handlePaste);
 
-        // Security: Block Copy/Paste
+        // Security: Block Copy/Paste and Fullscreen Exits
         const blockShortcuts = (e) => {
             if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
                 e.preventDefault();
-                // console.warn("Action blocked in Lab Mode");
+            }
+            if (e.key === 'F11' || e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
             }
         };
         window.addEventListener('keydown', blockShortcuts);
@@ -389,15 +429,18 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         if (!filename) return null;
         const ext = filename.split('.').pop().toLowerCase();
         
-        // Windows-friendly commands for cmd.exe
-        const isWin = true; // We know server is Windows from environment
+        // Cross-platform compatibility for Windows PowerShell vs Linux Bash
+        const isWin = navigator.userAgent.toLowerCase().includes('windows');
+        const exeExt = isWin ? '.exe' : '';
+        const runPrefix = isWin ? '.\\' : './';
+        const sep = isWin ? ';' : '&&';
         
         const commands = {
             'js': `node "${filename}"`,
             'py': `python3 "${filename}"`,
-            'java': `javac "${filename}" && java "${filename.replace('.java', '')}"`,
-            'c': `gcc "${filename}" -o output && ./output; echo ""`,
-            'cpp': `g++ "${filename}" -o output && ./output; echo ""`,
+            'java': `javac "${filename}" ${sep} java "${filename.replace('.java', '')}"`,
+            'c': `gcc "${filename}" -o output${exeExt} ${sep} ${runPrefix}output${exeExt}`,
+            'cpp': `g++ "${filename}" -o output${exeExt} ${sep} ${runPrefix}output${exeExt}`,
             'rb': `ruby "${filename}"`,
             'go': `go run "${filename}"`,
             'php': `php "${filename}"`,
@@ -542,6 +585,18 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                     console.error("[LabMode] WebContainer sync failed:", wcErr);
                 }
             }
+            
+            // Native Local Lab Save
+            if (localWorkspacePath && window.electronAPI) {
+                try {
+                    const labPath = `${localWorkspacePath}/lab`;
+                    await window.electronAPI.createLocalItem(labPath, 'folder');
+                    await window.electronAPI.writeLocalFile(`${labPath}/${activeFile.name}`, code);
+                    console.log(`[LabMode] Synced ${activeFile.name} to Local Native Lab`);
+                } catch (localErr) {
+                    console.error("[LabMode] Local Native save failed:", localErr);
+                }
+            }
 
             // Also emit to faculty
             emitCodeUpdate();
@@ -581,7 +636,10 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         if (!activeFile || !socketRef.current) return;
 
         const fileName = activeFile.name;
-        const fullPath = findFileFullPath(activeFile._id);
+        let fullPath = findFileFullPath(activeFile._id);
+        if (localWorkspacePath) {
+            fullPath = `${localWorkspacePath}/lab/${fullPath}`;
+        }
 
         if (fileName.endsWith('.html')) {
             await handleSave();
@@ -599,49 +657,17 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         await handleSave();
         setSaving(false); 
 
-        // UPDATED: Enforce server-side execution for most languages as requested
-        const ext = fileName.split('.').pop().toLowerCase();
-        const serverLangs = ['c', 'cpp', 'java', 'py', 'js', 'ts', 'rb', 'go', 'php', 'sh', 'bash'];
-        const isServerLang = serverLangs.includes(ext);
-
-        if (isServerLang) {
-            console.log(`[LabMode] Executing via Server PTY: ${cmd}`);
-            socketRef.current.emit('terminal:write', {
-                termId: 1,
-                data: '\r' + cmd + '\r',
-                courseId: session?.courseId
-            });
-
-            // NEW: Also run silently in background to capture raw output for Faculty Monitor
-            try {
-                const res = await api.post('/run-code', { 
-                    code: activeFile.content || code, 
-                    language: getLanguage(activeFile.name), 
-                    fileName 
-                });
-                if (res.data && res.data.output !== undefined) {
-                    // Update file record with last run output
-                    await api.put(`/files/${activeFile._id}`, { 
-                        lastRunOutput: res.data.output || res.data.error || 'Ran successfully (no output)',
-                        lastRunTime: new Date()
-                    });
-                }
-            } catch (err) {
-                console.error("[LabMode] Background execution recording failed:", err);
-            }
-        } else {
-            // Fallback for others (HTML etc. handled above)
-            const inputWriter = window.ideTerminalInputs && window.ideTerminalInputs[1];
-            if (inputWriter) {
-                await inputWriter.write('\r' + cmd + '\r');
-            } else {
-                socketRef.current.emit('terminal:write', {
-                    termId: 1,
-                    data: '\r' + cmd + '\r',
-                    courseId: session?.courseId
-                });
-            }
-        }
+        await ExecutionService.run({
+            fileName,
+            fullPath,
+            cmd,
+            code: activeFile.content || code,
+            language: getLanguage(activeFile.name),
+            activeFileId: activeFile._id,
+            courseId: session?.courseId,
+            socketRef,
+            api
+        });
     }, [activeFile, handleSave, session, userId, findFileFullPath]);
 
     // --- Keyboard Shortcut: Ctrl+S ---
@@ -982,7 +1008,9 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                                     socket={socketRef.current}
                                     termId={1}
                                     userId={userId}
+                                    courseId={session?.courseId}
                                     webcontainer={isServerLanguage ? null : webcontainer}
+                                    localWorkspacePath={localWorkspacePath ? `${localWorkspacePath}/lab` : null}
                                 />
                             ) : (
                                 <div style={{ padding: '20px', color: '#475569', fontSize: '13px' }}>Connecting to secure terminal shell...</div>

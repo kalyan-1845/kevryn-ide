@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
 import {
-    FaTerminal, FaPlay, FaSave, FaFolderPlus, FaFilePlus, FaFolder, FaFile, FaTrash, FaDownload, FaSync, FaSearch, FaTimes, FaBars, FaChevronRight, FaChevronDown, FaCode, FaCog, FaSignOutAlt, FaRocket, FaGlobe, FaBug, FaCube, FaShieldAlt, FaLightbulb, FaExchangeAlt, FaHistory, FaCheckCircle, FaExclamationTriangle, FaUserGraduate, FaChalkboardTeacher, FaProjectDiagram, FaBook, FaPuzzlePiece, FaMicrochip, FaNetworkWired, FaMagic, FaCloudUploadAlt, FaServer, FaEye, FaShareAlt, FaRobot, FaComments, FaCodeBranch, FaClipboardList, FaPaperPlane, FaPlus, FaEllipsisH, FaChevronUp, FaGithub, FaBell, FaSpinner, FaFolderOpen
+    FaTerminal, FaPlay, FaSave, FaFolderPlus, FaFilePlus, FaFolder, FaFile, FaTrash, FaDownload, FaSync, FaSearch, FaTimes, FaBars, FaChevronRight, FaChevronDown, FaCode, FaCog, FaSignOutAlt, FaRocket, FaGlobe, FaBug, FaCube, FaShieldAlt, FaLightbulb, FaExchangeAlt, FaHistory, FaCheckCircle, FaExclamationTriangle, FaUserGraduate, FaChalkboardTeacher, FaProjectDiagram, FaBook, FaPuzzlePiece, FaMicrochip, FaNetworkWired, FaMagic, FaCloudUploadAlt, FaServer, FaEye, FaShareAlt, FaRobot, FaComments, FaCodeBranch, FaClipboardList, FaPaperPlane, FaPlus, FaEllipsisH, FaChevronUp, FaGithub, FaBell, FaSpinner, FaFolderOpen, FaCloudDownloadAlt
 } from 'react-icons/fa';
 import FileTree from './components/FileTree';
 import Terminal from './components/Terminal';
@@ -28,7 +28,7 @@ import { LanguageRuntime } from './services/LanguageRuntime';
 import LabMode from './components/LabMode';
 import SplashScreen from './components/SplashScreen';
 import CustomDialog from './components/CustomDialog';
-
+import { ExecutionService } from './services/execution/ExecutionService';
 import FacultyHub from './components/FacultyHub'; // NEW: Unified Hub
 import StudentAssignmentView from './components/StudentAssignmentView'; // NEW: Student Assignments
 import AdminDashboard from './components/AdminDashboard'; // NEW: Admin Dashboard
@@ -149,11 +149,30 @@ function App() {
     useEffect(() => { dirtyFilesRef.current = dirtyFiles; }, [dirtyFiles]);
 
     const [activeWorkspaceFolderId, setActiveWorkspaceFolderId] = useState(null);
+    const [localWorkspacePath, setLocalWorkspacePath] = useState(null); // Local Folder Mode
+    const [showDesktopSetup, setShowDesktopSetup] = useState(false);
+
+    // Desktop initialization
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.electronAPI) {
+            window.electronAPI.getWorkspacePath().then(path => {
+                if (path) {
+                    setLocalWorkspacePath(path);
+                } else {
+                    setShowDesktopSetup(true);
+                }
+            }).catch(e => {
+                console.error("Failed to get workspace path", e);
+                setShowDesktopSetup(true);
+            });
+        }
+    }, []);
 
     const fileData = useMemo(() => {
-        if (!files || files.length === 0) return { _id: "root", name: "My Workspace", type: "folder", children: [] };
+        const rootName = localWorkspacePath ? localWorkspacePath.split('\\').pop().split('/').pop() : "My Workspace";
+        if (!files || files.length === 0) return { _id: "root", name: rootName, type: "folder", children: [] };
         
-        const map = {}, nodeTree = { _id: "root", name: "My Workspace", type: "folder", children: [] };
+        const map = {}, nodeTree = { _id: "root", name: rootName, type: "folder", children: [] };
         // Deep copy objects to avoid mutating state if someone accidentally tries to touch the tree
         files.forEach(node => { map[node._id] = { ...node, children: [] }; });
         files.forEach(node => {
@@ -310,7 +329,6 @@ function App() {
 
     // --- CENTRALIZED LOGOUT ---
     const handleLogout = useCallback(() => {
-        // 1. Clear all auth-related local storage
         localStorage.removeItem('token');
         localStorage.removeItem('username');
         localStorage.removeItem('userId');
@@ -336,7 +354,7 @@ function App() {
         setDeployStatus(null);
 
         // 3. Force Reload to clear any lingering React state/sockets
-        window.location.href = "/";
+        window.location.reload();
     }, []);
 
     const findFileFullPath = useCallback((fileId) => {
@@ -359,6 +377,14 @@ function App() {
         setDirtyFiles(prev => ({ ...prev, [activeFileId]: false }));
 
         try {
+            // Native Local Mode
+            if (localWorkspacePath && window.electronAPI) {
+                // activeFileId is the absolute path
+                await window.electronAPI.writeLocalFile(activeFileId, latestCode);
+                return;
+            }
+
+            // Cloud Mode
             await api.put(`/files/${activeFileId}`, { content: latestCode });
             safeEmit('save-file-disk', {
                 fileName: fullPath,
@@ -370,6 +396,7 @@ function App() {
             if (wcBridgeRef.current) {
                 await wcBridgeRef.current.writeFile(fullPath, latestCode);
             }
+
             // Non-intrusive toast instead of alert
             const toast = document.createElement('div');
             toast.textContent = '\u2705 Saved!';
@@ -566,8 +593,39 @@ function App() {
     };
 
 
-    const fetchFiles = useCallback((immediate = false) => {
-        if (!token) return;
+    const fetchFiles = useCallback(async (silent = false) => {
+        if (!userId) return;
+        
+        // Native Local Folder Mode
+        if (localWorkspacePath && window.electronAPI) {
+            try {
+                if (!silent) setIsAppLoading(true);
+                const localFiles = await window.electronAPI.readLocalDir(localWorkspacePath);
+                
+                // Flatten the tree for the existing files state structure, since the legacy tree expects flat arrays with parentId
+                const flattenTree = (nodes, parentId = 'root') => {
+                    let flat = [];
+                    nodes.forEach(node => {
+                        const { children, ...rest } = node;
+                        flat.push({ ...rest, parentId });
+                        if (children && children.length > 0) {
+                            flat = flat.concat(flattenTree(children, node._id));
+                        }
+                    });
+                    return flat;
+                };
+                
+                const flatFiles = flattenTree(localFiles);
+                setFiles(flatFiles);
+                return;
+            } catch (err) {
+                console.error("Failed to read local dir:", err);
+                alert("Could not load local directory");
+            } finally {
+                if (!silent) setIsAppLoading(false);
+            }
+            return;
+        }
 
         // Debounce logic: cancel existing timer
         if (window.fetchFilesTimer) clearTimeout(window.fetchFilesTimer);
@@ -609,12 +667,12 @@ function App() {
             });
         };
 
-        if (immediate) {
+        if (silent) {
             executeAction();
         } else {
             window.fetchFilesTimer = setTimeout(executeAction, 300); // 300ms debounce
         }
-    }, [token, api, activeSession, handleLogout, activeWorkspaceFolderId]);
+    }, [token, api, activeSession, handleLogout, activeWorkspaceFolderId, localWorkspacePath, userId]);
 
     // Handle Global Shortcuts (Ctrl+S, F2, Ctrl+N, Ctrl+Shift+N, Ctrl+W, Ctrl+Tab)
     useEffect(() => {
@@ -1097,10 +1155,24 @@ function App() {
         }
     };
 
-    const createNode = useCallback((type, parentId = 'root') => {
-        if (!userId) return alert("Please login again (User ID missing).");
-        const name = prompt(`Enter ${type} name:`);
+    const createNode = useCallback(async (type, parentId = 'root') => {
+        if (!userId && !localWorkspacePath) return alert("Please login again (User ID missing).");
+        const name = await showDialog({ type: 'prompt', title: `Enter ${type} name:`, defaultValue: '' });
         if (name) {
+            // Native Local Mode
+            if (localWorkspacePath && window.electronAPI) {
+                const targetDir = parentId === 'root' ? localWorkspacePath : parentId;
+                const newPath = targetDir + (targetDir.endsWith('\\') || targetDir.endsWith('/') ? '' : '/') + name;
+                const res = await window.electronAPI.createLocalItem(newPath, type);
+                if (res.success) {
+                    fetchFiles(true);
+                } else {
+                    alert("Failed to create native file: " + res.error);
+                }
+                return;
+            }
+
+            // Cloud Mode
             const courseId = (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined;
             safeEmit('create-node', { parentId, newNode: { name, type }, userId, courseId }, (ack) => {
                 if (ack?.success) {
@@ -1112,7 +1184,20 @@ function App() {
                 }
             });
         }
-    }, [userId, isLabOpen, activeSession, fetchFiles]);
+    }, [userId, localWorkspacePath, isLabOpen, activeSession, fetchFiles, showDialog]);
+
+    const handleCreateProject = useCallback(async () => {
+        const folderName = await showDialog({ type: 'prompt', title: "Enter project folder name:", defaultValue: "my-new-app" });
+        if (folderName) {
+            safeEmit('create-project', { folderName, userId }, (ack) => {
+                if (ack && ack.success) {
+                    fetchFiles(true);
+                } else {
+                    alert("Failed to create project: " + (ack ? ack.error : "Unknown error"));
+                }
+            });
+        }
+    }, [userId, fetchFiles, showDialog]);
 
     const handleFileUpload = (e) => {
         const f = e.target.files[0];
@@ -1170,31 +1255,30 @@ function App() {
     };
 
 
-    const handleSaveAs = async () => {
-        if (!userId) return;
-        const newName = prompt("Save As (Enter new filename):", "copy_" + fileName);
-        if (!newName) return;
-
-        // Create new file with current code
-        safeEmit('create-node', { parentId: 'root', newNode: { name: newName, type: 'file' }, userId });
-
-        // Wait for creation then save content (simulated by timeout or just rely on backend to create empty file then save)
-        // Better: Backend create-node creates empty file. We need to save content to it.
-        // We can listen for node-created and then save, but that's complex async.
-        // Simple hack: wait 500ms then save to disk with new name.
-        // Even better: The backend 'save-file-disk' saves by FILENAME. So if we create it, we can save to it.
-        setTimeout(() => {
-            // Note: For Save As, we don't have the new fileId easily yet unless we listen for creation.
-            // But since it's saved in the root by default if no ID is provided, and Save As currently flattens to root anyway,
-            // we'll keep it as is for now, OR we can pass it if we get it.
+    const handleSaveAs = useCallback(async () => {
+        const newName = await showDialog({ type: 'prompt', title: "Save As (Enter new filename):", defaultValue: "copy_" + fileName });
+        if (newName) {
             safeEmit('save-file-disk', { fileName: newName, code, userId });
-            alert("Saved as " + newName);
-        }, 500);
-    };
+            showDialog({ type: 'alert', title: 'Success', message: "Saved as " + newName });
+        }
+    }, [fileName, code, userId, showDialog]);
 
     const handleDelete = useCallback(async (id) => {
         if (!window.confirm("Delete?")) return;
         try {
+            // Native Local Mode
+            if (localWorkspacePath && window.electronAPI) {
+                const res = await window.electronAPI.deleteLocalItem(id); // id is the absolute path
+                if (res.success) {
+                    if (activeFileId === id) { setActiveFileId(null); setFileName(""); setCode(""); }
+                    fetchFiles(true);
+                } else {
+                    alert("Failed to delete native item: " + res.error);
+                }
+                return;
+            }
+
+            // Cloud Mode
             const fileToDelete = files.find(f => f._id === id);
             await api.delete(`/files/${id}`);
             if (activeFileId === id) { setActiveFileId(null); setFileName(""); setCode(""); }
@@ -1204,17 +1288,37 @@ function App() {
                 fetchFiles();
             }
         } catch (e) { }
-    }, [api, files, activeFileId, fetchFiles]);
+    }, [api, files, activeFileId, fetchFiles, localWorkspacePath]);
+    
     const handleRename = useCallback(async (f) => {
-        const n = f._newName || prompt("New name:", f.name);
+        const n = f._newName || await showDialog({ type: 'prompt', title: "New name:", defaultValue: f.name });
         if (n && n !== f.name) {
             try {
+                // Native Local Mode
+                if (localWorkspacePath && window.electronAPI) {
+                    // Calculate the new path by swapping out the basename
+                    const oldPath = f._id;
+                    const pathParts = oldPath.split(/[\/\\]/);
+                    pathParts[pathParts.length - 1] = n;
+                    const newPath = pathParts.join('/'); // the backend fs can handle forward slashes
+                    
+                    const res = await window.electronAPI.renameLocalItem(oldPath, newPath);
+                    if (res.success) {
+                        if (activeFileId === oldPath) setFileName(n);
+                        fetchFiles(true);
+                    } else {
+                        alert("Failed to rename native item: " + res.error);
+                    }
+                    return;
+                }
+
+                // Cloud Mode
                 await api.put(`/files/${f._id}`, { newName: n });
                 if (activeFileId === f._id) setFileName(n);
                 fetchFiles();
             } catch (e) { console.error('[Rename] Failed:', e); }
         }
-    }, [api, activeFileId, setFileName, fetchFiles]);
+    }, [api, activeFileId, setFileName, fetchFiles, showDialog, localWorkspacePath]);
     const handleDownload = useCallback((file) => {
         if (!file || file.type !== 'file') return;
         const content = file.content || '';
@@ -1248,7 +1352,7 @@ function App() {
         }).catch(() => prompt('Copy this path:', path));
     }, [findFileFullPath]);
 
-    const handleFileClick = useCallback(async (file, lineToJump = null) => {
+    const handleFileClick = async (file, lineToJump = null) => {
         try {
             const prevFileId = activeFileIdRef.current;
             const prevFileName = fileNameRef.current;
@@ -1292,19 +1396,22 @@ function App() {
             if (content !== null) {
                 setCode(content);
             } else {
-                // If it's a new file (not in cache), show a loading placeholder quickly or empty
                 setCode("// Loading...");
                 try {
-                    const res = await api.get(`/files/${targetFile._id}`);
-                    content = res.data.content || "";
+                    if (localWorkspacePath && window.electronAPI) {
+                        content = await window.electronAPI.readLocalFile(targetFile._id) || "";
+                    } else {
+                        const res = await api.get(`/files/${targetFile._id}`);
+                        content = res.data.content || "";
+                    }
                     setCode(content);
                     setOpenFiles(prev => {
                         if (prev.find(f => f._id === targetFile._id)) return prev;
                         return [...prev, { ...targetFile, content }];
                     });
                 } catch (apiErr) {
-                    setCode(`// Error: Failed to load file content from server.\n// Please try reopening the file or check your internet connection.\n// Details: ${apiErr.message}`);
-                    throw apiErr; // Throw so the outer catch can log it
+                    setCode(`// Error: Failed to load file content.\n// Details: ${apiErr.message}`);
+                    throw apiErr; 
                 }
             }
 
@@ -1317,7 +1424,9 @@ function App() {
                 const serverExts = ['java', 'c', 'cpp', 'py', 'go', 'rs', 'php', 'rb'];
                 const webExts = ['html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json'];
                 
-                if (serverExts.includes(ext)) {
+                if (localWorkspacePath) {
+                    setActiveTermId(1); // Force local terminal for all execution when in Desktop App
+                } else if (serverExts.includes(ext)) {
                     setActiveTermId('server-1');
                 } else if (webExts.includes(ext)) {
                     setActiveTermId(1); // Local WebContainer
@@ -1334,7 +1443,7 @@ function App() {
         } catch (e) {
             console.error("[FileClick] Error:", e);
         }
-    }, [userId, api, safeEmit]);
+    };
 
     const closeTab = (e, id) => {
         e.stopPropagation();
@@ -1365,6 +1474,58 @@ function App() {
         const ext = activeFileName.split('.').pop().toLowerCase();
 
         const latestCode = editorRef.current ? editorRef.current.getValue() : code;
+
+        // Native Local Folder Mode save
+        if (localWorkspacePath && window.electronAPI) {
+            try {
+                await window.electronAPI.writeLocalFile(activeFileId, latestCode); // activeFileId is absolute path
+                setDirtyFiles(prev => { const d = { ...prev }; delete d[activeFileId]; return d; });
+            } catch (err) {
+                console.error("Failed to save local file:", err);
+                alert("Failed to save local file");
+                return;
+            }
+            
+            // Still run it using Native Desktop
+            setBottomPanelTab('terminal');
+            setIsBottomPanelOpen(true);
+            await new Promise(r => setTimeout(r, 50));
+            setActiveTermId(1); // Native Desktop uses Local Terminal
+            const ext = activeFileName.split('.').pop().toLowerCase();
+            const fullLangName = ext === 'py' ? 'python' : ext === 'js' ? 'javascript' : ext;
+            
+            // Build the local command
+            const filenameOnly = activeFileId.split(/[\\/]/).pop();
+            const fileNameNoExt = filenameOnly.replace(/\.[^.]+$/, '');
+            const dirPath = activeFileId.substring(0, activeFileId.lastIndexOf(activeFileId.includes('\\') ? '\\' : '/'));
+            const isWin = navigator.userAgent.toLowerCase().includes('windows');
+            const sep = isWin ? ';' : '&&';
+            const runPrefix = isWin ? '.\\\\' : './';
+            const pyCmd = isWin ? 'python' : 'python3';
+            const exeExt = isWin ? '.exe' : '';
+            
+            let localCmd = '';
+            if (ext === 'py') localCmd = `${pyCmd} "${filenameOnly}"`;
+            else if (ext === 'js') localCmd = `node "${filenameOnly}"`;
+            else if (ext === 'java') localCmd = `javac "${filenameOnly}" ${sep} java "${fileNameNoExt}"`;
+            else if (ext === 'c') localCmd = `gcc "${filenameOnly}" -o "${fileNameNoExt}${exeExt}" ${sep} ${runPrefix}${fileNameNoExt}${exeExt}`;
+            else if (ext === 'cpp') localCmd = `g++ "${filenameOnly}" -o "${fileNameNoExt}${exeExt}" ${sep} ${runPrefix}${fileNameNoExt}${exeExt}`;
+            
+            const cdCmd = `cd "${dirPath}"`;
+            const finalCmd = localCmd ? `${cdCmd} ${sep} ${localCmd}` : '';
+
+            await ExecutionService.run({
+                fileName: activeFileId, // absolute path
+                cmd: finalCmd,
+                code: latestCode,
+                language: fullLangName,
+                activeFileId,
+                courseId: undefined,
+                socketRef,
+                api
+            });
+            return;
+        }
 
         // OPTIMIZED: Parallelize DB save and Disk sync for instant performance
         const dbSavePromise = api.put(`/files/${activeFileId}`, { content: latestCode }).catch(e => console.error("DB Save Failed:", e));
@@ -1433,11 +1594,16 @@ function App() {
             await new Promise(r => setTimeout(r, 50));
             setActiveTermId('server-1');
 
-            // Server PTY execution — works for all languages
-            safeEmit('terminal:write', {
-                termId: 'server-1',
-                data: '\r' + cmd + '\r',
-                courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined
+            const fullLangName = ext === 'py' ? 'python' : ext === 'js' ? 'javascript' : ext;
+            await ExecutionService.run({
+                fileName: activeFileName,
+                cmd,
+                code: latestCode,
+                language: fullLangName,
+                activeFileId,
+                courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined,
+                socketRef,
+                api
             });
         } else {
             alert("Auto-run is not configured for this file type. You can manually run it in the terminal.");
@@ -1710,6 +1876,7 @@ function App() {
     if (token && userRole === 'student' && activeSessionId && isLabOpen) {
         return (
             <LabMode
+                localWorkspacePath={localWorkspacePath}
                 session={activeSession} // NEW: Pass the REAL session object (with courseId)
                 username={username}
                 userId={userId}
@@ -1812,6 +1979,36 @@ function App() {
                     onConfirm={dialog.onConfirm}
                     onCancel={dialog.onCancel}
                 />
+            )}
+
+            {/* === NATIVE DESKTOP WORKSPACE SETUP MODAL === */}
+            {showDesktopSetup && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#1e1e2f', padding: '40px', borderRadius: '12px', width: '500px', maxWidth: '90%', textAlign: 'center', border: '1px solid rgba(139, 92, 246, 0.5)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+                        <h2 style={{ margin: '0 0 20px 0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                            <FaFolderOpen color="#a78bfa" /> Kevryn Workspace Setup
+                        </h2>
+                        <p style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.5', marginBottom: '30px' }}>
+                            Welcome to Kevryn Desktop! To give you a true native experience, please select a folder on your computer where your projects and lab files will be saved.
+                        </p>
+                        <button 
+                            className="login-btn" 
+                            style={{ width: '100%', padding: '12px', fontSize: '15px' }}
+                            onClick={async () => {
+                                if (window.electronAPI) {
+                                    const folderPath = await window.electronAPI.selectFolder();
+                                    if (folderPath) {
+                                        await window.electronAPI.saveWorkspacePath(folderPath);
+                                        setLocalWorkspacePath(folderPath);
+                                        setShowDesktopSetup(false);
+                                    }
+                                }
+                            }}
+                        >
+                            <FaFolder style={{ marginRight: '8px' }} /> Choose Workspace Folder
+                        </button>
+                    </div>
+                </div>
             )}
 
             {token && userRole === 'student' && newAssignmentAlert && !isLabOpen && (
@@ -1968,6 +2165,64 @@ function App() {
                                             <div className="dropdown-separator"></div>
                                             <div className="dropdown-option" onClick={handleSave}>Save <span className="shortcut">Ctrl+S</span></div>
                                             <div className="dropdown-option" onClick={handleSaveAs}>Save As...</div>
+                                            <div className="dropdown-separator"></div>
+                                            {typeof window !== 'undefined' && window.electronAPI && (
+                                                <div className="dropdown-option" onClick={async () => {
+                                                    if (window.electronAPI) {
+                                                        const folderPath = await window.electronAPI.selectFolder();
+                                                        if (folderPath) {
+                                                            await window.electronAPI.saveWorkspacePath(folderPath);
+                                                            setLocalWorkspacePath(folderPath);
+                                                            setActiveFileId(null);
+                                                            setFileName("");
+                                                            setCode("// Select a file to start coding...");
+                                                            fetchFiles(true);
+                                                        }
+                                                    }
+                                                }}>
+                                                    <FaFolderOpen size={13} style={{ marginRight: 6 }} /> Open Local Folder
+                                                </div>
+                                            )}
+                                            {typeof window !== 'undefined' && window.electronAPI && localWorkspacePath && (
+                                                <div className="dropdown-option" onClick={async () => {
+                                                    if (!window.confirm("This will download all your Cloud Workspace files into your local directory. Continue?")) return;
+                                                    try {
+                                                        setIsAppLoading(true);
+                                                        // Fetch from cloud API
+                                                        const res = await api.get('/files');
+                                                        const cloudFiles = res.data.files || [];
+                                                        
+                                                        // Helper to recursively write files
+                                                        const writeNodes = async (nodes, currentPath) => {
+                                                            for (const node of nodes) {
+                                                                const targetPath = `${currentPath}/${node.name}`;
+                                                                if (node.type === 'folder') {
+                                                                    await window.electronAPI.createLocalItem(targetPath, 'folder');
+                                                                    const children = cloudFiles.filter(f => f.parentId === node._id);
+                                                                    await writeNodes(children, targetPath);
+                                                                } else {
+                                                                    await window.electronAPI.createLocalItem(targetPath, 'file');
+                                                                    if (node.content) {
+                                                                        await window.electronAPI.writeLocalFile(targetPath, node.content);
+                                                                    }
+                                                                }
+                                                            }
+                                                        };
+                                                        
+                                                        const roots = cloudFiles.filter(f => f.parentId === 'root');
+                                                        await writeNodes(roots, localWorkspacePath);
+                                                        
+                                                        alert("Sync Complete!");
+                                                        fetchFiles(true);
+                                                    } catch (err) {
+                                                        alert("Sync failed: " + err.message);
+                                                    } finally {
+                                                        setIsAppLoading(false);
+                                                    }
+                                                }}>
+                                                    <FaCloudDownloadAlt size={13} style={{ marginRight: 6 }} /> Sync Cloud to Local
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -2484,6 +2739,7 @@ function App() {
                                                                             userId={userId}
                                                                             onError={(err) => setTerminalError(err)}
                                                                             webcontainer={t.type === 'server' ? null : webcontainerInstance}
+                                                                            localWorkspacePath={localWorkspacePath}
                                                                         />
                                                                     </div>
                                                                 );

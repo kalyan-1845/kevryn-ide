@@ -1,0 +1,63 @@
+{
+  "name": "kevryn-desktop",
+  "version": "1.0.0",
+  "description": "KevRyn Native Desktop Runtime",
+  "homepage": "https://kevryn-ide.onrender.com",
+  "author": {
+    "name": "KevRyn",
+    "email": "admin@kevryn.com"
+  },
+  "main": "dist/main/index.js",
+  "scripts": {
+    "start": "npm run build && electron .",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "dist": "npm run build:client && npm run copy:client && npm run build && electron-builder",
+    "dist:linux": "npm run build:client && npm run copy:client && npm run build && electron-builder --linux",
+    "build:client": "cd ../client && npm install && npm run build",
+    "copy:client": "node -e \"const fs = require('fs-extra'); fs.copySync('../client/build', './client-build');\""
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3",
+    "fs-extra": "^11.3.6",
+    "typescript": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.kevryn.desktop",
+    "productName": "KevRyn IDE",
+    "directories": {
+      "output": "dist-bin"
+    },
+    "files": [
+      "dist/**/*",
+      "client-build/**/*",
+      "package.json",
+      "node_modules/**/*",
+      "!node_modules/**/*.gypi",
+      "!node_modules/**/*.cpp",
+      "!node_modules/**/*.h",
+      "!node_modules/**/*.cc"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "kevryn",
+        "repo": "desktop-releases"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "deb"
+      ]
+    }
+  }
+}

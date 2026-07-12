@@ -2761,6 +2761,46 @@ io.on('connection', (socket) => {
     });
 
     // Paste Event (Consolidated & Persisted)
+    socket.on('student-raise-hand', async ({ sessionId, username }) => {
+        io.to(sessionId).emit('student-raise-hand', { username });
+
+        // Update DB timeline
+        const session = await LabSession.findById(sessionId);
+        if (session) {
+            const studentIdx = session.activeStudents.findIndex(s => s.username === username);
+            if (studentIdx >= 0) {
+                session.activeStudents[studentIdx].raiseHand = true;
+                session.timeline.push({
+                    username,
+                    action: 'raise-hand',
+                    timestamp: new Date(),
+                    details: 'Student raised hand for help'
+                });
+                await session.save();
+            }
+        }
+    });
+
+    socket.on('faculty-acknowledge', async ({ sessionId, username }) => {
+        io.to(sessionId).emit('faculty-acknowledge', { username });
+
+        // Update DB timeline and set raiseHand to false
+        const session = await LabSession.findById(sessionId);
+        if (session) {
+            const studentIdx = session.activeStudents.findIndex(s => s.username === username);
+            if (studentIdx >= 0) {
+                session.activeStudents[studentIdx].raiseHand = false;
+                session.timeline.push({
+                    username,
+                    action: 'hand-acknowledged',
+                    timestamp: new Date(),
+                    details: 'Faculty acknowledged student hand'
+                });
+                await session.save();
+            }
+        }
+    });
+
     socket.on('student-paste', async ({ sessionId, username, charCount, count }) => {
         if (sessionId && username) {
             if (!liveLabState[sessionId]) liveLabState[sessionId] = {};

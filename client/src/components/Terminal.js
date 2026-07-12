@@ -3,7 +3,7 @@ import { Terminal as XTerminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
-const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
+const Terminal = ({ socket, termId, userId, webcontainer, courseId, onError, localWorkspacePath }) => {
     const xtermRef = useRef(null);
     const fitAddonRef = useRef(null);
     const shellProcessRef = useRef(null);
@@ -89,8 +89,52 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
 
         let active = true;
         let inputWriter = null;
+        let onDataHandler = null;
+        let onResizeHandler = null;
+
+        const startNativeTerminal = async () => {
+            if (!localWorkspacePath || !window.electronAPI || !active) return;
+            try {
+                const res = await window.electronAPI.spawnTerminal(localWorkspacePath);
+                if (!res.success) {
+                    console.error("[Terminal] Native Shell Load Error:", res.error);
+                    return;
+                }
+
+                // Listen for data from native terminal
+                window.electronAPI.onTerminalData((data) => {
+                    if (active) {
+                        term.write(data);
+                        if (socket) socket.emit('terminal:mirror', { termId, data });
+                    }
+                });
+
+                // Write data from xterm to native terminal
+                onDataHandler = term.onData((data) => {
+                    window.electronAPI.terminalWrite(data);
+                });
+
+                // Handle resize
+                onResizeHandler = term.onResize((size) => {
+                    window.electronAPI.terminalResize(size.cols, size.rows);
+                });
+
+                console.log("[Terminal] Native Desktop Shell Connected");
+
+                return () => {
+                    if (onDataHandler) onDataHandler.dispose();
+                    if (onResizeHandler) onResizeHandler.dispose();
+                };
+            } catch (err) {
+                console.error("[Terminal] Native Shell Exception:", err);
+            }
+        };
 
         const startShell = async () => {
+            if (localWorkspacePath && window.electronAPI) {
+                return startNativeTerminal();
+            }
+
             if (!webcontainer || !active) return;
             try {
                 const shellProcess = await webcontainer.spawn('jsh', {
@@ -134,19 +178,19 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
                 if (!window.ideTerminalInputs) window.ideTerminalInputs = {};
                 window.ideTerminalInputs[termId] = inputWriter;
 
-                const onDataHandler = term.onData((data) => {
+                onDataHandler = term.onData((data) => {
                     if (inputWriter) inputWriter.write(data);
                 });
 
-                const onResizeHandler = term.onResize((size) => {
+                onResizeHandler = term.onResize((size) => {
                     if (shellProcess) shellProcess.resize(size);
                 });
 
                 console.log("[Terminal] WebContainer Shell Connected");
 
                 return () => {
-                    onDataHandler.dispose();
-                    onResizeHandler.dispose();
+                    if (onDataHandler) onDataHandler.dispose();
+                    if (onResizeHandler) onResizeHandler.dispose();
                     if (window.ideTerminalInputs) delete window.ideTerminalInputs[termId];
                 };
             } catch (err) {
@@ -155,7 +199,7 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
         };
 
         const setupSocketFallback = () => {
-            if (!socket || webcontainer || !active) return;
+            if (!socket || webcontainer || (localWorkspacePath && window.electronAPI) || !active) return;
 
             const handleData = ({ termId: id, data }) => {
                 if (id === termId && active) {
@@ -164,7 +208,17 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
                 }
             };
 
-            socket.emit('terminal:create', { termId, userId, courseId: activeSessionCourseId });
+            // Listen to Native Desktop Runtime output
+            if (typeof window !== 'undefined' && window.electronAPI) {
+                window.electronAPI.onTerminalData((data) => {
+                    if (active) {
+                        term.write(data);
+                        term.scrollToBottom();
+                    }
+                });
+            }
+
+            socket.emit('terminal:create', { termId, userId, courseId });
             socket.on('terminal:data', handleData);
 
             const onDataHandler = term.onData((data) => {
@@ -192,7 +246,12 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
         };
 
         let cleanupLogic = null;
-        if (webcontainer) {
+        if (localWorkspacePath && window.electronAPI) {
+            console.log(`[Terminal] ${termId} Re-initializing in NATIVE DESKTOP mode`);
+            term.reset();
+            term.write('\x1b[32m[Native Desktop Terminal: Local Shell Connected]\x1b[0m\r\n');
+            startShell().then(cleanup => cleanupLogic = cleanup);
+        } else if (webcontainer) {
             console.log(`[Terminal] ${termId} Re-initializing in LOCAL (WebContainer) mode`);
             term.reset();
             term.write('\x1b[36m[Local Terminal: WebContainer Connected]\x1b[0m\r\n');
@@ -213,7 +272,7 @@ const Terminal = ({ socket, termId, userId, webcontainer, onError }) => {
             }
             if (cleanupLogic) cleanupLogic();
         };
-    }, [socket, webcontainer, userId, termId]);
+    }, [socket, webcontainer, userId, termId, courseId, localWorkspacePath]);
 
     return (
         <div
