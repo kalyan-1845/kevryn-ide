@@ -32,7 +32,7 @@
     "appId": "com.kevryn.desktop",
     "productName": "KevRyn IDE",
     "directories": {
-      "output": "dist-bin"
+      "output": "dist-releases"
     },
     "files": [
       "dist/**/*",
@@ -57,7 +57,9 @@
     "linux": {
       "target": [
         "deb"
-      ]
+      ],
+      "icon": "build/icon.png",
+      "category": "Development"
     }
   }
 }

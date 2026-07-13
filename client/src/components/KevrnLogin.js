@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { FaGithub, FaEye, FaEyeSlash } from 'react-icons/fa';
+import logoImg from '../assets/logo.png';
 
 /* ============================================================
    KEVRYN – CINEMATIC LOGIN v2.0
@@ -669,7 +670,7 @@ export default function KevrnLogin({
 
             {/* Logo */}
             <div className="kl-logo-wrap">
-              <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Kevryn Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 15px rgba(59, 130, 246, 0.4))' }} />
+              <img src={logoImg} alt="Kevryn Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 15px rgba(59, 130, 246, 0.4))' }} />
             </div>
 
             {/* Heading */}
