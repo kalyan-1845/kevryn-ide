@@ -59,7 +59,10 @@
         "deb"
       ],
       "icon": "build/icon.png",
-      "category": "Development"
+      "category": "Development",
+      "executableArgs": [
+        "--no-sandbox"
+      ]
     }
   }
 }
