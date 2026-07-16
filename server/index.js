@@ -24,7 +24,7 @@ const compression = require('compression');
 // ============================================================
 const initialPort = process.env.PORT;
 require('dotenv').config();
-const PORT = initialPort || process.env.PORT || 5000;
+const PORT = initialPort || process.env.PORT || 10000;
 const app = express();
 const server = http.createServer(app);
 
@@ -209,7 +209,7 @@ app.use((req, res, next) => {
 // --- RATE LIMITING ---
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 50, // 50 attempts per window
+    max: 1000, // 1000 attempts per window (increased for live class)
     message: { error: 'Too many attempts, please try again later.' }
 });
 const aiLimiter = rateLimit({
@@ -236,19 +236,7 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, curl, etc.) or known origins
-        if (!origin) return callback(null, true);
-        const isAllowed = allowedOrigins.some(o =>
-            typeof o === 'string' ? o === origin : o.test(origin)
-        );
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            console.warn(`[CORS] Blocked origin: ${origin}`);
-            callback(null, true); // Allow anyway (permissive for debug)
-        }
-    },
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
@@ -1267,7 +1255,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
         // BULK REGISTRATION SCRIPT: Automatically seed the 71 students
         const runBulkRegistration = require('./scripts/bulk_register');
-        await runBulkRegistration();
+        // await runBulkRegistration(); // DISABLED TO SPEED UP STARTUP
 
         // CLEANUP: Reset all students to 'offline' on server restart
         // This prevents "ghost" active students if the server crashed/restarted while they were online.
@@ -2197,7 +2185,7 @@ app.post('/files', authenticate, async (req, res) => {
         // Also create on disk
         const userDir = courseId ? getLabDir(req.user.userId, courseId) : getUserDir(req.user.userId);
         const filePath = path.join(userDir, name);
-        fs.writeFileSync(filePath, content || '');
+        await fs.promises.writeFile(filePath, content || '');
 
         res.status(201).json(newFile);
     } catch (err) {
@@ -2368,7 +2356,7 @@ app.post('/run-code', authenticate, async (req, res) => {
 
     const tmpDir = path.join(os.tmpdir(), `kevryn_exec_${req.user.userId}_${Date.now()}`);
     try {
-        fs.mkdirSync(tmpDir, { recursive: true });
+        await fs.promises.mkdir(tmpDir, { recursive: true });
         
         // --- GOLD BOOT: Pre-link dependencies for instant run ---
         await goldWorkspace.initializeMagicProject(req.user.userId, language, tmpDir);
@@ -2381,14 +2369,14 @@ app.post('/run-code', authenticate, async (req, res) => {
             case 'python':
             case 'python3': {
                 srcFile = path.join(tmpDir, fileName || 'main.py');
-                fs.writeFileSync(srcFile, code);
+                await fs.promises.writeFile(srcFile, code);
                 cmd = `python3 "${srcFile}"`;
                 break;
             }
             case 'c': {
                 srcFile = path.join(tmpDir, fileName || 'main.c');
                 const outFile = path.join(tmpDir, 'a.out');
-                fs.writeFileSync(srcFile, code);
+                await fs.promises.writeFile(srcFile, code);
                 cmd = `gcc "${srcFile}" -o "${outFile}" && "${outFile}"`;
                 break;
             }
@@ -2396,7 +2384,7 @@ app.post('/run-code', authenticate, async (req, res) => {
             case 'c++': {
                 srcFile = path.join(tmpDir, fileName || 'main.cpp');
                 const outFileCpp = path.join(tmpDir, 'a.out');
-                fs.writeFileSync(srcFile, code);
+                await fs.promises.writeFile(srcFile, code);
                 cmd = `g++ "${srcFile}" -o "${outFileCpp}" && "${outFileCpp}"`;
                 break;
             }
@@ -2405,14 +2393,14 @@ app.post('/run-code', authenticate, async (req, res) => {
                 const classMatch = code.match(/public\s+class\s+(\w+)/);
                 const className = classMatch ? classMatch[1] : 'Main';
                 srcFile = path.join(tmpDir, `${className}.java`);
-                fs.writeFileSync(srcFile, code);
+                await fs.promises.writeFile(srcFile, code);
                 cmd = `javac "${srcFile}" -d "${tmpDir}" && java -cp "${tmpDir}" ${className}`;
                 break;
             }
             case 'javascript':
             case 'node': {
                 srcFile = path.join(tmpDir, fileName || 'main.js');
-                fs.writeFileSync(srcFile, code);
+                await fs.promises.writeFile(srcFile, code);
                 cmd = `node "${srcFile}"`;
                 break;
             }
@@ -2427,7 +2415,7 @@ app.post('/run-code', authenticate, async (req, res) => {
         res.json({ output: null, error: errOutput });
     } finally {
         // Cleanup temp dir
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) { }
+        try { await fs.promises.rm(tmpDir, { recursive: true, force: true }); } catch (e) { }
     }
 });
 
