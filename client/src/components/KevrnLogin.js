@@ -781,7 +781,7 @@ export default function KevrnLogin({
 
                 <div className="kl-oauth-wrap">
                   {/* Google */}
-                  <div className="kl-google-wrap" style={{ width: '100%' }}>
+                  <div className="kl-google-wrap">
                     <GoogleLogin
                       onSuccess={handleGoogleLoginSuccess}
                       onError={() => console.log('Google Login Failed')}
