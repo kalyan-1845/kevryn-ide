@@ -1473,6 +1473,7 @@ function App() {
         const fullPath = findFileFullPath(activeFileId);
         const activeFileName = fullPath;
         const ext = activeFileName.split('.').pop().toLowerCase();
+        const serverExts = ['java', 'c', 'cpp', 'py', 'go', 'rs', 'php', 'rb'];
 
         const latestCode = editorRef.current ? editorRef.current.getValue() : code;
 
@@ -2373,7 +2374,7 @@ function App() {
                                     <button 
                                         onClick={async () => {
                                             if (dirtyFiles[activeFileId]) {
-                                                await saveFile(); // Auto-save before running
+                                                await handleSave(); // Auto-save before running
                                             }
                                             runCode();
                                         }} 
