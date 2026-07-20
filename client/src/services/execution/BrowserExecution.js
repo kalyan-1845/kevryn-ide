@@ -8,7 +8,7 @@ export class BrowserExecution {
 
         if (isServerLang) {
             options.socketRef.current?.emit('terminal:write', {
-                termId: 1,
+                termId: options.termId || 'server-1',
                 data: '\r' + options.cmd + '\r',
                 courseId: options.courseId
             });
@@ -29,12 +29,13 @@ export class BrowserExecution {
                 console.error("[BrowserExecution] Background execution recording failed:", err);
             }
         } else {
-            const inputWriter = window.ideTerminalInputs && window.ideTerminalInputs[1];
+            const targetTermId = options.termId || 1;
+            const inputWriter = window.ideTerminalInputs && window.ideTerminalInputs[targetTermId];
             if (inputWriter) {
                 await inputWriter.write('\r' + options.cmd + '\r');
             } else {
                 options.socketRef.current?.emit('terminal:write', {
-                    termId: 1,
+                    termId: targetTermId,
                     data: '\r' + options.cmd + '\r',
                     courseId: options.courseId
                 });

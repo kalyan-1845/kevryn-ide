@@ -1521,7 +1521,8 @@ function App() {
                 activeFileId,
                 courseId: undefined,
                 socketRef,
-                api
+                api,
+                termId: serverExts.includes(ext) ? 'server-1' : 1
             });
             return;
         }
@@ -1602,7 +1603,8 @@ function App() {
                 activeFileId,
                 courseId: (isLabOpen && activeSession?.courseId) ? activeSession.courseId : undefined,
                 socketRef,
-                api
+                api,
+                termId: 'server-1'
             });
         } else {
             alert("Auto-run is not configured for this file type. You can manually run it in the terminal.");
