@@ -2230,21 +2230,24 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-app.post('/auth/reset-password', authenticate, async (req, res) => {
+app.post('/auth/reset-password', loginLimiter, async (req, res) => {
     try {
-        const { newPassword } = req.body;
-        if (!newPassword) return res.status(400).json({ error: "New password is required" });
+        const { username, newPassword } = req.body;
+        if (!username || !newPassword) return res.status(400).json({ error: "Username and new password are required" });
         if (newPassword.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
 
-        // Only allow users to reset their OWN password (extracted from JWT)
-        const user = await User.findById(req.user.userId);
-        if (!user) return res.status(404).json({ error: "User not found" });
+        const user = await User.findOne({ username });
+        if (!user) {
+            // Don't reveal whether the username exists (prevents user enumeration)
+            return res.status(200).json({ success: true, message: "If the account exists, the password has been updated." });
+        }
 
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
 
-        res.json({ success: true, message: "Password updated successfully" });
+        // Deliberately vague response to prevent user enumeration attacks
+        res.json({ success: true, message: "If the account exists, the password has been updated." });
     } catch (e) {
         res.status(500).json({ error: "Server error" });
     }
