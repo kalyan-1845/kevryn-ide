@@ -755,8 +755,6 @@ function App() {
 
     // --- SOCKET INITIALIZATION & LISTENERS ---
     useEffect(() => {
-        if (!token) return;
-
         if (!socketRef.current) {
             console.log("[SOCKET] Initializing...");
             socketRef.current = io(SERVER_URL, {

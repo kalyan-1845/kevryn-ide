@@ -210,12 +210,12 @@ io = new Server(server, {
 });
 
 // --- SOCKET AUTHENTICATION MIDDLEWARE ---
-// Every WebSocket connection must provide a valid JWT token
+// Authenticate if a token is provided, otherwise allow as guest
 io.use((socket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
     if (!token) {
-        console.warn(`[SOCKET AUTH] Connection rejected - no token provided from ${socket.handshake.address}`);
-        return next(new Error('Authentication required'));
+        socket.user = null; // Guest connection
+        return next();
     }
     try {
         const secret = process.env.JWT_SECRET || 'dev_only_secret_DO_NOT_USE_IN_PRODUCTION';
@@ -223,8 +223,9 @@ io.use((socket, next) => {
         socket.user = decoded; // Attach user info to socket
         next();
     } catch (err) {
-        console.warn(`[SOCKET AUTH] Connection rejected - invalid token from ${socket.handshake.address}`);
-        return next(new Error('Invalid or expired token'));
+        console.warn(`[SOCKET AUTH] Invalid token from ${socket.handshake.address} - falling back to guest`);
+        socket.user = null;
+        next();
     }
 });
 
@@ -285,7 +286,12 @@ const allowedOrigins = [
     'http://localhost:3001',
     // Cloudflare Pages deployments (preview + production)
     /^https:\/\/.*\.kevryn-ide\.pages\.dev$/,
-    /^https:\/\/.*\.pages\.dev$/,
+    'https://kevryn-ide.pages.dev',
+    // Electron desktop app protocols
+    /^file:\/\/.*/,
+    /^app:\/\/.*/,
+    /^electron:\/\/.*/,
+    /^https:\/\/.*\.pages\.dev$/
 ];
 
 app.use(cors({
