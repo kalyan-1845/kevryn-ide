@@ -245,6 +245,9 @@ app.get('/', (req, res) => {
     res.send('Kevryn Server is Online');
 });
 
+// --- AUTH MIDDLEWARE ---
+const { authenticate } = require('./utils/authMiddleware');
+
 // --- KEVRYN GREEN AI INITIALIZATION ---
 // Must be applied BEFORE all other middleware to act as the first firewall
 greenAI.initialize(app, mongoose, authenticate);
@@ -383,8 +386,7 @@ app.use(codeExecutionGuard);
 // --- DIRECT GITHUB AUTH CONFIG ---
 // Passport strategies removed in favor of direct API calls.
 
-// --- AUTH MIDDLEWARE ---
-const { authenticate } = require('./utils/authMiddleware');
+// --- AUTH MIDDLEWARE MOVED UP ---
 
 // --- AUTH ROUTES ---
 app.post('/auth/register', async (req, res) => {
