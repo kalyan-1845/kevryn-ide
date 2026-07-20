@@ -1,0 +1,11 @@
+{"timestamp":"2026-07-20T06:44:19.342Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #1 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.344Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #2 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.345Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #3 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.345Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #4 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.346Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #5 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.349Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #6 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.349Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #7 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.349Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #8 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.350Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #9 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.350Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #10 from 99.99.99.99","ip":"99.99.99.99"}
+{"timestamp":"2026-07-20T06:44:19.351Z","level":"BLOCK","category":"FIREWALL","message":"IP BLOCKED: 99.99.99.99 — Brute-force: 10 failed login attempts","ip":"99.99.99.99","reason":"Brute-force: 10 failed login attempts","duration":"30 minutes"}
