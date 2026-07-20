@@ -113,6 +113,15 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const courseManager = require('./routes/courseManager');
 const assignmentManager = require('./routes/assignmentManager');
 const goldWorkspace = require('./utils/GoldWorkspace');
+const {
+    sanitizeInput,
+    codeExecutionGuard,
+    loginLimiter,
+    globalLimiter,
+    executionLimiter,
+    suspiciousActivityLogger,
+    extraSecurityHeaders
+} = require('./utils/security');
 
 app.set('trust proxy', 1);
 
@@ -220,6 +229,9 @@ const aiLimiter = rateLimit({
 
 // --- APPLY RATE LIMITERS EARLY ---
 app.use('/auth', authLimiter);
+app.use('/auth/login', loginLimiter);     // Stricter: 10 attempts/15min for login
+app.use('/auth/register', loginLimiter);  // Stricter: 10 attempts/15min for register
+app.use('/run-code', executionLimiter);   // 30 executions/minute per IP
 app.use('/ai', aiLimiter);
 
 
@@ -277,6 +289,25 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// --- SECURITY HARDENING LAYER ---
+// Helmet: Sets secure HTTP headers (X-DNS-Prefetch-Control, Strict-Transport-Security, etc.)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false, // Managed manually above for WebContainer
+    crossOriginEmbedderPolicy: false, // Managed manually above for WebContainer
+    contentSecurityPolicy: false // Disabled to allow inline scripts in IDE
+}));
+// Global rate limiter: 500 requests/minute per IP
+app.use(globalLimiter);
+// Suspicious activity logger: Detects path traversal, SQL injection, scanner bots
+app.use(suspiciousActivityLogger);
+// Extra security headers: X-Frame-Options, X-XSS-Protection, Permissions-Policy
+app.use(extraSecurityHeaders);
+// Input sanitization: Strips XSS payloads and MongoDB operators from all inputs
+app.use(sanitizeInput);
+// Code execution guard: Scans student code for dangerous OS-level patterns
+app.use(codeExecutionGuard);
 
 // --- SESSION & PASSPORT REMOVED ---
 // We are now using stateless JWT authentication.
