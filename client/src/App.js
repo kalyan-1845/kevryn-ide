@@ -1572,17 +1572,18 @@ function App() {
         const fileNameNoExt = filenameOnly.replace(/\.[^.]+$/, '');
         const exePrefix = './'; // Standard for Linux/Cloud environments
 
+        const relativeFileName = activeFileName.replace(/^\/+/, '');
         // All languages run via server PTY — fast & reliable
         const serverCommands = {
-            'js': `node "${activeFileName}"`,
-            'py': `python3 "${activeFileName}" || python "${activeFileName}"`,
-            'java': `javac "${activeFileName}" && java "${fileNameNoExt}"`,
-            'c': `gcc "${activeFileName}" -o output && ${exePrefix}output; echo ""`,
-            'cpp': `g++ "${activeFileName}" -o output && ${exePrefix}output; echo ""`,
-            'rb': `ruby "${activeFileName}"`,
-            'go': `go run "${activeFileName}"`,
-            'php': `php "${activeFileName}"`,
-            'ts': `npx ts-node "${activeFileName}"`,
+            'js': `node "${relativeFileName}"`,
+            'py': `python3 "${relativeFileName}" || python "${relativeFileName}"`,
+            'java': `javac "${relativeFileName}" && java "${fileNameNoExt}"`,
+            'c': `gcc "${relativeFileName}" -o output && ${exePrefix}output; echo ""`,
+            'cpp': `g++ "${relativeFileName}" -o output && ${exePrefix}output; echo ""`,
+            'rb': `ruby "${relativeFileName}"`,
+            'go': `go run "${relativeFileName}"`,
+            'php': `php "${relativeFileName}"`,
+            'ts': `npx ts-node "${relativeFileName}"`,
         };
         cmd = serverCommands[ext];
 
