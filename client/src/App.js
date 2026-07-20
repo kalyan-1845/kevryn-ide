@@ -2368,15 +2368,16 @@ function App() {
                                         <option value="high-contrast">High Contrast</option>
                                     </select>
                                     <button 
-                                        onClick={() => {
-                                            if (dirtyFiles[activeFileId]) return alert("Please save your file before running! (Educational Lock)");
+                                        onClick={async () => {
+                                            if (dirtyFiles[activeFileId]) {
+                                                await saveFile(); // Auto-save before running
+                                            }
                                             runCode();
                                         }} 
-                                        className={`menubar-action-btn run-btn ${dirtyFiles[activeFileId] ? 'disabled' : ''}`} 
-                                        title={dirtyFiles[activeFileId] ? "Save file first" : "Run"}
-                                        style={dirtyFiles[activeFileId] ? { opacity: 0.5, cursor: 'not-allowed', filter: 'grayscale(100%)' } : {}}
+                                        className="menubar-action-btn run-btn" 
+                                        title="Run Code (Auto-saves)"
                                     >
-                                        {fileName.endsWith('.html') ? <><FaEye size={13} /> Preview</> : <><FaPlay size={11} /> {dirtyFiles[activeFileId] ? "Unsaved" : "Run"}</>}
+                                        {fileName.endsWith('.html') ? <><FaEye size={13} /> Preview</> : <><FaPlay size={11} /> Run</>}
                                     </button>
                                     {isLabOpen && (
                                         <LabTimer
