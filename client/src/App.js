@@ -202,11 +202,13 @@ function App() {
     const [chatVisibility, setChatVisibility] = useState("public");
     const chatEndRef = useRef(null);
 
-    const [terminals, setTerminals] = useState([
-        { id: 'server-1', name: 'Server Terminal', type: 'server' },
-        { id: 1, name: 'Local Terminal', type: 'local' }
-    ]);
-    const [activeTermId, setActiveTermId] = useState(1);
+    const isNativeDesktop = !!window.electronAPI;
+    const initialTerminals = isNativeDesktop 
+        ? [{ id: 1, name: 'Local Terminal', type: 'local' }]
+        : [{ id: 'server-1', name: 'Server Terminal', type: 'server' }];
+
+    const [terminals, setTerminals] = useState(initialTerminals);
+    const [activeTermId, setActiveTermId] = useState(isNativeDesktop ? 1 : 'server-1');
     const [previewKey, setPreviewKey] = useState(Date.now());
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [deployStatus, setDeployStatus] = useState(null);

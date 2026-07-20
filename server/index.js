@@ -3193,9 +3193,10 @@ io.on('connection', (socket) => {
 
     socket.on('terminal:write', ({ termId, data }) => {
         if (terminals[termId]) {
-            // OPTIONAL: Basic command guard can be added here if needed
-            // For now, isolation is primarily via Directory-Per-User
+            console.log(`[TERMINAL] Writing to ${termId}:`, JSON.stringify(data));
             terminals[termId].write(data);
+        } else {
+            console.log(`[TERMINAL] Cannot write to ${termId}, terminal not found!`);
         }
     });
 
