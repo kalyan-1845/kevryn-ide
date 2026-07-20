@@ -9,7 +9,7 @@ export class BrowserExecution {
         if (isServerLang) {
             options.socketRef.current?.emit('terminal:write', {
                 termId: options.termId || 'server-1',
-                data: '\r' + options.cmd + '\r',
+                data: options.cmd + '\r',
                 courseId: options.courseId
             });
 
@@ -32,11 +32,11 @@ export class BrowserExecution {
             const targetTermId = options.termId || 1;
             const inputWriter = window.ideTerminalInputs && window.ideTerminalInputs[targetTermId];
             if (inputWriter) {
-                await inputWriter.write('\r' + options.cmd + '\r');
+                await inputWriter.write(options.cmd + '\r');
             } else {
                 options.socketRef.current?.emit('terminal:write', {
                     termId: targetTermId,
-                    data: '\r' + options.cmd + '\r',
+                    data: options.cmd + '\r',
                     courseId: options.courseId
                 });
             }
