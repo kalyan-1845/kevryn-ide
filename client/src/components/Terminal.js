@@ -220,6 +220,11 @@ const Terminal = ({ socket, termId, userId, webcontainer, courseId, onError, loc
 
             socket.emit('terminal:create', { termId, userId, courseId });
             socket.on('terminal:data', handleData);
+            
+            const onConnectHandler = () => {
+                socket.emit('terminal:create', { termId, userId, courseId });
+            };
+            socket.on('connect', onConnectHandler);
 
             const onDataHandler = term.onData((data) => {
                 if (active) socket.emit('terminal:write', { termId, data });
@@ -240,6 +245,7 @@ const Terminal = ({ socket, termId, userId, webcontainer, courseId, onError, loc
             return () => {
                 socket.emit('terminal:close', { termId });
                 socket.off('terminal:data', handleData);
+                socket.off('connect', onConnectHandler);
                 onDataHandler.dispose();
                 onResizeHandler.dispose();
             };
