@@ -5,7 +5,8 @@ const verifyToken = (req, res, next) => {
     if (!token) return res.status(401).json({ error: "Access denied" });
     if (token.startsWith('Bearer ')) token = token.slice(7);
     try {
-        const verified = jwt.verify(token, process.env.JWT_SECRET || 'my_super_secret_key_123');
+        const secret = process.env.JWT_SECRET || 'dev_only_secret_DO_NOT_USE_IN_PRODUCTION';
+        const verified = jwt.verify(token, secret);
         req.user = verified;
         next();
     } catch (err) {

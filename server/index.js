@@ -68,7 +68,14 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/auth/github/callback';
-const JWT_SECRET = process.env.JWT_SECRET || 'my_super_secret_key_123';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('❌ FATAL: JWT_SECRET environment variable is not set! Server cannot start securely.');
+    console.error('   Set JWT_SECRET in your .env file with a strong random string.');
+    // Allow startup for dev but warn loudly
+    if (process.env.NODE_ENV === 'production') process.exit(1);
+}
+const JWT_SECRET_RESOLVED = JWT_SECRET || 'dev_only_secret_DO_NOT_USE_IN_PRODUCTION';
 
 // Helper to strip Bearer prefix
 const getCleanToken = (header) => {
@@ -248,27 +255,44 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-    origin: true,
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        // Check against whitelist (strings and regex patterns)
+        const isAllowed = allowedOrigins.some(allowed => {
+            if (allowed instanceof RegExp) return allowed.test(origin);
+            return allowed === origin;
+        });
+        if (isAllowed) return callback(null, true);
+        console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+        callback(new Error('CORS: Origin not allowed'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
-// --- CRITICAL DEBUG ROUTES (Top Level) ---
-app.get('/debug-ping', (req, res) => res.json({
-    status: 'online',
-    time: new Date(),
-    env: process.env.NODE_ENV,
-    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-}));
-app.get('/debug-auth-public', (req, res) => {
-    const rawHeader = req.headers.authorization || 'None';
-    res.json({
-        authHeaderPresent: !!req.headers.authorization,
-        authHeaderStart: rawHeader.substring(0, 20) + '...',
-        cleanTokenStart: getCleanToken(rawHeader)?.substring(0, 20) + '...'
+// --- DEBUG ROUTES (Disabled in Production) ---
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/debug-ping', (req, res) => res.json({
+        status: 'online',
+        time: new Date(),
+        env: process.env.NODE_ENV,
+        db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    }));
+    app.get('/debug-auth-public', (req, res) => {
+        const rawHeader = req.headers.authorization || 'None';
+        res.json({
+            authHeaderPresent: !!req.headers.authorization,
+            authHeaderStart: rawHeader.substring(0, 20) + '...',
+            cleanTokenStart: getCleanToken(rawHeader)?.substring(0, 20) + '...'
+        });
     });
-});
+} else {
+    // In production, return 404 for debug routes
+    app.get('/debug-ping', (req, res) => res.status(404).send('Not found'));
+    app.get('/debug-auth-public', (req, res) => res.status(404).send('Not found'));
+}
 
 // --- WEBCONTAINER SECURITY HEADERS (only for non-API routes) ---
 app.use((req, res, next) => {
@@ -287,8 +311,11 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// --- COMPRESSION ---
+app.use(compression());
 
 // --- SECURITY HARDENING LAYER ---
 // Helmet: Sets secure HTTP headers (X-DNS-Prefetch-Control, Strict-Transport-Security, etc.)
@@ -954,7 +981,7 @@ app.post('/lab/add-student', authenticate, async (req, res) => {
 
 // 3. Heartbeat (Student Pulse) — PERFORMANCE OPTIMIZED
 // Previously: 4-6 DB ops per heartbeat call. Now: 1 DB op + in-memory queue.
-app.post('/lab/heartbeat', async (req, res) => {
+app.post('/lab/heartbeat', authenticate, async (req, res) => {
     try {
         const { sessionId, username, status, activeFile, code } = req.body;
         if (!sessionId || !username) return res.status(400).json({ error: "sessionId and username required" });
@@ -1056,7 +1083,7 @@ app.post('/lab/heartbeat', async (req, res) => {
 });
 
 // 4. Get Session Details
-app.get('/lab/session/:id', async (req, res) => {
+app.get('/lab/session/:id', authenticate, async (req, res) => {
     try {
         const session = await LabSession.findById(req.params.id);
         res.json(session);
@@ -1076,7 +1103,7 @@ app.get('/api/users/students', authenticate, async (req, res) => {
 // --- UNIFIED VAYU LAB SYSTEM ROUTES ---
 
 // 5. Get Student's Files (for faculty monitoring)
-app.get('/lab/student-files/:username', async (req, res) => {
+app.get('/lab/student-files/:username', authenticate, async (req, res) => {
     try {
         const { username } = req.params;
         const { sessionId } = req.query;
@@ -1114,7 +1141,7 @@ app.get('/lab/student/active-session', authenticate, async (req, res) => {
 });
 
 // 6. Get Student Portfolio (History & Stats by Subject)
-app.get('/lab/student-portfolio/:username', async (req, res) => {
+app.get('/lab/student-portfolio/:username', authenticate, async (req, res) => {
     try {
         const { username } = req.params;
         // Find all sessions where this student was active or allowed
@@ -1369,7 +1396,7 @@ try {
 const { generateLabReport } = require('./utils/reportGenerator');
 
 // 5. Generate Individual Student Report (PDF)
-app.get('/lab/report/:sessionId/:username', async (req, res) => {
+app.get('/lab/report/:sessionId/:username', authenticate, async (req, res) => {
     try {
         const { sessionId, username } = req.params;
         await generateLabReport(sessionId, username, res);
@@ -2081,7 +2108,9 @@ app.get('/snippets', authenticate, async (req, res) => {
         if (language) query.language = language;
         let snippets;
         if (search) {
-            const regex = new RegExp(search, 'i');
+            // Escape special regex characters to prevent ReDoS injection attacks
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedSearch, 'i');
             query.$or = [
                 { title: regex },
                 { description: regex },
@@ -2171,15 +2200,17 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-app.post('/auth/reset-password', async (req, res) => {
+app.post('/auth/reset-password', authenticate, async (req, res) => {
     try {
-        const { username, newPassword } = req.body;
-        if (!username || !newPassword) return res.status(400).json({ error: "Username and new password are required" });
+        const { newPassword } = req.body;
+        if (!newPassword) return res.status(400).json({ error: "New password is required" });
+        if (newPassword.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
 
-        const user = await User.findOne({ username });
+        // Only allow users to reset their OWN password (extracted from JWT)
+        const user = await User.findById(req.user.userId);
         if (!user) return res.status(404).json({ error: "User not found" });
 
-        const salt = await bcrypt.genSalt(10);
+        const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
 
