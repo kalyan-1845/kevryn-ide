@@ -131,6 +131,7 @@ const {
     suspiciousActivityLogger,
     extraSecurityHeaders
 } = require('./utils/security');
+const greenAI = require('./security/greenai');
 
 app.set('trust proxy', 1);
 
@@ -236,13 +237,16 @@ server.on('error', (err) => {
 // server.listen moved to bottom to ensure all routes are ready before accepting traffic
 
 
-// --- LOUD HEALTH CHECKS ---
+// --- LOUD HEALTH CHECKS (Before Green AI so health probes aren't blocked) ---
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/ready', (req, res) => res.status(200).send('READY'));
 app.get('/', (req, res) => {
-    console.log(`[${new Date().toISOString()}] !!! ROOT HIT !!!`);
     res.send('Kevryn Server is Online');
 });
+
+// --- KEVRYN GREEN AI INITIALIZATION ---
+// Must be applied BEFORE all other middleware to act as the first firewall
+greenAI.initialize(app, mongoose, authenticate);
 
 // --- REQUEST LOGGING ---
 app.use((req, res, next) => {
@@ -2213,6 +2217,8 @@ app.post('/auth/login', async (req, res) => {
         }
 
         if (user.password && await bcrypt.compare(password, user.password)) {
+            // Green AI: Track successful login
+            greenAI.trackLoginSuccess(req.ip);
             // Include collegeId in JWT for query scoping
             const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET, { expiresIn: '1d' });
             // Fetch college name if enrolled
@@ -2223,6 +2229,8 @@ app.post('/auth/login', async (req, res) => {
             }
             res.json({ token, username: user.username, userId: user._id, picture: user.picture, role: user.role, collegeId: user.collegeId || null, collegeName });
         } else {
+            // Green AI: Track failed login attempt
+            greenAI.trackLoginFailure(req.ip);
             res.status(401).json({ error: "Invalid credentials" });
         }
     } catch (err) {
