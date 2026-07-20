@@ -98,6 +98,8 @@ const getGoogleClient = () => {
 };
 
 const cookieParser = require('cookie-parser');
+// Apply cookie parser with secure settings
+app.use(cookieParser(process.env.SESSION_SECRET || 'kevryn_cookie_secret'));
 
 const User = require('./User');
 const File = require('./File');
@@ -191,9 +193,37 @@ const flushHeartbeatQueue = async () => {
 // --- SOCKET INITIALIZATION ---
 io = new Server(server, {
     cors: {
-        origin: true,
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+            const isAllowed = allowedOrigins.some(allowed => {
+                if (allowed instanceof RegExp) return allowed.test(origin);
+                return allowed === origin;
+            });
+            if (isAllowed) return callback(null, true);
+            console.warn(`[SOCKET CORS] Blocked WebSocket from: ${origin}`);
+            callback(new Error('WebSocket origin not allowed'));
+        },
         methods: ["GET", "POST"],
         credentials: true
+    }
+});
+
+// --- SOCKET AUTHENTICATION MIDDLEWARE ---
+// Every WebSocket connection must provide a valid JWT token
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) {
+        console.warn(`[SOCKET AUTH] Connection rejected - no token provided from ${socket.handshake.address}`);
+        return next(new Error('Authentication required'));
+    }
+    try {
+        const secret = process.env.JWT_SECRET || 'dev_only_secret_DO_NOT_USE_IN_PRODUCTION';
+        const decoded = jwt.verify(token, secret);
+        socket.user = decoded; // Attach user info to socket
+        next();
+    } catch (err) {
+        console.warn(`[SOCKET AUTH] Connection rejected - invalid token from ${socket.handshake.address}`);
+        return next(new Error('Invalid or expired token'));
     }
 });
 

@@ -100,7 +100,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const query = {};
         if (session && session.courseId) query.courseId = session.courseId;
 
-        const sock = io(SERVER_URL, { query });
+        const sock = io(SERVER_URL, { query, auth: { token: localStorage.getItem('token') } });
         socketRef.current = sock;
 
         sock.on('connect', () => {

@@ -760,6 +760,7 @@ function App() {
         if (!socketRef.current) {
             console.log("[SOCKET] Initializing...");
             socketRef.current = io(SERVER_URL, {
+                auth: { token: token }, // Send JWT for server-side socket authentication
                 reconnection: true,
                 reconnectionDelay: 1000,
                 reconnectionAttempts: 10
