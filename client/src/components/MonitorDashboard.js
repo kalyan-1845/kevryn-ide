@@ -159,7 +159,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
     // --- SOCKET CONNECTION ---
     useEffect(() => {
         if (!sessionId) return;
-        const socket = io(serverUrl || SERVER_URL);
+        const socket = io(serverUrl || SERVER_URL, { auth: { token: localStorage.getItem('token') } });
         socketRef.current = socket;
 
         socket.on('connect', () => {

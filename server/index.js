@@ -68,7 +68,14 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:5000/auth/github/callback';
-const JWT_SECRET = process.env.JWT_SECRET || 'my_super_secret_key_123';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('❌ FATAL: JWT_SECRET environment variable is not set! Server cannot start securely.');
+    console.error('   Set JWT_SECRET in your .env file with a strong random string.');
+    // Allow startup for dev but warn loudly
+    if (process.env.NODE_ENV === 'production') process.exit(1);
+}
+const JWT_SECRET_RESOLVED = JWT_SECRET || 'dev_only_secret_DO_NOT_USE_IN_PRODUCTION';
 
 // Helper to strip Bearer prefix
 const getCleanToken = (header) => {
@@ -91,6 +98,8 @@ const getGoogleClient = () => {
 };
 
 const cookieParser = require('cookie-parser');
+// Apply cookie parser with secure settings
+app.use(cookieParser(process.env.SESSION_SECRET || 'kevryn_cookie_secret'));
 
 const User = require('./User');
 const File = require('./File');
@@ -113,6 +122,16 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const courseManager = require('./routes/courseManager');
 const assignmentManager = require('./routes/assignmentManager');
 const goldWorkspace = require('./utils/GoldWorkspace');
+const {
+    sanitizeInput,
+    codeExecutionGuard,
+    loginLimiter,
+    globalLimiter,
+    executionLimiter,
+    suspiciousActivityLogger,
+    extraSecurityHeaders
+} = require('./utils/security');
+const greenAI = require('./security/greenai');
 
 app.set('trust proxy', 1);
 
@@ -175,9 +194,37 @@ const flushHeartbeatQueue = async () => {
 // --- SOCKET INITIALIZATION ---
 io = new Server(server, {
     cors: {
-        origin: true,
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+            const isAllowed = allowedOrigins.some(allowed => {
+                if (allowed instanceof RegExp) return allowed.test(origin);
+                return allowed === origin;
+            });
+            if (isAllowed) return callback(null, true);
+            console.warn(`[SOCKET CORS] Blocked WebSocket from: ${origin}`);
+            callback(new Error('WebSocket origin not allowed'));
+        },
         methods: ["GET", "POST"],
         credentials: true
+    }
+});
+
+// --- SOCKET AUTHENTICATION MIDDLEWARE ---
+// Every WebSocket connection must provide a valid JWT token
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) {
+        console.warn(`[SOCKET AUTH] Connection rejected - no token provided from ${socket.handshake.address}`);
+        return next(new Error('Authentication required'));
+    }
+    try {
+        const secret = process.env.JWT_SECRET || 'dev_only_secret_DO_NOT_USE_IN_PRODUCTION';
+        const decoded = jwt.verify(token, secret);
+        socket.user = decoded; // Attach user info to socket
+        next();
+    } catch (err) {
+        console.warn(`[SOCKET AUTH] Connection rejected - invalid token from ${socket.handshake.address}`);
+        return next(new Error('Invalid or expired token'));
     }
 });
 
@@ -190,13 +237,16 @@ server.on('error', (err) => {
 // server.listen moved to bottom to ensure all routes are ready before accepting traffic
 
 
-// --- LOUD HEALTH CHECKS ---
+// --- LOUD HEALTH CHECKS (Before Green AI so health probes aren't blocked) ---
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/ready', (req, res) => res.status(200).send('READY'));
 app.get('/', (req, res) => {
-    console.log(`[${new Date().toISOString()}] !!! ROOT HIT !!!`);
     res.send('Kevryn Server is Online');
 });
+
+// --- KEVRYN GREEN AI INITIALIZATION ---
+// Must be applied BEFORE all other middleware to act as the first firewall
+greenAI.initialize(app, mongoose, authenticate);
 
 // --- REQUEST LOGGING ---
 app.use((req, res, next) => {
@@ -220,6 +270,9 @@ const aiLimiter = rateLimit({
 
 // --- APPLY RATE LIMITERS EARLY ---
 app.use('/auth', authLimiter);
+app.use('/auth/login', loginLimiter);     // Stricter: 10 attempts/15min for login
+app.use('/auth/register', loginLimiter);  // Stricter: 10 attempts/15min for register
+app.use('/run-code', executionLimiter);   // 30 executions/minute per IP
 app.use('/ai', aiLimiter);
 
 
@@ -236,27 +289,44 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-    origin: true,
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        // Check against whitelist (strings and regex patterns)
+        const isAllowed = allowedOrigins.some(allowed => {
+            if (allowed instanceof RegExp) return allowed.test(origin);
+            return allowed === origin;
+        });
+        if (isAllowed) return callback(null, true);
+        console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
+        callback(new Error('CORS: Origin not allowed'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
-// --- CRITICAL DEBUG ROUTES (Top Level) ---
-app.get('/debug-ping', (req, res) => res.json({
-    status: 'online',
-    time: new Date(),
-    env: process.env.NODE_ENV,
-    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-}));
-app.get('/debug-auth-public', (req, res) => {
-    const rawHeader = req.headers.authorization || 'None';
-    res.json({
-        authHeaderPresent: !!req.headers.authorization,
-        authHeaderStart: rawHeader.substring(0, 20) + '...',
-        cleanTokenStart: getCleanToken(rawHeader)?.substring(0, 20) + '...'
+// --- DEBUG ROUTES (Disabled in Production) ---
+if (process.env.NODE_ENV !== 'production') {
+    app.get('/debug-ping', (req, res) => res.json({
+        status: 'online',
+        time: new Date(),
+        env: process.env.NODE_ENV,
+        db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    }));
+    app.get('/debug-auth-public', (req, res) => {
+        const rawHeader = req.headers.authorization || 'None';
+        res.json({
+            authHeaderPresent: !!req.headers.authorization,
+            authHeaderStart: rawHeader.substring(0, 20) + '...',
+            cleanTokenStart: getCleanToken(rawHeader)?.substring(0, 20) + '...'
+        });
     });
-});
+} else {
+    // In production, return 404 for debug routes
+    app.get('/debug-ping', (req, res) => res.status(404).send('Not found'));
+    app.get('/debug-auth-public', (req, res) => res.status(404).send('Not found'));
+}
 
 // --- WEBCONTAINER SECURITY HEADERS (only for non-API routes) ---
 app.use((req, res, next) => {
@@ -275,8 +345,30 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// --- COMPRESSION ---
+app.use(compression());
+
+// --- SECURITY HARDENING LAYER ---
+// Helmet: Sets secure HTTP headers (X-DNS-Prefetch-Control, Strict-Transport-Security, etc.)
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false, // Managed manually above for WebContainer
+    crossOriginEmbedderPolicy: false, // Managed manually above for WebContainer
+    contentSecurityPolicy: false // Disabled to allow inline scripts in IDE
+}));
+// Global rate limiter: 500 requests/minute per IP
+app.use(globalLimiter);
+// Suspicious activity logger: Detects path traversal, SQL injection, scanner bots
+app.use(suspiciousActivityLogger);
+// Extra security headers: X-Frame-Options, X-XSS-Protection, Permissions-Policy
+app.use(extraSecurityHeaders);
+// Input sanitization: Strips XSS payloads and MongoDB operators from all inputs
+app.use(sanitizeInput);
+// Code execution guard: Scans student code for dangerous OS-level patterns
+app.use(codeExecutionGuard);
 
 // --- SESSION & PASSPORT REMOVED ---
 // We are now using stateless JWT authentication.
@@ -923,7 +1015,7 @@ app.post('/lab/add-student', authenticate, async (req, res) => {
 
 // 3. Heartbeat (Student Pulse) — PERFORMANCE OPTIMIZED
 // Previously: 4-6 DB ops per heartbeat call. Now: 1 DB op + in-memory queue.
-app.post('/lab/heartbeat', async (req, res) => {
+app.post('/lab/heartbeat', authenticate, async (req, res) => {
     try {
         const { sessionId, username, status, activeFile, code } = req.body;
         if (!sessionId || !username) return res.status(400).json({ error: "sessionId and username required" });
@@ -1025,7 +1117,7 @@ app.post('/lab/heartbeat', async (req, res) => {
 });
 
 // 4. Get Session Details
-app.get('/lab/session/:id', async (req, res) => {
+app.get('/lab/session/:id', authenticate, async (req, res) => {
     try {
         const session = await LabSession.findById(req.params.id);
         res.json(session);
@@ -1045,7 +1137,7 @@ app.get('/api/users/students', authenticate, async (req, res) => {
 // --- UNIFIED VAYU LAB SYSTEM ROUTES ---
 
 // 5. Get Student's Files (for faculty monitoring)
-app.get('/lab/student-files/:username', async (req, res) => {
+app.get('/lab/student-files/:username', authenticate, async (req, res) => {
     try {
         const { username } = req.params;
         const { sessionId } = req.query;
@@ -1083,7 +1175,7 @@ app.get('/lab/student/active-session', authenticate, async (req, res) => {
 });
 
 // 6. Get Student Portfolio (History & Stats by Subject)
-app.get('/lab/student-portfolio/:username', async (req, res) => {
+app.get('/lab/student-portfolio/:username', authenticate, async (req, res) => {
     try {
         const { username } = req.params;
         // Find all sessions where this student was active or allowed
@@ -1338,7 +1430,7 @@ try {
 const { generateLabReport } = require('./utils/reportGenerator');
 
 // 5. Generate Individual Student Report (PDF)
-app.get('/lab/report/:sessionId/:username', async (req, res) => {
+app.get('/lab/report/:sessionId/:username', authenticate, async (req, res) => {
     try {
         const { sessionId, username } = req.params;
         await generateLabReport(sessionId, username, res);
@@ -2050,7 +2142,9 @@ app.get('/snippets', authenticate, async (req, res) => {
         if (language) query.language = language;
         let snippets;
         if (search) {
-            const regex = new RegExp(search, 'i');
+            // Escape special regex characters to prevent ReDoS injection attacks
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedSearch, 'i');
             query.$or = [
                 { title: regex },
                 { description: regex },
@@ -2123,6 +2217,8 @@ app.post('/auth/login', async (req, res) => {
         }
 
         if (user.password && await bcrypt.compare(password, user.password)) {
+            // Green AI: Track successful login
+            greenAI.trackLoginSuccess(req.ip);
             // Include collegeId in JWT for query scoping
             const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET, { expiresIn: '1d' });
             // Fetch college name if enrolled
@@ -2133,6 +2229,8 @@ app.post('/auth/login', async (req, res) => {
             }
             res.json({ token, username: user.username, userId: user._id, picture: user.picture, role: user.role, collegeId: user.collegeId || null, collegeName });
         } else {
+            // Green AI: Track failed login attempt
+            greenAI.trackLoginFailure(req.ip);
             res.status(401).json({ error: "Invalid credentials" });
         }
     } catch (err) {
@@ -2140,19 +2238,24 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-app.post('/auth/reset-password', async (req, res) => {
+app.post('/auth/reset-password', loginLimiter, async (req, res) => {
     try {
         const { username, newPassword } = req.body;
         if (!username || !newPassword) return res.status(400).json({ error: "Username and new password are required" });
+        if (newPassword.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
 
         const user = await User.findOne({ username });
-        if (!user) return res.status(404).json({ error: "User not found" });
+        if (!user) {
+            // Don't reveal whether the username exists (prevents user enumeration)
+            return res.status(200).json({ success: true, message: "If the account exists, the password has been updated." });
+        }
 
-        const salt = await bcrypt.genSalt(10);
+        const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
 
-        res.json({ success: true, message: "Password updated successfully" });
+        // Deliberately vague response to prevent user enumeration attacks
+        res.json({ success: true, message: "If the account exists, the password has been updated." });
     } catch (e) {
         res.status(500).json({ error: "Server error" });
     }
