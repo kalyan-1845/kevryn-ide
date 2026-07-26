@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { FaGithub, FaEye, FaEyeSlash } from 'react-icons/fa';
 import logoImg from '../assets/logo.png';
+import LegalDocs from './LegalDocs';
 
 /* ============================================================
    KEVRYN – CINEMATIC LOGIN v2.0
@@ -215,8 +216,15 @@ export default function KevrnLogin({
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotData, setForgotData] = useState({ username: '', newPassword: '' });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [activeLegalDoc, setActiveLegalDoc] = useState(null);
 
   const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!agreedToTerms) {
+      alert("You must agree to the Terms & Conditions and Privacy Policy to continue.");
+      return;
+    }
     setIsLoading(true);
     try { await handleAuth(e); }
     finally { setIsLoading(false); }
@@ -755,11 +763,27 @@ export default function KevrnLogin({
                 </div>
               )}
 
+              <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: '16px', gap: '10px' }}>
+                <input 
+                  type="checkbox" 
+                  id="agree-terms"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  style={{ marginTop: '4px', cursor: 'pointer' }}
+                />
+                <label htmlFor="agree-terms" style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                  I agree to the{' '}
+                  <span onClick={() => setActiveLegalDoc('terms')} style={{ color: '#60a5fa', cursor: 'pointer', textDecoration: 'underline' }}>Terms & Conditions</span>
+                  {' '}and{' '}
+                  <span onClick={() => setActiveLegalDoc('privacy')} style={{ color: '#60a5fa', cursor: 'pointer', textDecoration: 'underline' }}>Privacy Policy</span>.
+                </label>
+              </div>
+
               <div className="kl-btn-wrap">
                 <button
                   type="submit"
                   className={`kl-submit${isFacultyLogin ? ' kl-faculty-btn' : ''}`}
-                  disabled={isLoading}
+                  disabled={isLoading || !agreedToTerms}
                 >
                   {isLoading && <span className="kl-spinner" />}
                   {isLogin
@@ -783,7 +807,13 @@ export default function KevrnLogin({
                   {/* Google */}
                   <div className="kl-google-wrap">
                     <GoogleLogin
-                      onSuccess={handleGoogleLoginSuccess}
+                      onSuccess={(res) => {
+                        if (!agreedToTerms) {
+                          alert("You must agree to the Terms & Conditions and Privacy Policy to continue.");
+                          return;
+                        }
+                        handleGoogleLoginSuccess(res);
+                      }}
                       onError={() => console.log('Google Login Failed')}
                       theme="filled_black"
                       shape="rectangular"
