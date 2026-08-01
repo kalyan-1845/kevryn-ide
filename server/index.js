@@ -714,12 +714,24 @@ app.post('/lab/end-session', authenticate, async (req, res) => {
             console.log(`[DIAGNOSTIC] UPDATE RESULT: modified ${result.modifiedCount} sessions`);
 
             // Broadcast session-ended GLOBALLY...
-            sessions.forEach(s => {
-                // Clear live state...
-                if (liveLabState[s._id]) delete liveLabState[s._id];
+            for (const s of sessions) {
+                // Flush liveLabState to DB before deleting
+                if (liveLabState[s._id]) {
+                    for (const [username, data] of Object.entries(liveLabState[s._id])) {
+                        await LabSession.updateOne(
+                            { _id: s._id, "activeStudents.username": username },
+                            { $set: { 
+                                "activeStudents.$.tabSwitchCount": data.tabSwitchCount || 0,
+                                "activeStudents.$.pasteCount": data.pasteCount || 0,
+                                "activeStudents.$.attentionScore": data.attentionScore || 100
+                            }}
+                        );
+                    }
+                    delete liveLabState[s._id];
+                }
                 console.log(`[DIAGNOSTIC] EXPLICIT END-SESSION: Emitting session-ended for ${s._id}`);
                 io.emit('session-ended', { sessionId: s._id });
-            });
+            }
         }
         res.json({ success: true, message: "All active sessions ended" });
     } catch (e) {
@@ -2693,10 +2705,21 @@ io.on('connection', (socket) => {
 
             // PERSIST TO DB: Ensure student is marked as active in DB
             try {
-                await LabSession.updateOne(
-                    { _id: sessionId, "activeStudents.username": username },
-                    { $set: { "activeStudents.$.currentStatus": 'active', "activeStudents.$.lastHeartbeat": new Date() } }
-                );
+                const session = await LabSession.findById(sessionId).lean();
+                if (session) {
+                    const studentExists = session.activeStudents?.some(s => s.username === username);
+                    if (studentExists) {
+                        await LabSession.updateOne(
+                            { _id: sessionId, "activeStudents.username": username },
+                            { $set: { "activeStudents.$.currentStatus": 'active', "activeStudents.$.lastHeartbeat": new Date() } }
+                        );
+                    } else {
+                        await LabSession.updateOne(
+                            { _id: sessionId },
+                            { $push: { activeStudents: { username, loginTime: new Date(), lastHeartbeat: new Date(), currentStatus: 'active' } } }
+                        );
+                    }
+                }
             } catch (err) {
                 console.error(`[LAB DB ERROR] Failed to update join status for ${username}:`, err);
             }
