@@ -95,7 +95,7 @@ const Terminal = ({ socket, termId, userId, webcontainer, courseId, onError, loc
         const startNativeTerminal = async () => {
             if (!localWorkspacePath || !window.electronAPI || !active) return;
             try {
-                const res = await window.electronAPI.spawnTerminal(localWorkspacePath);
+                const res = await window.electronAPI.spawnTerminal(localWorkspacePath, term.cols, term.rows);
                 if (!res.success) {
                     console.error("[Terminal] Native Shell Load Error:", res.error);
                     return;

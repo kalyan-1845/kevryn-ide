@@ -195,14 +195,8 @@ const flushHeartbeatQueue = async () => {
 io = new Server(server, {
     cors: {
         origin: function (origin, callback) {
-            if (!origin) return callback(null, true);
-            const isAllowed = allowedOrigins.some(allowed => {
-                if (allowed instanceof RegExp) return allowed.test(origin);
-                return allowed === origin;
-            });
-            if (isAllowed) return callback(null, true);
-            console.warn(`[SOCKET CORS] Blocked WebSocket from: ${origin}`);
-            callback(new Error('WebSocket origin not allowed'));
+            // Allow all origins for sockets
+            callback(null, true);
         },
         methods: ["GET", "POST"],
         credentials: true
@@ -282,33 +276,10 @@ app.use('/ai', aiLimiter);
 
 // --- CORS & SECURITY MIDDLEWARE ---
 // Explicitly handling CORS for Railway & Netlify production
-const allowedOrigins = [
-    'https://kevryn.netlify.app',
-    'https://kevryn-ide.netlify.app',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    // Cloudflare Pages deployments (preview + production)
-    /^https:\/\/.*\.kevryn-ide\.pages\.dev$/,
-    'https://kevryn-ide.pages.dev',
-    // Electron desktop app protocols
-    /^file:\/\/.*/,
-    /^app:\/\/.*/,
-    /^electron:\/\/.*/,
-    /^https:\/\/.*\.pages\.dev$/
-];
-
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, curl, server-to-server)
-        if (!origin) return callback(null, true);
-        // Check against whitelist (strings and regex patterns)
-        const isAllowed = allowedOrigins.some(allowed => {
-            if (allowed instanceof RegExp) return allowed.test(origin);
-            return allowed === origin;
-        });
-        if (isAllowed) return callback(null, true);
-        console.warn(`[CORS] Blocked request from unauthorized origin: ${origin}`);
-        callback(new Error('CORS: Origin not allowed'));
+        // Allow all origins to prevent CORS blocking issues
+        callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
