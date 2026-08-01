@@ -435,10 +435,15 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const runPrefix = isWin ? '.\\' : './';
         const sep = isWin ? ';' : '&&';
         
+        // Extract dir and base name for compiled languages that need exact paths
+        const dir = filename.includes('/') ? filename.substring(0, filename.lastIndexOf('/')) : '.';
+        const base = filename.includes('/') ? filename.substring(filename.lastIndexOf('/') + 1) : filename;
+        const baseNoExt = base.replace(`.${ext}`, '');
+        
         const commands = {
             'js': `node "${filename}"`,
             'py': `python3 "${filename}"`,
-            'java': `javac "${filename}" ${sep} java "${filename.replace('.java', '')}"`,
+            'java': `javac "${filename}" ${sep} java -cp "${dir}" "${baseNoExt}"`,
             'c': `gcc "${filename}" -o output${exeExt} ${sep} ${runPrefix}output${exeExt}`,
             'cpp': `g++ "${filename}" -o output${exeExt} ${sep} ${runPrefix}output${exeExt}`,
             'rb': `ruby "${filename}"`,
@@ -589,10 +594,8 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             // Native Local Lab Save
             if (localWorkspacePath && window.electronAPI) {
                 try {
-                    const labPath = `${localWorkspacePath}/lab`;
-                    await window.electronAPI.createLocalItem(labPath, 'folder');
-                    await window.electronAPI.writeLocalFile(`${labPath}/${activeFile.name}`, code);
-                    console.log(`[LabMode] Synced ${activeFile.name} to Local Native Lab`);
+                    await window.electronAPI.writeLocalFile(`${localWorkspacePath}/${fullPath}`, code);
+                    console.log(`[LabMode] Synced ${fullPath} to Local Native Workspace`);
                 } catch (localErr) {
                     console.error("[LabMode] Local Native save failed:", localErr);
                 }
@@ -638,7 +641,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const fileName = activeFile.name;
         let fullPath = findFileFullPath(activeFile._id);
         if (localWorkspacePath) {
-            fullPath = `${localWorkspacePath}/lab/${fullPath}`;
+            fullPath = `${localWorkspacePath}/${fullPath}`;
         }
 
         if (fileName.endsWith('.html')) {
@@ -651,7 +654,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             return;
         }
 
-        const cmd = getRunCommand(fileName);
+        const cmd = getRunCommand(fullPath);
         if (!cmd) { alert("No run command for this file type"); return; }
 
         await handleSave();
@@ -1010,7 +1013,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                                     userId={userId}
                                     courseId={session?.courseId}
                                     webcontainer={isServerLanguage ? null : webcontainer}
-                                    localWorkspacePath={localWorkspacePath ? `${localWorkspacePath}/lab` : null}
+                                    localWorkspacePath={localWorkspacePath}
                                 />
                             ) : (
                                 <div style={{ padding: '20px', color: '#475569', fontSize: '13px' }}>Connecting to secure terminal shell...</div>
