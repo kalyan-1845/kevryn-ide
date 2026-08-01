@@ -213,6 +213,19 @@ function App() {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [deployStatus, setDeployStatus] = useState(null);
     const [activePorts, setActivePorts] = useState([]); // NEW: For full-stack framework detection
+    const [updateStatus, setUpdateStatus] = useState(null); // 'available', 'downloading', 'downloaded'
+    const [updateProgress, setUpdateProgress] = useState(0);
+
+    useEffect(() => {
+        if (window.electronAPI && window.electronAPI.onUpdateAvailable) {
+            window.electronAPI.onUpdateAvailable(() => setUpdateStatus('available'));
+            window.electronAPI.onDownloadProgress((info) => {
+                setUpdateStatus('downloading');
+                setUpdateProgress(info.percent || 0);
+            });
+            window.electronAPI.onUpdateDownloaded(() => setUpdateStatus('downloaded'));
+        }
+    }, []);
 
     // --- SLEEK LOADING SCREEN ---
     const LoadingScreen = () => (
@@ -1411,8 +1424,9 @@ function App() {
                         return [...prev, { ...targetFile, content }];
                     });
                 } catch (apiErr) {
+                    isRemoteUpdate.current = true; // DO NOT autosave this error!
                     setCode(`// Error: Failed to load file content.\n// Details: ${apiErr.message}`);
-                    throw apiErr; 
+                    return; 
                 }
             }
 
@@ -2359,6 +2373,24 @@ function App() {
 
                                 {/* ===== RIGHT SIDE ACTION BUTTONS ===== */}
                                 <div className="menubar-right">
+                                    {updateStatus && (
+                                        <div 
+                                            className="update-indicator" 
+                                            onClick={() => updateStatus === 'downloaded' && window.electronAPI.installUpdate()}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px',
+                                                background: updateStatus === 'downloaded' ? '#4caf50' : 'rgba(59, 130, 246, 0.2)',
+                                                border: `1px solid ${updateStatus === 'downloaded' ? '#4caf50' : 'rgba(59, 130, 246, 0.4)'}`,
+                                                borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', cursor: updateStatus === 'downloaded' ? 'pointer' : 'default',
+                                                marginRight: '15px', color: '#fff', transition: 'all 0.3s'
+                                            }}
+                                        >
+                                            <FaSync className={updateStatus === 'downloading' ? 'fa-spin' : ''} size={10} />
+                                            {updateStatus === 'available' ? 'Update Found...' : 
+                                             updateStatus === 'downloading' ? `Downloading ${Math.round(updateProgress)}%` : 
+                                             'Restart to Update'}
+                                        </div>
+                                    )}
                                     <select
                                         value={currentTheme}
                                         onChange={(e) => setCurrentTheme(e.target.value)}

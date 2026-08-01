@@ -3144,7 +3144,7 @@ io.on('connection', (socket) => {
                 fs.mkdirSync(termCwd, { recursive: true });
             }
 
-            const shellArgs = os.platform() === 'win32' ? [] : ['--noprofile', '--norc'];
+            const shellArgs = os.platform() === 'win32' ? [] : [];
             const ptyProcess = pty.spawn(shell, shellArgs, {
                 name: 'xterm-color',
                 cols: 80,
