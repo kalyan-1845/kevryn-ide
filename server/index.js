@@ -2639,7 +2639,8 @@ io.on('connection', (socket) => {
         facultySessionId = sessionId; // Track which session this faculty is monitoring
         if (sessionId) {
             socket.join(`lab-${sessionId}`);
-            console.log(`[LAB] Faculty socket ${socket.id} joined room lab-${sessionId}`);
+            socket.join(`faculty-only-${sessionId}`);
+            console.log(`[LAB] Faculty socket ${socket.id} joined room lab-${sessionId} and faculty-only-${sessionId}`);
 
             try {
                 // Fetch session for whitelisted students
@@ -3185,8 +3186,8 @@ io.on('connection', (socket) => {
     socket.on('terminal:mirror', ({ termId, data }) => {
         if (socketToUser[socket.id]) {
             const { sessionId } = socketToUser[socket.id];
-            // Broadcast to faculty monitoring this session
-            io.to(`lab-${sessionId}`).emit('terminal:data', { termId, data });
+            // Broadcast ONLY to faculty monitoring this session
+            io.to(`faculty-only-${sessionId}`).emit('terminal:data', { termId, data });
         }
     });
 
