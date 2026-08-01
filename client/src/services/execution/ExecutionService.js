@@ -5,7 +5,11 @@ export class ExecutionService {
     static async run(options) {
         const isDesktop = typeof window !== 'undefined' && !!window.electronAPI;
         
-        const strategy = isDesktop 
+        // If we have a courseId, we are strictly inside a Lab environment (Cloud Sync Mode).
+        // General IDE mode uses DesktopExecution natively.
+        const isLabMode = !!options.courseId;
+        
+        const strategy = (isDesktop && !isLabMode)
             ? new DesktopExecution() 
             : new BrowserExecution();
             
