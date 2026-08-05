@@ -237,19 +237,7 @@ const greenAIFirewall = (req, res, next) => {
  * Track failed login attempts. Call this from the auth route on login failure.
  */
 const trackLoginFailure = (ip) => {
-    if (!failedLogins[ip]) {
-        failedLogins[ip] = { count: 0, lastAttempt: new Date(), scannerHits: 0 };
-    }
-    failedLogins[ip].count++;
-    failedLogins[ip].lastAttempt = new Date();
-
-    logEvent('WARN', 'BRUTE_FORCE', `Failed login attempt #${failedLogins[ip].count} from ${ip}`, { ip });
-
-    if (failedLogins[ip].count >= CONFIG.MAX_LOGIN_FAILURES) {
-        stats.totalBruteForceBlocks++;
-        blockIP(ip, `Brute-force: ${failedLogins[ip].count} failed login attempts`);
-        failedLogins[ip].count = 0; // Reset counter after blocking
-    }
+    // Login failure IP blocking completely disabled for college lab environments
 };
 
 /**
