@@ -175,17 +175,10 @@ const codeExecutionGuard = (req, res, next) => {
 // ============================================================
 
 /**
- * Very strict rate limiter specifically for login/register endpoints.
- * 10 attempts per 15 minutes per IP address.
+ * Login rate limiter disabled per requirements for college lab environments.
+ * Students in shared LANs will never be blocked or told to wait 15 minutes.
  */
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,  // 15 minutes
-    max: 10,                    // 10 login attempts
-    message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipSuccessfulRequests: true // Only count failed attempts
-});
+const loginLimiter = (req, res, next) => next();
 
 /**
  * Global API rate limiter - prevents any single IP from overwhelming the server.
