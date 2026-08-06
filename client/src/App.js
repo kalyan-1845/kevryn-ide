@@ -11,6 +11,7 @@ import FileTree from './components/FileTree';
 import Terminal from './components/Terminal';
 import AIPanel from './components/AIPanel';
 import KevRynBackground from './components/KevRynBackground';
+import TopBroadcastBanner from './components/TopBroadcastBanner';
 import { GoogleLogin } from '@react-oauth/google';
 import './App.css';
 import DeploymentPanel from './components/DeploymentPanel';
@@ -55,108 +56,8 @@ function App() {
     const [username, setUsername] = useState(() => { const u = localStorage.getItem('username'); return (u && u !== 'undefined') ? u : ""; });
     const [userId, setUserId] = useState(() => { const id = localStorage.getItem('userId'); return (id && id !== 'undefined') ? id : ""; });
     // Multi-College Tenancy State
-    const [collegeId, setCollegeId] = useState(() => {
-        const id = localStorage.getItem('collegeId');
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-id && id !== 'undefined' && id !== 'null') ? id : null;
-    });
-    const [collegeName, setCollegeName] = useState(() => {
-        const name = localStorage.getItem('collegeName');
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-name && name !== 'undefined' && name !== 'null') ? name : null;
-    });
+    const [collegeId, setCollegeId] = useState(() => { const id = localStorage.getItem('collegeId'); return (id && id !== 'undefined' && id !== 'null') ? id : null; });
+    const [collegeName, setCollegeName] = useState(() => { const name = localStorage.getItem('collegeName'); return (name && name !== 'undefined' && name !== 'null') ? name : null; });
     const [userRole, setUserRole] = useState(localStorage.getItem('role') || "student");
     const [isAppLoading, setIsAppLoading] = useState(() => !!localStorage.getItem('token')); // Load only if token exists
     const [isFacultyLogin, setIsFacultyLogin] = useState(false); // NEW: Faculty Toggle
@@ -574,54 +475,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
             window.addEventListener('mouseup', handleMouseUp);
         }
 
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-) => {
+        return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
@@ -646,54 +500,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-) => window.removeEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -744,54 +551,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
             window.addEventListener('mouseup', handleMouseUp);
         }
 
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-) => {
+        return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
@@ -992,54 +752,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-) => window.removeEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeFileId, fileName, code, handleSave, files, openFiles]);
 
@@ -1178,54 +891,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
         const closeMenu = () => setActiveMenu(null);
         window.addEventListener('click', closeMenu);
 
-        return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-) => {
+        return () => {
             s.off('receive-message');
             s.off('previous-messages');
             s.off('receive-code');
@@ -1332,54 +998,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
             checkAptitude();
             // Poll every 2 minutes for new exams
             const interval = setInterval(checkAptitude, 120000);
-            return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-) => clearInterval(interval);
+            return () => clearInterval(interval);
         }
     }, [token, userRole, api]);
 
@@ -2266,51 +1885,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
     if (token && userRole === 'student' && activeSessionId && isLabOpen) {
         return (
 
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
+      
 
             <LabMode
                 localWorkspacePath={localWorkspacePath}
@@ -2350,55 +1925,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
     if (token && userRole === 'faculty') {
         if (!collegeId) {
             // FACULTY MANDATORY GATE: Block access until college linked
-            return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-
-                <div style={{ position: 'fixed', inset: 0, background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, overflow: 'hidden' }}>
+            return ( <div style={{ position: 'fixed', inset: 0, background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, overflow: 'hidden' }}>
                     <KevRynBackground />
                     <div style={{ position: 'relative', zIndex: 10, background: 'rgba(30, 30, 45, 0.8)', backdropFilter: 'blur(20px)', padding: '40px', borderRadius: '24px', textAlign: 'center', maxWidth: '440px', border: '1px solid rgba(124, 58, 237, 0.3)', boxShadow: '0 0 60px rgba(124, 58, 237, 0.15)' }}>
                         <div style={{ marginBottom: '20px', color: '#7c3aed' }}><FaUserGraduate size={48} /></div>
@@ -2449,54 +1976,9 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
 
     // 4. MAIN IDE OR AUTH SCREEN
     return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-
-        <div className="app-root" onMouseMove={handleGlobalMouseMove} style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <>
+          <TopBroadcastBanner activeBroadcast={activeBroadcast} setActiveBroadcast={setActiveBroadcast} />
+          <div className="app-root" onMouseMove={handleGlobalMouseMove} style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {/* === SPLASH SCREEN === */}
             {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
 
@@ -3286,55 +2768,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
                                                         </div>
                                                         <div style={{ flex: 1, position: 'relative', background: '#1e1e1e' }}>
                                                             {terminals.map(t => {
-                                                                return (
-
-      {/* 📢 TOP FLOATING REAL-TIME BROADCAST BANNER (< 2s Delivery) */}
-      {activeBroadcast && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999999,
-          background: activeBroadcast.priority === 'urgent' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.96), rgba(185, 28, 28, 0.96))' 
-            : activeBroadcast.priority === 'important'
-            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.96), rgba(180, 83, 9, 0.96))'
-            : 'linear-gradient(135deg, rgba(14, 165, 233, 0.96), rgba(3, 105, 161, 0.96))',
-          color: '#fff', padding: '12px 24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          animation: 'slideDownBanner 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-          fontFamily: "'Inter', sans-serif",
-          borderBottom: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', flexShrink: 0 }}>
-              <FaBullhorn size={20} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#e0f2fe' }}>
-                📢 INSTITUTIONAL NOTICE • {activeBroadcast.collegeName || 'KEVRYN GLOBAL'}
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: '800', margin: '2px 0 1px' }}>
-                {activeBroadcast.title}
-              </div>
-              <div style={{ fontSize: '13px', color: '#f0f9ff', opacity: 0.95 }}>
-                {activeBroadcast.message}
-              </div>
-            </div>
-          </div>
-          <button 
-            onClick={() => setActiveBroadcast(null)}
-            style={{
-              background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff',
-              padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
-              fontSize: '12px', transition: 'all 0.2s', flexShrink: 0, marginLeft: '20px'
-            }}
-          >
-            Dismiss ✕
-          </button>
-        </div>
-      )}
-
-                                                                    <div key={t.id} style={{ width: '100%', height: '100%', display: activeTermId === t.id ? 'block' : 'none' }}>
+                                                                return ( <div key={t.id} style={{ width: '100%', height: '100%', display: activeTermId === t.id ? 'block' : 'none' }}>
                                                                         <Terminal
                                                                             key={t.id}
                                                                             socket={socketRef.current}
@@ -3597,6 +3031,7 @@ name && name !== 'undefined' && name !== 'null') ? name : null;
             </AnimatePresence>
             </div>
         </div>
+        </>
     );
 }
 
