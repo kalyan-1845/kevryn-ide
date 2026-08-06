@@ -2164,8 +2164,9 @@ function App() {
 
                         <div className="ide-container" style={{ position: 'relative', zIndex: 10 }}>
                             <div className="menubar">
-                                <div className="beast-logo-wrap" onClick={() => setActiveMenu(null)} style={{ padding: '0 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                    <img src="/logo.png?v=3" alt="Kevryn Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '4px' }} />
+                                <div className="beast-logo-wrap" onClick={() => setActiveMenu(null)} style={{ padding: '0 10px 0 6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <img src="/logo.png?v=4" alt="Kevryn Logo" style={{ height: '22px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(6, 182, 212, 0.6))' }} />
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: '#ffffff', letterSpacing: '0.5px', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '3px' }}>Kevryn <span style={{ color: '#06b6d4' }}>IDE</span></span>
                                 </div>
 
                                 {/* File Menu */}
