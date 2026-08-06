@@ -588,7 +588,7 @@ function App() {
         switch (currentTheme) {
             case 'light': return 'kevryn-light';
             case 'high-contrast': return 'hc-black';
-            default: return 'kevryn-dark'; // Dark, Midnight, Forest
+            default: return 'kevryn-dark';
         }
     };
 
@@ -2397,11 +2397,16 @@ function App() {
                                         className="menubar-select"
                                         title="Theme"
                                     >
-                                        <option value="dark">Dark</option>
-                                        <option value="light">Light</option>
-                                        <option value="midnight">Midnight</option>
-                                        <option value="forest">Forest</option>
-                                        <option value="high-contrast">High Contrast</option>
+                                        <option value="midnight">🌌 Midnight</option>
+                                        <option value="cyberpunk">⚡ Cyberpunk 2077</option>
+                                        <option value="dracula">🧛 Dracula Synthwave</option>
+                                        <option value="tokyo">🌊 Tokyo Deep Ocean</option>
+                                        <option value="matrix">🍵 Matrix Emerald</option>
+                                        <option value="sunset">🌇 Sunset Ember</option>
+                                        <option value="forest">🌲 Forest Green</option>
+                                        <option value="dark">🌙 Dark Classic</option>
+                                        <option value="light">☀️ Clean Light</option>
+                                        <option value="high-contrast">🔳 High Contrast</option>
                                     </select>
                                     <button 
                                         onClick={async () => {
