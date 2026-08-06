@@ -101,8 +101,8 @@ const AdminDashboard = ({ token, onLogout }) => {
 
     const handleSendBroadcast = async (e) => {
         e.preventDefault();
-        if (!broadcastForm.title.trim() || !broadcastForm.message.trim()) {
-            alert("Please enter both a title and broadcast message.");
+        if (!broadcastForm.message.trim()) {
+            alert("Please enter a broadcast message.");
             return;
         }
         setIsSendingBroadcast(true);
@@ -118,6 +118,7 @@ const AdminDashboard = ({ token, onLogout }) => {
 
             await api.post('/api/admin/broadcast', {
                 ...broadcastForm,
+                title: 'Direct Message', // Default title explicitly provided
                 createdByName: creatorName
             });
 
@@ -305,7 +306,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                     let adminRoleTitle = "ADMINISTRATOR";
                     let adminDisplayName = "JAVVADI RAVI RAJ";
 
-                    if (currentUserEmail === 'prsnlkalyan@gmail.com' || currentUserEmail.includes('prsnlkalyan') || currentUsername === 'prsnlkalyan') {
+                    if (currentUserEmail === 'prsnlkalyan@gmail.com' || currentUserEmail.includes('prsnlkalyan') || currentUsername === 'prsnlkalyan' || currentUsername.includes('prsnlkalyan')) {
                         adminRoleTitle = "FOUNDER & CEO";
                         adminDisplayName = "Bhoompally Kalyan Reddy";
                     } else if (currentUserEmail.includes('raviraj') || currentUsername.includes('raviraj')) {
@@ -509,17 +510,27 @@ const AdminDashboard = ({ token, onLogout }) => {
                                                     {(() => {
                                                         const uEmail = (user.email || '').toLowerCase().trim();
                                                         const uName = (user.username || '').toLowerCase().trim();
-                                                        const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') ||
-                                                                          uEmail === 'ravirajjavvadhi@gmail.com' || uName.includes('raviraj');
+                                                        const isKalyan = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') || uName.includes('prsnlkalyan');
+                                                        const isRavi = uEmail === 'ravirajjavvadhi@gmail.com' || uEmail.includes('raviraj') || uName.includes('raviraj');
 
-                                                        if (isFounder) {
+                                                        if (isKalyan) {
                                                             return (
                                                                 <span style={{
                                                                     background: 'rgba(0, 212, 255, 0.2)', color: '#00d4ff',
                                                                     border: '1px solid #00d4ff', padding: '4px 10px',
                                                                     borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px'
                                                                 }}>
-                                                                    👑 FOUNDER
+                                                                    👑 FOUNDER & CEO
+                                                                </span>
+                                                            );
+                                                        } else if (isRavi) {
+                                                            return (
+                                                                <span style={{
+                                                                    background: 'rgba(0, 212, 255, 0.2)', color: '#00d4ff',
+                                                                    border: '1px solid #00d4ff', padding: '4px 10px',
+                                                                    borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px'
+                                                                }}>
+                                                                    👑 FOUNDER & CTO
                                                                 </span>
                                                             );
                                                         }
@@ -595,7 +606,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                                                         {(() => {
                                                             const uEmail = (user.email || '').toLowerCase().trim();
                                                             const uName = (user.username || '').toLowerCase().trim();
-                                                            const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') ||
+                                                            const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') || uName.includes('prsnlkalyan') ||
                                                                               uEmail === 'ravirajjavvadhi@gmail.com' || uName.includes('raviraj');
 
                                                             if (isFounder) {
@@ -645,18 +656,6 @@ const AdminDashboard = ({ token, onLogout }) => {
                                     </h3>
 
                                     <form onSubmit={handleSendBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                        <div>
-                                            <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Announcement Title</label>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. ACE College Mid-Term Assessment Alert"
-                                                value={broadcastForm.title}
-                                                onChange={e => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-                                                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.5)', border: '1px solid #333', padding: '12px', color: '#fff', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
-                                                required
-                                            />
-                                        </div>
-
                                         <div>
                                             <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Message Content</label>
                                             <textarea

@@ -148,9 +148,9 @@ router.delete('/users/:id', authenticate, requireDualOTP, async (req, res) => {
         const emailToDelete = (userToDelete.email || '').toLowerCase().trim();
         const usernameToDelete = (userToDelete.username || '').toLowerCase().trim();
 
-        if (emailToDelete === 'prsnlkalyan@gmail.com' || usernameToDelete === 'prsnlkalyan' || emailToDelete.includes('prsnlkalyan') ||
+        if (emailToDelete === 'prsnlkalyan@gmail.com' || usernameToDelete === 'prsnlkalyan' || emailToDelete.includes('prsnlkalyan') || usernameToDelete.includes('prsnlkalyan') ||
             emailToDelete === 'ravirajjavvadhi@gmail.com' || usernameToDelete.includes('raviraj')) {
-            return res.status(403).json({ error: "CRITICAL ACTION DENIED: Founder accounts (Kalyan Reddy & Ravi Raj) are immune and cannot be deleted." });
+            return res.status(403).json({ error: "CRITICAL ACTION DENIED: Founder accounts (CEO & CTO) are immune and cannot be deleted." });
         }
 
         // Cascading Deletes Based on Role
