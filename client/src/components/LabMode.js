@@ -723,6 +723,39 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'Inter, sans-serif'
         }}>
 
+            {/* --- FACULTY ANNOUNCEMENT BANNER --- */}
+            {announcement && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                    color: '#fff', padding: '14px 24px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    boxShadow: '0 4px 20px rgba(99, 102, 241, 0.5)',
+                    animation: 'slideDown 0.3s ease-out'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '20px' }}>📢</span>
+                        <div>
+                            <div style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8 }}>Faculty Announcement</div>
+                            <div style={{ fontSize: '14px', fontWeight: '600', marginTop: '2px' }}>{announcement}</div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setAnnouncement(null)}
+                        style={{
+                            background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+                            padding: '6px 16px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.5px',
+                            transition: '0.2s'
+                        }}
+                        onMouseOver={e => e.target.style.background = 'rgba(255,255,255,0.35)'}
+                        onMouseOut={e => e.target.style.background = 'rgba(255,255,255,0.2)'}
+                    >
+                        DISMISS
+                    </button>
+                </div>
+            )}
+
             {/* --- TOP BAR --- */}
             <div style={{
                 height: '56px',
