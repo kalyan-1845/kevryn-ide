@@ -537,7 +537,9 @@ app.get('/files', authenticate, async (req, res) => {
 app.post('/auth/google', async (req, res) => {
     try {
         const { token } = req.body;
-        const ticket = await getGoogleClient().verifyIdToken({
+        const googleClient = getGoogleClient();
+        if (!googleClient) return res.status(500).json({ error: 'Google OAuth not configured' });
+        const ticket = await googleClient.verifyIdToken({
             idToken: token,
             audience: GOOGLE_CLIENT_ID,
         });
@@ -1245,17 +1247,7 @@ app.get('/lab/student-files/:username', authenticate, async (req, res) => {
     }
 });
 
-// 4. Get Student's Active Session (most recent)
-app.get('/lab/student/active-session', authenticate, async (req, res) => {
-    try {
-        const session = await LabSession.findOne({
-            allowedStudents: req.user.username,
-            isActive: true
-        }).sort({ createdAt: -1 }); // Get the MOST RECENT active session
-        console.log(`[LAB] Active session for ${req.user.username}: ${session?._id || 'none'}`);
-        res.json({ session });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
+
 
 // 6. Get Student Portfolio (History & Stats by Subject)
 app.get('/lab/student-portfolio/:username', authenticate, async (req, res) => {
@@ -1696,14 +1688,7 @@ app.post('/deploy/frontend', authenticate, async (req, res) => {
     }
 });
 
-// Helper to reconstruct file path from database parentId chain
-async function getFileRelativePath(fileId) {
-    if (!fileId || fileId === 'root') return "";
-    const file = await File.findById(fileId);
-    if (!file) return "";
-    const parentPath = await getFileRelativePath(file.parentId);
-    return path.join(parentPath, file.name);
-}
+
 
 // Helper to find file recursively (max depth 10)
 function findEntryFileHelper(baseDir, entryRelativePath, depth = 0) {

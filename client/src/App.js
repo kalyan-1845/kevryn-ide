@@ -234,6 +234,7 @@ function App() {
     // --- UTILS: SAFE STORAGE ---
     const persistAuth = (data) => {
         const u = data.user?.username || data.username;
+        const e = data.user?.email || data.email || "";
         const id = data.user?._id || data.userId;
         const r = data.user?.role || data.role;
         const p = data.user?.picture || data.picture || "";
@@ -243,6 +244,7 @@ function App() {
         if (u && u !== 'undefined') {
             localStorage.setItem('token', data.token);
             localStorage.setItem('username', u);
+            localStorage.setItem('email', e);
             localStorage.setItem('userId', id);
             localStorage.setItem('role', r);
             localStorage.setItem('picture', p);
@@ -326,6 +328,16 @@ function App() {
         headers: { Authorization: token ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`) : '' }
     }), [token]);
 
+    useEffect(() => {
+        if (token && api) {
+            api.get('/api/broadcasts/active')
+               .then(res => {
+                   if (res.data && res.data.length > 0) setActiveBroadcast(res.data[0]);
+               })
+               .catch(err => console.error("Broadcast fetch error", err));
+        }
+    }, [token, api]);
+
     const safeEmit = useCallback((event, data, callback) => {
         if (socketRef.current) {
             socketRef.current.emit(event, data, callback);
@@ -336,6 +348,7 @@ function App() {
     const handleLogout = useCallback(() => {
         localStorage.removeItem('token');
         localStorage.removeItem('username');
+        localStorage.removeItem('email');
         localStorage.removeItem('userId');
         localStorage.removeItem('role');
         localStorage.removeItem('picture');
@@ -823,6 +836,8 @@ function App() {
         api.get('/deploy/status').then(res => setDeployStatus(res.data)).catch(() => { });
         // Removed: /api/debug-env health check (unnecessary API call on every login)
 
+        s.on('global-broadcast', (data) => setActiveBroadcast(data));
+
         const handleReceiveMessage = (msg) => { setChatMessages(prev => [...prev, msg]); };
         s.on('receive-message', handleReceiveMessage);
         s.on('previous-messages', (msgs) => setChatMessages(msgs));
@@ -914,11 +929,13 @@ function App() {
         const urlUsername = query.get('username');
         const urlUserId = query.get('userId');
         const urlPicture = query.get('picture');
+        const urlEmail = query.get('email');
 
         if (urlToken && urlUsername && urlUserId) {
             persistAuth({
                 token: urlToken,
                 username: urlUsername,
+                email: urlEmail,
                 userId: urlUserId,
                 picture: urlPicture,
                 role: 'student' // OAuth defaults to student

@@ -6,6 +6,12 @@ const Issue = require('../models/Issue');
 const { authenticate } = require('../utils/authMiddleware');
 const { requireDualOTP } = require('../utils/dualKeyOTP');
 const mongoose = require('mongoose');
+const Course = require('../models/Course');
+const Assignment = require('../models/Assignment');
+const Batch = require('../models/Batch');
+const Submission = require('../models/Submission');
+const Snippet = require('../Snippet');
+const File = require('../File');
 
 // Middleware to check Admin role
 const checkAdmin = async (req, res, next) => {
@@ -100,7 +106,7 @@ router.get('/analytics', authenticate, checkAdmin, async (req, res) => {
         // Registration Trend (Last 7 days)
         const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const registrationTrend = await User.aggregate([
-            { $match: { _id: { $gte: mongoose.Types.ObjectId.createFromTime(last7Days.getTime() / 1000) } } }, // Approx creation check via ObjectId if no createdAt field
+            { $match: { _id: { $gte: mongoose.Types.ObjectId.createFromTime(Math.floor(last7Days.getTime() / 1000)) } } }, // Approx creation check via ObjectId if no createdAt field
             // Wait, User model doesn't have createdAt. Using ObjectId timestamp as fallback.
             // Actually, ObjectId contains timestamp.
             {

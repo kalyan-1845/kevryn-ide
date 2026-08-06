@@ -306,7 +306,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                     let adminRoleTitle = "ADMINISTRATOR";
                     let adminDisplayName = "JAVVADI RAVI RAJ";
 
-                    if (currentUserEmail === 'prsnlkalyan@gmail.com' || currentUserEmail.includes('prsnlkalyan') || currentUsername === 'prsnlkalyan' || currentUsername.includes('prsnlkalyan')) {
+                    if (currentUserEmail === 'prsnlkalyan@gmail.com' || currentUserEmail.includes('prsnlkalyan') || currentUsername === 'prsnlkalyan' || currentUsername.includes('prsnlkalyan') || currentUsername === 'p kalyan reddy' || currentUsername.includes('kalyan') || currentUsername === 'prsnlkalyan@gmail.com') {
                         adminRoleTitle = "FOUNDER & CEO";
                         adminDisplayName = "Bhoompally Kalyan Reddy";
                     } else if (currentUserEmail.includes('raviraj') || currentUsername.includes('raviraj')) {

@@ -64,6 +64,7 @@ class GroqService {
                 model: modelToUse,
                 temperature: options.temperature || 0.7,
                 max_tokens: options.max_tokens || 8192,
+                response_format: options?.response_format || undefined,
             });
 
             return completion.choices[0]?.message?.content || 'No response';

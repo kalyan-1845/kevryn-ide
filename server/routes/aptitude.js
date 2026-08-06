@@ -8,7 +8,7 @@ const User = require('../User'); // To check if student exists
 const Batch = require('../models/Batch');
 
 const { Groq } = require('groq-sdk');
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); 
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
 // ==========================================
 // FACULTY API
@@ -48,6 +48,7 @@ router.get('/faculty/tests', authenticate, async (req, res) => {
 // The "Magical Upload": Smart parser using Groq to parse messy text
 router.post('/upload-parse', authenticate, async (req, res) => {
     try {
+        if (!groq) return res.status(503).json({ error: 'AI service not configured. GROQ_API_KEY is missing.' });
         const { rawText } = req.body;
         if (!rawText) return res.status(400).json({ error: 'No text provided' });
 
@@ -71,7 +72,7 @@ router.post('/upload-parse', authenticate, async (req, res) => {
 
         const completion = await groq.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
-            model: 'llama3-70b-8192',
+            model: 'llama-3.3-70b-versatile',
             temperature: 0.1, // Strict parsing
             response_format: { type: 'json_object' } // Force JSON
         });

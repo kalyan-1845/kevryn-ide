@@ -669,7 +669,8 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             activeFileId: activeFile._id,
             courseId: session?.courseId,
             socketRef,
-            api
+            api,
+            termId: 1
         });
     }, [activeFile, handleSave, session, userId, findFileFullPath]);
 
