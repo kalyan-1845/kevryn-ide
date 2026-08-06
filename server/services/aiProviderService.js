@@ -48,7 +48,7 @@ class AiProviderService {
         } catch (error) {
             console.error('[AiProviderService] Error:', error.message);
             const detail = error.response?.data || error.message;
-            throw new Error(`Kevryn AI Engine Error: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
+            throw new Error(`KevRyn AI Engine Error: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
         }
     }
 

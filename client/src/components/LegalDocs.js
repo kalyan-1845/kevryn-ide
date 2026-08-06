@@ -50,7 +50,7 @@ export default function LegalDocs({ type, onClose }) {
           {type === 'terms' ? (
             <>
               <p><strong>Last Updated:</strong> July 2026</p>
-              <p>Welcome to Kevryn IDE. By registering for an account as a Student or Faculty member, you accept these terms and conditions in full.</p>
+              <p>Welcome to KevRyn IDE. By registering for an account as a Student or Faculty member, you accept these terms and conditions in full.</p>
               
               <h3 style={{ marginTop: '20px', color: '#60a5fa' }}>1. User Accounts and Responsibilities</h3>
               <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>
@@ -73,7 +73,7 @@ export default function LegalDocs({ type, onClose }) {
           ) : (
             <>
               <p><strong>Last Updated:</strong> July 2026</p>
-              <p>Kevryn IDE ("we", "our", or "us") is committed to protecting the privacy of all students, faculty members, and institutions that use our platform.</p>
+              <p>KevRyn IDE ("we", "our", or "us") is committed to protecting the privacy of all students, faculty members, and institutions that use our platform.</p>
               
               <h3 style={{ marginTop: '20px', color: '#60a5fa' }}>1. Information We Collect</h3>
               <ul style={{ paddingLeft: '20px', margin: '10px 0' }}>

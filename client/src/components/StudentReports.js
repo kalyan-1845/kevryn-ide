@@ -253,7 +253,7 @@ const StudentReports = ({ token, serverUrl }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                        <span style={{ padding: '4px 12px', background: 'rgba(99,102,241,0.1)', color: '#818cf8', borderRadius: '20px', fontSize: '11px', fontWeight: '800', letterSpacing: '1px' }}>KEVRYN IDE | VAYU ANALYTICS</span>
+                                        <span style={{ padding: '4px 12px', background: 'rgba(99,102,241,0.1)', color: '#818cf8', borderRadius: '20px', fontSize: '11px', fontWeight: '800', letterSpacing: '1px' }}>KEVRYN IDE | KEVRYN ANALYTICS</span>
                                         <span style={{ fontSize: '11px', color: '#475569' }}>SESSION: {selectedCourse?.code} - {selectedCourse?.name}</span>
                                     </div>
                                     <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, color: '#fff', letterSpacing: '-1.5px', lineHeight: 1 }}>
@@ -396,7 +396,7 @@ const StudentReports = ({ token, serverUrl }) => {
                                                 border: '1px solid rgba(255,255,255,0.03)', lineHeight: '1.6'
                                             }}>
                                                 <FaBrain style={{ marginRight: '8px' }} color="#6366f1" />
-                                                <span style={{ fontWeight: '700', color: '#fff' }}>Vayu AI Verdict:</span><br />
+                                                <span style={{ fontWeight: '700', color: '#fff' }}>KevRyn AI Verdict:</span><br />
                                                 {selectedReport.attentionScore < 70
                                                     ? "This student shows significant signs of disengagement or external assistance. Recommendation: Oral viva voce highly advised."
                                                     : selectedReport.attentionScore < 90

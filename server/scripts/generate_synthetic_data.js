@@ -12,13 +12,13 @@ async function generateData() {
 
     console.log("🚀 Starting Expert Data Generation... This will take a moment.");
 
-    const prompt = `You are an AI Data Engineer. I need to train a custom Llama-3.1 model to be an "Expert Personal Coding Agent" inside the Kevryn IDE.
+    const prompt = `You are an AI Data Engineer. I need to train a custom Llama-3.1 model to be an "Expert Personal Coding Agent" inside the KevRyn IDE.
     
     Generate 50 high-quality training pairs in JSONL format. 
     Each pair must have "instruction", "input" (can be empty), and "output".
     
     Mix these categories:
-    1. 20% Kevryn Architecture (Beast UI, MongoDB files, Render cloud setup).
+    1. 20% KevRyn Architecture (Beast UI, MongoDB files, Render cloud setup).
     2. 40% Expert Coding Tasks (Writing complex React components, Node.js optimization, debugging crashes).
     3. 20% Smart Problem Solving (Logic puzzles, algorithmic efficiency).
     4. 20% Advanced Tool Use (How to use runCommand to deploy or test code).

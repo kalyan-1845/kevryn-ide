@@ -202,6 +202,7 @@ io = new Server(server, {
         credentials: true
     }
 });
+app.set('io', io);
 
 // --- SOCKET AUTHENTICATION MIDDLEWARE ---
 // Authenticate if a token is provided, otherwise allow as guest
@@ -236,7 +237,7 @@ server.on('error', (err) => {
 app.get('/health', (req, res) => res.status(200).send('OK'));
 app.get('/ready', (req, res) => res.status(200).send('READY'));
 app.get('/', (req, res) => {
-    res.send('Kevryn Server is Online');
+    res.send('KevRyn Server is Online');
 });
 
 // --- AUTH MIDDLEWARE ---
@@ -408,6 +409,8 @@ app.get('/auth/user', authenticate, async (req, res) => {
 });
 
 // --- API ROUTES ---
+const broadcastRouter = require('./routes/broadcast');
+app.use('/api', broadcastRouter);
 app.use('/api', courseManager);
 app.use('/api/assignments', assignmentManager);
 app.use('/api/admin', adminRouter); // NEW: Admin API
@@ -780,28 +783,64 @@ app.get('/lab/sessions/:id/report', authenticate, async (req, res) => {
             }
         });
 
-        // Compute active vs idle time per student (approx based on loginTime and lastHeartbeat)
+        // Fetch user profiles for Roll Numbers and Full Names
+        const allUsernames = [...attendedUsernames, ...offlineStudents];
+        const userProfiles = await User.find({ username: { $in: allUsernames } }).select('username fullName rollNo email').lean();
+        const userMap = {};
+        userProfiles.forEach(u => { userMap[u.username] = u; });
+
+        const totalSessionMinutes = Math.max(1, Math.floor((new Date(session.endTime || new Date()).getTime() - new Date(session.startTime).getTime()) / 60000));
+
+        // Compute active vs idle time & focus metrics per student
         const attendedStudentsData = session.activeStudents.map(student => {
-            // Rough approximation if activityLog is too complex to parse right now
-            // Active time = difference between first login and last heartbeat (minus any big idle gaps if we had them)
-            const activeMs = new Date(student.lastHeartbeat || session.endTime).getTime() - new Date(student.loginTime || session.startTime).getTime();
+            const profile = userMap[student.username] || {};
+            const activeMs = new Date(student.lastHeartbeat || session.endTime || new Date()).getTime() - new Date(student.loginTime || session.startTime).getTime();
             const activeMinutes = Math.max(0, Math.floor(activeMs / 60000));
-            const totalSessionMinutes = Math.max(1, Math.floor((new Date(session.endTime || new Date()).getTime() - new Date(session.startTime).getTime()) / 60000));
             const idleMinutes = Math.max(0, totalSessionMinutes - activeMinutes);
+            const tabSwitches = student.tabSwitchCount || 0;
+
+            // Calculate Focus Score (%)
+            const focusScore = Math.max(0, Math.min(100, Math.round(100 - (idleMinutes / totalSessionMinutes * 40) - (tabSwitches * 6))));
+
+            let status = 'Attended';
+            let violations = 'Clean Session';
+            if (tabSwitches > 5) {
+                status = 'Suspicious / Flagged';
+                violations = `High Tab Switch Violation (${tabSwitches} switches)`;
+            } else if (tabSwitches > 2) {
+                violations = `Moderate Focus Loss (${tabSwitches} switches)`;
+            }
 
             return {
                 username: student.username,
-                tabSwitches: student.tabSwitchCount || 0,
+                rollNo: profile.rollNo || student.username.toUpperCase(),
+                fullName: profile.fullName || student.username,
+                email: profile.email || '',
+                tabSwitches,
                 activeMinutes,
                 idleMinutes,
+                focusScore,
+                violations,
+                status,
                 files: filesByStudent[student.username] || []
+            };
+        });
+
+        const offlineStudentsData = offlineStudents.map(u => {
+            const profile = userMap[u] || {};
+            return {
+                username: u,
+                rollNo: profile.rollNo || u.toUpperCase(),
+                fullName: profile.fullName || u,
+                email: profile.email || ''
             };
         });
 
         res.json({
             session,
+            totalSessionMinutes,
             attendedStudents: attendedStudentsData,
-            offlineStudents
+            offlineStudents: offlineStudentsData
         });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -1125,7 +1164,7 @@ app.get('/api/users/students', authenticate, async (req, res) => {
     }
 });
 
-// --- UNIFIED VAYU LAB SYSTEM ROUTES ---
+// --- UNIFIED KEVRYN LAB SYSTEM ROUTES ---
 
 // 5. Get Student's Files (for faculty monitoring)
 app.get('/lab/student-files/:username', authenticate, async (req, res) => {
@@ -1913,7 +1952,7 @@ app.post('/git/commit', authenticate, async (req, res) => {
         const git = simpleGit(repoPath);
 
         // Config user if needed (fallback to defaults or user profile)
-        const username = user.githubUsername || user.username || "Kevryn User";
+        const username = user.githubUsername || user.username || "KevRyn User";
         const email = user.email || "user@kevryn.com";
 
         await git.addConfig('user.name', username);
@@ -2015,20 +2054,20 @@ const projectTemplates = {
         { name: 'package.json', content: JSON.stringify({ name: 'my-react-app', version: '0.0.0', scripts: { dev: 'vite' }, dependencies: { react: '^18.2.0', 'react-dom': '^18.2.0' }, devDependencies: { vite: '^4.4.5' } }, null, 2) },
         { name: 'index.html', content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>React App</title>\n</head>\n<body>\n  <div id="root"></div>\n  <script type="module" src="/src/main.jsx"></script>\n</body>\n</html>' },
         { name: 'src/main.jsx', content: "import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\n\nReactDOM.createRoot(document.getElementById('root')).render(<App />);" },
-        { name: 'src/App.jsx', content: "import React from 'react';\n\nexport default function App() {\n  return (\n    <div style={{ textAlign: 'center', marginTop: '50px', color: '#61dafb' }}>\n      <h1>Hello from Kevryn IDE!</h1>\n      <p>Your React + Vite project is ready.</p>\n    </div>\n  );\n}" }
+        { name: 'src/App.jsx', content: "import React from 'react';\n\nexport default function App() {\n  return (\n    <div style={{ textAlign: 'center', marginTop: '50px', color: '#61dafb' }}>\n      <h1>Hello from KevRyn IDE!</h1>\n      <p>Your React + Vite project is ready.</p>\n    </div>\n  );\n}" }
     ],
     'express-api': [
         { name: 'package.json', content: JSON.stringify({ name: 'my-api', version: '1.0.0', main: 'index.js', scripts: { start: 'node index.js' }, dependencies: { express: '^4.18.2', cors: '^2.8.5', dotenv: '^16.3.1' } }, null, 2) },
-        { name: 'index.js', content: "const express = require('express');\nconst app = express();\nconst port = process.env.PORT || 3000;\n\napp.use(express.json());\n\napp.get('/', (req, res) => {\n  res.json({ message: 'Welcome to your Kevryn-generated API!' });\n});\n\napp.listen(port, () => {\n  console.log(`Server running on port ${port}`);\n});" },
+        { name: 'index.js', content: "const express = require('express');\nconst app = express();\nconst port = process.env.PORT || 3000;\n\napp.use(express.json());\n\napp.get('/', (req, res) => {\n  res.json({ message: 'Welcome to your KevRyn-generated API!' });\n});\n\napp.listen(port, () => {\n  console.log(`Server running on port ${port}`);\n});" },
         { name: '.env', content: "PORT=3000" }
     ],
     'static-site': [
-        { name: 'index.html', content: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <link rel="stylesheet" href="style.css">\n  <title>My Portfolio</title>\n</head>\n<body>\n  <div class="container">\n    <h1>Creative Developer</h1>\n    <p>Landing page generated by Kevryn IDE.</p>\n  </div>\n  <script src="script.js"></script>\n</body>\n</html>' },
+        { name: 'index.html', content: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <link rel="stylesheet" href="style.css">\n  <title>My Portfolio</title>\n</head>\n<body>\n  <div class="container">\n    <h1>Creative Developer</h1>\n    <p>Landing page generated by KevRyn IDE.</p>\n  </div>\n  <script src="script.js"></script>\n</body>\n</html>' },
         { name: 'style.css', content: 'body { background: #0f172a; color: white; font-family: system-ui; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }\n.container { text-align: center; border: 1px solid #1e293b; padding: 40px; border-radius: 12px; background: rgba(255,255,255,0.02); }' },
         { name: 'script.js', content: 'console.log("Site loaded successfully!");' }
     ],
     'python-script': [
-        { name: 'main.py', content: "import os\n\ndef main():\n    print('Hello from your Kevryn Python environment!')\n    print(f'Current Directory: {os.getcwd()}')\n\nif __name__ == '__main__':\n    main()" },
+        { name: 'main.py', content: "import os\n\ndef main():\n    print('Hello from your KevRyn Python environment!')\n    print(f'Current Directory: {os.getcwd()}')\n\nif __name__ == '__main__':\n    main()" },
         { name: 'requirements.txt', content: "requests==2.31.0\npytest==7.4.0" }
     ]
 };
@@ -2638,10 +2677,10 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- VAYU LAB MONITOR: API ROUTES ---
+    // --- KEVRYN LAB MONITOR: API ROUTES ---
     // (Moved to top level)
 
-    // --- VAYU LAB MONITOR: Socket Events ---
+    // --- KEVRYN LAB MONITOR: Socket Events ---
 
     // Track faculty socket â†’ sessionId mapping for disconnect handling
     let facultySessionId = null;
@@ -2892,6 +2931,30 @@ io.on('connection', (socket) => {
                 });
                 await session.save();
             }
+        }
+    });
+
+    // Faculty Announcement Broadcast to Lab Session Students
+    socket.on('faculty-announcement', async ({ sessionId, message }) => {
+        if (!sessionId || !message) return;
+        console.log(`[LAB ANNOUNCEMENT] Faculty broadcasted to session lab-${sessionId}: "${message}"`);
+        
+        // Broadcast immediately to ALL students in this lab room
+        io.to(`lab-${sessionId}`).emit('faculty-announcement', { message });
+
+        try {
+            const session = await LabSession.findById(sessionId);
+            if (session) {
+                session.timeline.push({
+                    username: 'Faculty',
+                    action: 'announcement',
+                    timestamp: new Date(),
+                    details: `Faculty Announcement: "${message}"`
+                });
+                await session.save();
+            }
+        } catch (e) {
+            console.error('[LAB DB ERROR] Failed to log faculty announcement:', e);
         }
     });
 

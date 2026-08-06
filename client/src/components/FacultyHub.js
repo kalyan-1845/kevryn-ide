@@ -121,7 +121,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                             <FaShieldAlt color="#fff" size={18} />
                         </div>
                         <div>
-                            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f1f5f9', letterSpacing: '-0.3px' }}>Vayu</div>
+                            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f1f5f9', letterSpacing: '-0.3px' }}>KevRyn</div>
                             <div style={{ fontSize: '10px', color: '#6366f1', fontWeight: '600', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Faculty Command</div>
                         </div>
                     </div>

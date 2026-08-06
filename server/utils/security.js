@@ -1,5 +1,5 @@
 /**
- * Kevryn IDE - Security Middleware Suite
+ * KevRyn IDE - Security Middleware Suite
  * 
  * Centralized security layer providing:
  * - Input sanitization (XSS, NoSQL injection prevention)

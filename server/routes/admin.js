@@ -4,6 +4,7 @@ const User = require('../User');
 const LabSession = require('../LabSessionModel');
 const Issue = require('../models/Issue');
 const { authenticate } = require('../utils/authMiddleware');
+const { requireDualOTP } = require('../utils/dualKeyOTP');
 const mongoose = require('mongoose');
 
 // Middleware to check Admin role
@@ -32,7 +33,7 @@ router.get('/users', authenticate, checkAdmin, async (req, res) => {
             ];
         }
 
-        const users = await User.find(query).select('-password').sort({ _id: -1 });
+        const users = await User.find(query).populate('collegeId', 'name code').select('-password').sort({ _id: -1 });
         res.json(users);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -135,14 +136,22 @@ router.get('/issues', authenticate, checkAdmin, async (req, res) => {
     }
 });
 
-// 4. Delete User (Deep Cascading Delete)
-router.delete('/users/:id', authenticate, async (req, res) => {
+// 4. Delete User (Deep Cascading Delete) — REQUIRES DUAL-KEY FOUNDER OTP
+router.delete('/users/:id', authenticate, requireDualOTP, async (req, res) => {
     try {
         if (req.user.role !== 'admin') return res.status(403).json({ error: "Only admins can delete users" });
         if (req.user.userId === req.params.id) return res.status(400).json({ error: "Cannot delete yourself" });
 
         const userToDelete = await User.findById(req.params.id);
         if (!userToDelete) return res.status(404).json({ error: "User not found" });
+
+        const emailToDelete = (userToDelete.email || '').toLowerCase().trim();
+        const usernameToDelete = (userToDelete.username || '').toLowerCase().trim();
+
+        if (emailToDelete === 'prsnlkalyan@gmail.com' || usernameToDelete === 'prsnlkalyan' || emailToDelete.includes('prsnlkalyan') ||
+            emailToDelete === 'ravirajjavvadhi@gmail.com' || usernameToDelete.includes('raviraj')) {
+            return res.status(403).json({ error: "CRITICAL ACTION DENIED: Founder accounts (Kalyan Reddy & Ravi Raj) are immune and cannot be deleted." });
+        }
 
         // Cascading Deletes Based on Role
         if (userToDelete.role === 'faculty') {

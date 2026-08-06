@@ -62,7 +62,7 @@ const executeTool = async (functionName, args, userId) => {
         switch (functionName) {
             case "readFile": {
                 // Find file in DB
-                // In Kevryn architecture, file names might just be strings in the DB
+                // In KevRyn architecture, file names might just be strings in the DB
                 const file = await File.findOne({ owner: userId, name: { $regex: new RegExp(args.fileName, 'i') } });
                 if (!file) return { error: `File ${args.fileName} not found in workspace.` };
                 return { content: file.content || "/* Empty File */" };

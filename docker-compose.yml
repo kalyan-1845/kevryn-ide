@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 1. The Database (MongoDB)
+  mongodb:
+    image: mongo:latest
+    container_name: kevryn_mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=kevryn_ide
+    volumes:
+      - mongodb_data:/data/db # This maps the DB data to the physical 2TB SSD so data is never lost
+    ports:
+      - "27017:27017" # Optional: Expose if you need direct database access, otherwise remove for better security
+    networks:
+      - kevryn_network
+
+  # 2. The Node.js Backend Server
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: kevryn_backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/kevryn_ide
+    expose:
+      - "5000" # Expose internally for NGINX, not to the public
+    depends_on:
+      - mongodb
+    networks:
+      - kevryn_network
+
+  # 3. The Security Guard (NGINX)
+  nginx:
+    image: nginx:alpine
+    container_name: kevryn_nginx
+    restart: always
+    ports:
+      - "80:80" # Listens on Port 80 from the college network
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - kevryn_network
+
+# Define the network so the containers can talk to each other securely
+networks:
+  kevryn_network:
+    driver: bridge
+
+# Define the physical volume where the MongoDB data will be saved permanently
+volumes:
+  mongodb_data:

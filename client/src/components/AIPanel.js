@@ -191,7 +191,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
             <div className="ai-header">
                 <div className="ai-header-left">
                     <div className="ai-logo"><FaMagic size={14} /></div>
-                    <span className="ai-title">Kevryn AI</span>
+                    <span className="ai-title">KevRyn AI</span>
                     <span style={{ fontSize: '10px', color: '#10b981', marginLeft: '8px', fontWeight: 600 }}>● Online</span>
                 </div>
                 <div className="ai-header-right">
@@ -224,7 +224,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                 {messages.length === 0 && (
                     <div className="ai-welcome">
                         <div className="ai-welcome-icon"><FaMagic size={28} /></div>
-                        <div className="ai-welcome-title">Kevryn Neural Core</div>
+                        <div className="ai-welcome-title">KevRyn Neural Core</div>
                         <div className="ai-welcome-subtitle">Your custom-trained AI. Always online.</div>
                         <div className="ai-welcome-hints">
                             <span className="ai-hint" onClick={() => { setInput('Build a complete Authentication React component.'); }}>Build Auth UI</span>
@@ -268,7 +268,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     </button>
                 </div>
                 <div className="ai-input-footer">
-                    Kevryn Neural Core • Always Online 🛰️
+                    KevRyn Neural Core • Always Online 🛰️
                 </div>
             </form>
         </div>

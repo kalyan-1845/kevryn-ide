@@ -91,7 +91,7 @@ router.post('/agent/run', authenticate, async (req, res, next) => {
 
         // Build system prompt with workspace context
         const fileList = await aiTools.executeTool('listFiles', {}, req.user.userId);
-        const systemContext = `You are the Kevryn Autonomous Agent, a professional AI built into a cloud IDE.
+        const systemContext = `You are the KevRyn Autonomous Agent, a professional AI built into a cloud IDE.
 You have access to the user's workspace. Here are their files:
 ${fileList.files ? fileList.files.join('\n') : 'Empty workspace'}
 

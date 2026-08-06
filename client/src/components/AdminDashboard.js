@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUserShield, FaUsers, FaChartPie, FaExclamationCircle, FaCheckCircle, FaSearch, FaCode, FaSignOutAlt, FaRocket, FaClock, FaBuilding, FaPlus, FaCopy, FaTrashAlt } from 'react-icons/fa';
+import { FaUserShield, FaUsers, FaChartPie, FaExclamationCircle, FaCheckCircle, FaSearch, FaCode, FaSignOutAlt, FaRocket, FaClock, FaBuilding, FaPlus, FaCopy, FaTrashAlt, FaBullhorn, FaPaperPlane, FaVolumeUp } from 'react-icons/fa';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import ParticleBackground from './ParticleBackground';
 
@@ -28,10 +28,20 @@ const AdminDashboard = ({ token, onLogout }) => {
     const [issues, setIssues] = useState([]);
     const [colleges, setColleges] = useState([]); // NEW: Colleges State
     const [searchQuery, setSearchQuery] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("all");
     const [isLoading, setIsLoading] = useState(false);
     const [showWelcome, setShowWelcome] = useState(true);
     const [showCreateCollege, setShowCreateCollege] = useState(false); // NEW: College Modal
     const [newCollegeName, setNewCollegeName] = useState("");
+    const [broadcastsList, setBroadcastsList] = useState([]);
+    const [broadcastForm, setBroadcastForm] = useState({
+        title: '',
+        message: '',
+        collegeId: '',
+        targetRole: 'all',
+        priority: 'normal'
+    });
+    const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
     // API Instance
     const api = axios.create({
@@ -82,6 +92,54 @@ const AdminDashboard = ({ token, onLogout }) => {
         } catch (e) { console.error("Colleges fetch failed", e); }
     };
 
+    const fetchBroadcasts = async () => {
+        try {
+            const res = await api.get('/api/admin/broadcasts');
+            setBroadcastsList(res.data || []);
+        } catch (e) { console.error("Broadcast fetch failed", e); }
+    };
+
+    const handleSendBroadcast = async (e) => {
+        e.preventDefault();
+        if (!broadcastForm.title.trim() || !broadcastForm.message.trim()) {
+            alert("Please enter both a title and broadcast message.");
+            return;
+        }
+        setIsSendingBroadcast(true);
+        try {
+            const currentUserEmail = (localStorage.getItem('email') || '').toLowerCase().trim();
+            const currentUsername = (localStorage.getItem('username') || '').toLowerCase().trim();
+            let creatorName = "Admin";
+            if (currentUserEmail.includes('prsnlkalyan') || currentUsername.includes('kalyan')) {
+                creatorName = "Bhoompally Kalyan Reddy (Founder & CEO)";
+            } else if (currentUserEmail.includes('raviraj') || currentUsername.includes('raviraj')) {
+                creatorName = "Javvadi Ravi Raj (Founder & CTO)";
+            }
+
+            await api.post('/api/admin/broadcast', {
+                ...broadcastForm,
+                createdByName: creatorName
+            });
+
+            alert("🚀 Broadcast Published Live! All targeted logged-in users will receive the top banner notice in < 2 seconds.");
+            setBroadcastForm({ title: '', message: '', collegeId: '', targetRole: 'all', priority: 'normal' });
+            fetchBroadcasts();
+        } catch (err) {
+            alert("Failed to send broadcast: " + (err.response?.data?.error || err.message));
+        } finally {
+            setIsSendingBroadcast(false);
+        }
+    };
+
+    const handleDismissBroadcast = async (id) => {
+        try {
+            await api.delete(`/api/admin/broadcasts/${id}`);
+            fetchBroadcasts();
+        } catch (err) {
+            console.error("Dismiss failed", err);
+        }
+    };
+
     const handleCreateCollege = async () => {
         if (!newCollegeName.trim()) return;
         try {
@@ -114,6 +172,7 @@ const AdminDashboard = ({ token, onLogout }) => {
         if (activeTab === 'users') fetchUsers();
         if (activeTab === 'issues') fetchData();
         if (activeTab === 'colleges') fetchColleges();
+        if (activeTab === 'broadcast') fetchBroadcasts();
     }, [activeTab, searchQuery]);
 
     const toggleFacultyStatus = async (userId, currentStatus) => {
@@ -230,6 +289,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                 <SidebarIcon icon={<FaBuilding />} label="Colleges" active={activeTab === 'colleges'} onClick={() => setActiveTab('colleges')} />
                 <SidebarIcon icon={<FaUsers />} label="Users" active={activeTab === 'users'} onClick={() => setActiveTab('users')} />
                 <SidebarIcon icon={<FaExclamationCircle />} label="Issues" active={activeTab === 'issues'} onClick={() => setActiveTab('issues')} />
+                <SidebarIcon icon={<FaBullhorn />} label="Broadcast" active={activeTab === 'broadcast'} onClick={() => setActiveTab('broadcast')} />
 
                 <div style={{ flex: 1 }} />
                 <SidebarIcon icon={<FaSignOutAlt />} label="Logout" onClick={onLogout} color="#ff4d4d" />
@@ -238,25 +298,52 @@ const AdminDashboard = ({ token, onLogout }) => {
             {/* MAIN CONTENT */}
             <div style={{ flex: 1, zIndex: 10, overflowY: 'auto', padding: '40px' }}>
                 {/* STYLISH HEADER */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid rgba(0, 212, 255, 0.2)', paddingBottom: '20px' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '4px', color: '#00d4ff', textShadow: '0 0 10px rgba(0, 212, 255, 0.5)' }}>
-                        KEVRYN
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: '#00d4ff', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '2px' }}>ADMINISTRATOR</div>
-                            <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '16px', letterSpacing: '1px' }}>JAVVADI RAVI RAJ</div>
+                {(() => {
+                    const currentUserEmail = (localStorage.getItem('email') || '').toLowerCase().trim();
+                    const currentUsername = (localStorage.getItem('username') || '').toLowerCase().trim();
+
+                    let adminRoleTitle = "ADMINISTRATOR";
+                    let adminDisplayName = "JAVVADI RAVI RAJ";
+
+                    if (currentUserEmail === 'prsnlkalyan@gmail.com' || currentUserEmail.includes('prsnlkalyan') || currentUsername === 'prsnlkalyan') {
+                        adminRoleTitle = "FOUNDER & CEO";
+                        adminDisplayName = "Bhoompally Kalyan Reddy";
+                    } else if (currentUserEmail.includes('raviraj') || currentUsername.includes('raviraj')) {
+                        adminRoleTitle = "FOUNDER & CTO";
+                        adminDisplayName = "Javvadi Ravi Raj";
+                    } else {
+                        const localName = localStorage.getItem('fullName') || localStorage.getItem('username');
+                        if (localName && localName !== 'undefined') {
+                            adminDisplayName = localName;
+                        }
+                    }
+
+                    return (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid rgba(0, 212, 255, 0.2)', paddingBottom: '20px' }}>
+                            <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '4px', color: '#00d4ff', textShadow: '0 0 10px rgba(0, 212, 255, 0.5)' }}>
+                                KEVRYN
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ color: '#00d4ff', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '2px', fontWeight: 'bold' }}>
+                                        {adminRoleTitle}
+                                    </div>
+                                    <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '16px', letterSpacing: '1px' }}>
+                                        {adminDisplayName}
+                                    </div>
+                                </div>
+                                <div style={{
+                                    width: '45px', height: '45px', borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, #00d4ff, #0088FE)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#fff', fontSize: '20px', boxShadow: '0 0 15px rgba(0, 136, 254, 0.5)'
+                                }}>
+                                    <FaUserShield />
+                                </div>
+                            </div>
                         </div>
-                        <div style={{
-                            width: '45px', height: '45px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #00d4ff, #0088FE)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: '20px', boxShadow: '0 0 15px rgba(0, 136, 254, 0.5)'
-                        }}>
-                            <FaUserShield />
-                        </div>
-                    </div>
-                </div>
+                    );
+                })()}
 
                 <AnimatePresence mode="wait">
                     {/* OVERVIEW TAB */}
@@ -316,21 +403,68 @@ const AdminDashboard = ({ token, onLogout }) => {
                     {/* USERS TAB */}
                     {activeTab === 'users' && (
                         <motion.div key="users" variants={dashboardVariants} initial="hidden" animate="visible">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                                <h2 style={headerStyle}>USER REGISTRY</h2>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                                <div>
+                                    <h2 style={headerStyle}>USER REGISTRY</h2>
+                                    <p style={{ color: '#888', fontSize: '12px', margin: '4px 0 0' }}>Comprehensive User Directory & Multi-Tenancy Classification</p>
+                                </div>
                                 <div style={{ position: 'relative' }}>
                                     <FaSearch style={{ position: 'absolute', left: '15px', top: '12px', color: '#00d4ff' }} />
                                     <input
-                                        type="text" placeholder="Search Database..."
+                                        type="text" placeholder="Search by Username, Email, College Code..."
                                         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                                         style={{
                                             background: 'rgba(0,0,0,0.5)', border: '1px solid #333', padding: '10px 10px 10px 40px',
-                                            color: '#fff', borderRadius: '4px', width: '350px', outline: 'none',
-                                            boxShadow: '0 0 10px rgba(0,0,0,0.5)'
+                                            color: '#fff', borderRadius: '8px', width: '320px', outline: 'none',
+                                            boxShadow: '0 0 10px rgba(0,0,0,0.5)', fontSize: '13px'
                                         }}
                                     />
                                 </div>
                             </div>
+
+                            {/* CATEGORY FILTER PILLS */}
+                            {(() => {
+                                const aceCount = users.filter(u => {
+                                    const cCode = (u.collegeId?.code || '').toUpperCase();
+                                    const cName = (u.collegeId?.name || '').toUpperCase();
+                                    return cCode.includes('ACE') || cName.includes('ACE');
+                                }).length;
+                                const collegeCount = users.filter(u => u.collegeId).length;
+                                const personalCount = users.filter(u => !u.collegeId && u.role !== 'admin' && u.role !== 'faculty').length;
+                                const facultyCount = users.filter(u => u.role === 'faculty').length;
+                                const adminCount = users.filter(u => u.role === 'admin').length;
+
+                                const filters = [
+                                    { id: 'all', label: `ALL USERS (${users.length})`, icon: '⚡' },
+                                    { id: 'ace', label: `ACE COLLEGE (${aceCount})`, icon: '🏫' },
+                                    { id: 'college', label: `COLLEGE ENROLLED (${collegeCount})`, icon: '🏛️' },
+                                    { id: 'personal', label: `PERSONAL / OTHER (${personalCount})`, icon: '🌐' },
+                                    { id: 'faculty', label: `FACULTY (${facultyCount})`, icon: '👨‍🏫' },
+                                    { id: 'admin', label: `FOUNDERS & ADMINS (${adminCount})`, icon: '🛡️' }
+                                ];
+
+                                return (
+                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '25px', flexWrap: 'wrap' }}>
+                                        {filters.map(f => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => setCategoryFilter(f.id)}
+                                                style={{
+                                                    background: categoryFilter === f.id ? 'linear-gradient(135deg, #00d4ff, #0088FE)' : 'rgba(255,255,255,0.04)',
+                                                    color: categoryFilter === f.id ? '#000' : '#ccc',
+                                                    fontWeight: categoryFilter === f.id ? '900' : '600',
+                                                    border: categoryFilter === f.id ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                                                    padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontSize: '11px',
+                                                    letterSpacing: '0.5px', transition: 'all 0.2s ease',
+                                                    boxShadow: categoryFilter === f.id ? '0 0 15px rgba(0,212,255,0.4)' : 'none'
+                                                }}
+                                            >
+                                                <span style={{ marginRight: '6px' }}>{f.icon}</span>{f.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
 
                             {/* Glass Table */}
                             <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(5px)' }}>
@@ -339,6 +473,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                                         <tr style={{ background: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' }}>
                                             <th style={{ padding: '20px' }}>User</th>
                                             <th>Role</th>
+                                            <th>Institution / Code</th>
                                             <th>Email</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -346,26 +481,87 @@ const AdminDashboard = ({ token, onLogout }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {users.map(user => (
+                                        {users
+                                            .filter(user => {
+                                                const q = searchQuery.toLowerCase().trim();
+                                                const matchSearch = !q || (user.username && user.username.toLowerCase().includes(q)) ||
+                                                                    (user.email && user.email.toLowerCase().includes(q)) ||
+                                                                    (user.collegeId?.name && user.collegeId.name.toLowerCase().includes(q)) ||
+                                                                    (user.collegeId?.code && user.collegeId.code.toLowerCase().includes(q));
+                                                if (!matchSearch) return false;
+
+                                                if (categoryFilter === 'all') return true;
+                                                if (categoryFilter === 'ace') {
+                                                    const cCode = (user.collegeId?.code || '').toUpperCase();
+                                                    const cName = (user.collegeId?.name || '').toUpperCase();
+                                                    return cCode.includes('ACE') || cName.includes('ACE');
+                                                }
+                                                if (categoryFilter === 'college') return !!user.collegeId;
+                                                if (categoryFilter === 'personal') return !user.collegeId && user.role !== 'admin' && user.role !== 'faculty';
+                                                if (categoryFilter === 'faculty') return user.role === 'faculty';
+                                                if (categoryFilter === 'admin') return user.role === 'admin';
+                                                return true;
+                                            })
+                                            .map(user => (
                                             <tr key={user._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: '0.2s' }} className="hover-row">
                                                 <td style={{ padding: '20px', color: '#fff', fontWeight: 'bold' }}>{user.username}</td>
                                                 <td>
-                                                    <select
-                                                        value={user.role || 'student'}
-                                                        onChange={(e) => changeUserRole(user._id, e.target.value)}
-                                                        style={{
-                                                            padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
-                                                            background: user.role === 'admin' ? 'rgba(255, 77, 77, 0.2)' : user.role === 'faculty' ? 'rgba(0, 196, 159, 0.2)' : 'rgba(255,255,255,0.1)',
-                                                            color: user.role === 'admin' ? '#FF4D4D' : user.role === 'faculty' ? '#00C49F' : '#aaa',
-                                                            border: `1px solid ${user.role === 'admin' ? '#FF4D4D' : user.role === 'faculty' ? '#00C49F' : '#444'}`,
-                                                            outline: 'none', cursor: 'pointer', appearance: 'none',
-                                                            textTransform: 'uppercase'
-                                                        }}
-                                                    >
-                                                        <option value="student" style={{ background: '#111', color: '#fff' }}>STUDENT</option>
-                                                        <option value="faculty" style={{ background: '#111', color: '#fff' }}>FACULTY</option>
-                                                        <option value="admin" style={{ background: '#111', color: '#fff' }}>ADMIN</option>
-                                                    </select>
+                                                    {(() => {
+                                                        const uEmail = (user.email || '').toLowerCase().trim();
+                                                        const uName = (user.username || '').toLowerCase().trim();
+                                                        const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') ||
+                                                                          uEmail === 'ravirajjavvadhi@gmail.com' || uName.includes('raviraj');
+
+                                                        if (isFounder) {
+                                                            return (
+                                                                <span style={{
+                                                                    background: 'rgba(0, 212, 255, 0.2)', color: '#00d4ff',
+                                                                    border: '1px solid #00d4ff', padding: '4px 10px',
+                                                                    borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px'
+                                                                }}>
+                                                                    👑 FOUNDER
+                                                                </span>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <select
+                                                                value={user.role || 'student'}
+                                                                onChange={(e) => changeUserRole(user._id, e.target.value)}
+                                                                style={{
+                                                                    padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
+                                                                    background: user.role === 'admin' ? 'rgba(255, 77, 77, 0.2)' : user.role === 'faculty' ? 'rgba(0, 196, 159, 0.2)' : 'rgba(255,255,255,0.1)',
+                                                                    color: user.role === 'admin' ? '#FF4D4D' : user.role === 'faculty' ? '#00C49F' : '#aaa',
+                                                                    border: `1px solid ${user.role === 'admin' ? '#FF4D4D' : user.role === 'faculty' ? '#00C49F' : '#444'}`,
+                                                                    outline: 'none', cursor: 'pointer', appearance: 'none',
+                                                                    textTransform: 'uppercase'
+                                                                }}
+                                                            >
+                                                                <option value="student" style={{ background: '#111', color: '#fff' }}>STUDENT</option>
+                                                                <option value="faculty" style={{ background: '#111', color: '#fff' }}>FACULTY</option>
+                                                                <option value="admin" style={{ background: '#111', color: '#fff' }}>ADMIN</option>
+                                                            </select>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td>
+                                                    {user.collegeId ? (
+                                                        <span style={{
+                                                            background: 'rgba(0, 212, 255, 0.12)', color: '#00d4ff',
+                                                            border: '1px solid rgba(0, 212, 255, 0.3)', padding: '4px 10px',
+                                                            borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-block'
+                                                        }}>
+                                                            🏫 {user.collegeId.name || 'College'} ({user.collegeId.code || 'N/A'})
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{
+                                                            background: 'rgba(255,255,255,0.04)', color: '#777',
+                                                            border: '1px solid rgba(255,255,255,0.08)', padding: '4px 10px',
+                                                            borderRadius: '6px', fontSize: '11px', display: 'inline-block'
+                                                        }}>
+                                                            🌐 Personal / Independent
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td style={{ color: '#aaa' }}>{user.email || 'N/A'}</td>
                                                 <td>
@@ -396,20 +592,185 @@ const AdminDashboard = ({ token, onLogout }) => {
                                                         <button onClick={() => alert(JSON.stringify(user, null, 2))} style={{ background: 'transparent', border: 'none', color: '#0088FE', cursor: 'pointer', opacity: 0.7 }}>
                                                             <FaCode size={16} /> JSON
                                                         </button>
-                                                        <button 
-                                                            className="glitch-btn"
-                                                            onClick={() => handleDeleteUser(user._id, user.username)} 
-                                                            style={{ background: 'transparent', border: 'none', color: '#FF4D4D', cursor: 'pointer', opacity: 0.8 }}
-                                                            title="Delete User Permanently"
-                                                        >
-                                                            <FaTrashAlt size={16} /> 
-                                                        </button>
+                                                        {(() => {
+                                                            const uEmail = (user.email || '').toLowerCase().trim();
+                                                            const uName = (user.username || '').toLowerCase().trim();
+                                                            const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') ||
+                                                                              uEmail === 'ravirajjavvadhi@gmail.com' || uName.includes('raviraj');
+
+                                                            if (isFounder) {
+                                                                return (
+                                                                    <span style={{ color: '#00d4ff', fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.5px', padding: '4px 8px', background: 'rgba(0, 212, 255, 0.1)', borderRadius: '4px', border: '1px solid rgba(0, 212, 255, 0.3)' }} title="Founder Account Protected">
+                                                                        🔒 IMMUNE
+                                                                    </span>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <button 
+                                                                    className="glitch-btn"
+                                                                    onClick={() => handleDeleteUser(user._id, user.username)} 
+                                                                    style={{ background: 'transparent', border: 'none', color: '#FF4D4D', cursor: 'pointer', opacity: 0.8 }}
+                                                                    title="Delete User Permanently"
+                                                                >
+                                                                    <FaTrashAlt size={16} /> 
+                                                                </button>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* BROADCAST TAB */}
+                    {activeTab === 'broadcast' && (
+                        <motion.div key="broadcast" variants={dashboardVariants} initial="hidden" animate="visible">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                                <div>
+                                    <h2 style={headerStyle}>📢 LIVE BROADCAST ANNOUNCEMENTS</h2>
+                                    <p style={{ color: '#888', fontSize: '12px', margin: '4px 0 0' }}>Push real-time top-banner notices to Students & Faculty in under 2 seconds</p>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                                {/* Broadcast Composer Form */}
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(0, 212, 255, 0.2)', backdropFilter: 'blur(5px)' }}>
+                                    <h3 style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <FaPaperPlane /> Compose Live Announcement
+                                    </h3>
+
+                                    <form onSubmit={handleSendBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                        <div>
+                                            <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Announcement Title</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. ACE College Mid-Term Assessment Alert"
+                                                value={broadcastForm.title}
+                                                onChange={e => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                                                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.5)', border: '1px solid #333', padding: '12px', color: '#fff', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Message Content</label>
+                                            <textarea
+                                                rows="4"
+                                                placeholder="Enter full notice for targeted students or faculty screens..."
+                                                value={broadcastForm.message}
+                                                onChange={e => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                                                style={{ width: '100%', boxSizing: 'border-box', background: 'rgba(0,0,0,0.5)', border: '1px solid #333', padding: '12px', color: '#fff', borderRadius: '8px', outline: 'none', fontSize: '13px', resize: 'vertical' }}
+                                                required
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                            <div>
+                                                <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Target College</label>
+                                                <select
+                                                    value={broadcastForm.collegeId}
+                                                    onChange={e => setBroadcastForm({ ...broadcastForm, collegeId: e.target.value })}
+                                                    style={{ width: '100%', background: '#111', border: '1px solid #333', padding: '10px', color: '#fff', borderRadius: '8px', outline: 'none', fontSize: '12px' }}
+                                                >
+                                                    <option value="">🌐 All Colleges & Users (Global)</option>
+                                                    {colleges.map(c => (
+                                                        <option key={c._id} value={c._id}>🏫 {c.name} ({c.code})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Target Audience</label>
+                                                <select
+                                                    value={broadcastForm.targetRole}
+                                                    onChange={e => setBroadcastForm({ ...broadcastForm, targetRole: e.target.value })}
+                                                    style={{ width: '100%', background: '#111', border: '1px solid #333', padding: '10px', color: '#fff', borderRadius: '8px', outline: 'none', fontSize: '12px' }}
+                                                >
+                                                    <option value="all">👥 All Users (Students & Faculty)</option>
+                                                    <option value="student">🎓 Students Only</option>
+                                                    <option value="faculty">👨‍🏫 Faculty Only</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label style={{ color: '#aaa', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>Priority Level</label>
+                                            <select
+                                                value={broadcastForm.priority}
+                                                onChange={e => setBroadcastForm({ ...broadcastForm, priority: e.target.value })}
+                                                style={{ width: '100%', background: '#111', border: '1px solid #333', padding: '10px', color: '#fff', borderRadius: '8px', outline: 'none', fontSize: '12px' }}
+                                            >
+                                                <option value="normal">🔵 Normal Announcement</option>
+                                                <option value="important">🟡 Important Notice</option>
+                                                <option value="urgent">🔴 URGENT / CRITICAL ALERT</option>
+                                            </select>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={isSendingBroadcast}
+                                            style={{
+                                                marginTop: '10px', padding: '14px', background: 'linear-gradient(135deg, #00d4ff, #0088FE)',
+                                                border: 'none', borderRadius: '8px', color: '#000', fontWeight: '900', fontSize: '14px',
+                                                cursor: 'pointer', boxShadow: '0 0 20px rgba(0, 212, 255, 0.4)', transition: 'all 0.2s ease',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                                            }}
+                                        >
+                                            <FaPaperPlane /> {isSendingBroadcast ? 'Publishing Notice...' : '🚀 Broadcast Live Notice (< 2s Delivery)'}
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* Active & Historical Broadcasts List */}
+                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '25px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(5px)' }}>
+                                    <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <FaVolumeUp style={{ color: '#00C49F' }} /> Active & Past Broadcasts
+                                    </h3>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '420px', overflowY: 'auto' }}>
+                                        {broadcastsList.length === 0 ? (
+                                            <div style={{ color: '#666', fontSize: '13px', textAlign: 'center', padding: '40px 0' }}>No active broadcasts. Published notices will appear here.</div>
+                                        ) : (
+                                            broadcastsList.map(b => (
+                                                <div key={b._id} style={{
+                                                    background: 'rgba(0,0,0,0.4)', border: `1px solid ${b.priority === 'urgent' ? '#FF4D4D' : b.priority === 'important' ? '#FFBB28' : 'rgba(0, 212, 255, 0.3)'}`,
+                                                    borderRadius: '10px', padding: '15px', position: 'relative'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                                        <span style={{
+                                                            fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', padding: '2px 8px', borderRadius: '4px',
+                                                            background: b.priority === 'urgent' ? 'rgba(255,77,77,0.2)' : b.priority === 'important' ? 'rgba(255,187,40,0.2)' : 'rgba(0,212,255,0.2)',
+                                                            color: b.priority === 'urgent' ? '#FF4D4D' : b.priority === 'important' ? '#FFBB28' : '#00d4ff'
+                                                        }}>
+                                                            {b.priority} | {b.collegeName}
+                                                        </span>
+                                                        {b.isActive ? (
+                                                            <button
+                                                                onClick={() => handleDismissBroadcast(b._id)}
+                                                                style={{ background: 'rgba(255,77,77,0.15)', border: '1px solid #FF4D4D', color: '#FF4D4D', fontSize: '10px', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                            >
+                                                                End Broadcast
+                                                            </button>
+                                                        ) : (
+                                                            <span style={{ fontSize: '10px', color: '#666', fontWeight: 'bold' }}>EXPIRED / ENDED</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>{b.title}</div>
+                                                    <div style={{ color: '#ccc', fontSize: '12px', lineHeight: '1.4' }}>{b.message}</div>
+                                                    <div style={{ color: '#666', fontSize: '10px', marginTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span>Audience: {b.targetRole.toUpperCase()}</span>
+                                                        <span>By: {b.createdByName} • {new Date(b.createdAt).toLocaleTimeString()}</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
                     )}

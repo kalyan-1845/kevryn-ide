@@ -13,11 +13,11 @@ const UserSchema = new mongoose.Schema({
   collaborators: [{ type: String }],
   // Multi-College Tenancy: Permanent college binding
   collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
-  // Vayu Lab Monitor Role
+  // KevRyn Lab Monitor Role
   role: { type: String, enum: ['student', 'faculty', 'admin', 'user'], default: 'student' },
   isFacultyActive: { type: Boolean, default: false }, // Faculty approval status
 
-  // Unified Vayu Lab System: Link to Batches
+  // Unified KevRyn Lab System: Link to Batches
   enrolledBatches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }],
 
   createdAt: { type: Date, default: Date.now }

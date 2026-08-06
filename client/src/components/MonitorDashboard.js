@@ -335,7 +335,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
         if (!reportData) return alert("No report data available for this student yet.");
 
         const studentName = selectedStudent;
-        const reportText = `VAYU LAB PERFORMANCE REPORT\n` +
+        const reportText = `KEVRYN LAB PERFORMANCE REPORT\n` +
             `====================================\n` +
             `STUDENT: ${studentName}\n` +
             `COURSE: ${subject}\n` +
@@ -507,7 +507,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                         <FaChalkboardTeacher color="#fff" size={16} />
                     </div>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#f8fafc', letterSpacing: '-0.5px' }}>{sessionName || 'Vayu Lab Monitor'}</h2>
+                        <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#f8fafc', letterSpacing: '-0.5px' }}>{sessionName || 'KevRyn Lab Monitor'}</h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#94a3b8' }}>
                             <span style={{ background: '#334155', padding: '2px 6px', borderRadius: '4px', color: '#e2e8f0' }}>{subject}</span>
                             <span>•</span>

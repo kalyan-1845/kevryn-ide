@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 
-const KevrynBackground = React.memo(() => {
+const KevRynBackground = React.memo(() => {
     const canvasRef = useRef(null);
     const mouseRef = useRef({ x: -1000, y: -1000, active: false });
 
@@ -185,4 +185,4 @@ const KevrynBackground = React.memo(() => {
     );
 });
 
-export default KevrynBackground;
+export default KevRynBackground;

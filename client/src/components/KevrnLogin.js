@@ -212,6 +212,10 @@ export default function KevrnLogin({
   const subtitle = isFacultyLogin
     ? 'Secure access for educators & administrators.'
     : 'Your personal cloud workspace.';
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
+  const termsRef = useRef(null);
+
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -219,10 +223,24 @@ export default function KevrnLogin({
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
 
+  const handleUsernameKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (passwordRef.current) passwordRef.current.focus();
+    }
+  };
+
+  const handlePasswordKeyDown = (e) => {
+    if (e.key === 'Enter' && !isLogin) {
+      e.preventDefault();
+      if (termsRef.current) termsRef.current.focus();
+    }
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!agreedToTerms) {
-      alert("You must agree to the Terms & Conditions and Privacy Policy to continue.");
+    if (!isLogin && !agreedToTerms) {
+      alert("You must agree to the Terms & Conditions and Privacy Policy to create an account.");
       return;
     }
     setIsLoading(true);
@@ -678,12 +696,12 @@ export default function KevrnLogin({
 
             {/* Logo */}
             <div className="kl-logo-wrap">
-              <img src={logoImg} alt="Kevryn Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 15px rgba(59, 130, 246, 0.4))' }} />
+              <img src={logoImg} alt="KevRyn Logo" style={{ width: '80px', height: '80px', filter: 'drop-shadow(0 0 15px rgba(59, 130, 246, 0.4))' }} />
             </div>
 
             {/* Heading */}
             <h1 className="kl-heading">
-              Welcome to <span>Kevryn</span>
+              Welcome to <span>KevRyn</span>
             </h1>
 
             {/* Typewriter subtitle */}
@@ -711,12 +729,14 @@ export default function KevrnLogin({
             <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="kl-input-wrap">
                 <input
+                  ref={usernameRef}
                   suppressHydrationWarning
                   className="kl-input"
                   type="text"
                   placeholder={isFacultyLogin ? 'Faculty ID / Email' : 'Username'}
                   value={authData.username}
                   onChange={e => setAuthData({ ...authData, username: e.target.value })}
+                  onKeyDown={handleUsernameKeyDown}
                   required
                 />
               </div>
@@ -735,12 +755,14 @@ export default function KevrnLogin({
 
               <div className="kl-input-wrap" style={{ position: 'relative' }}>
                 <input
+                  ref={passwordRef}
                   suppressHydrationWarning
                   className="kl-input"
                   type={showPass ? 'text' : 'password'}
                   placeholder="Password"
                   value={authData.password}
                   onChange={e => setAuthData({ ...authData, password: e.target.value })}
+                  onKeyDown={handlePasswordKeyDown}
                   style={{ paddingRight: '44px' }}
                   required
                   autoComplete="new-password"
@@ -763,27 +785,30 @@ export default function KevrnLogin({
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: '16px', gap: '10px' }}>
-                <input 
-                  type="checkbox" 
-                  id="agree-terms"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  style={{ marginTop: '4px', cursor: 'pointer' }}
-                />
-                <label htmlFor="agree-terms" style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4' }}>
-                  I agree to the{' '}
-                  <span onClick={() => setActiveLegalDoc('terms')} style={{ color: '#60a5fa', cursor: 'pointer', textDecoration: 'underline' }}>Terms & Conditions</span>
-                  {' '}and{' '}
-                  <span onClick={() => setActiveLegalDoc('privacy')} style={{ color: '#60a5fa', cursor: 'pointer', textDecoration: 'underline' }}>Privacy Policy</span>.
-                </label>
-              </div>
+              {!isLogin && (
+                <div style={{ display: 'flex', alignItems: 'center', marginTop: '16px', marginBottom: '8px', gap: '12px', background: 'rgba(255,255,255,0.04)', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(59,130,246,0.2)' }}>
+                  <input 
+                    ref={termsRef}
+                    type="checkbox" 
+                    id="agree-terms"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#3b82f6', flexShrink: 0 }}
+                  />
+                  <label htmlFor="agree-terms" style={{ color: '#e2e8f0', fontSize: '14px', lineHeight: '1.4', cursor: 'pointer', userSelect: 'none' }}>
+                    I agree to the{' '}
+                    <strong onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveLegalDoc('terms'); }} style={{ color: '#60a5fa', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}>Terms & Conditions</strong>
+                    {' '}and{' '}
+                    <strong onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveLegalDoc('privacy'); }} style={{ color: '#60a5fa', cursor: 'pointer', textDecoration: 'underline', fontWeight: 700 }}>Privacy Policy</strong>.
+                  </label>
+                </div>
+              )}
 
               <div className="kl-btn-wrap">
                 <button
                   type="submit"
                   className={`kl-submit${isFacultyLogin ? ' kl-faculty-btn' : ''}`}
-                  disabled={isLoading || !agreedToTerms}
+                  disabled={isLoading || (!isLogin && !agreedToTerms)}
                 >
                   {isLoading && <span className="kl-spinner" />}
                   {isLogin
@@ -838,7 +863,7 @@ export default function KevrnLogin({
             {/* Sign Up / Log In toggle */}
             {!isForgotPassword && (
             <p className="kl-signup">
-              {isLogin ? "Don't have an account? " : 'Already using Kevryn? '}
+              {isLogin ? "Don't have an account? " : 'Already using KevRyn? '}
               <span
                 className="kl-signup-link"
                 onClick={() => setIsLogin(v => !v)}
@@ -848,7 +873,12 @@ export default function KevrnLogin({
             </p>
             )}
 
-            {/* Diagnostic */}
+            {/* Legal Document Modal */}
+      {activeLegalDoc && (
+        <LegalDocs docType={activeLegalDoc} onClose={() => setActiveLegalDoc(null)} />
+      )}
+      
+      {/* Diagnostic */}
             <div className="kl-diag">
               <button className="kl-diag-btn" onClick={runConnectionCheck}>
                 Diagnostic Tool

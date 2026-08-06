@@ -46,7 +46,7 @@ const CustomDialog = ({ type = 'alert', title, message, defaultValue = '', onCon
 
                 <div className="cdialog-header">
                     <span className="cdialog-icon">{icon}</span>
-                    <span className="cdialog-title">{title || 'Kevryn'}</span>
+                    <span className="cdialog-title">{title || 'KevRyn'}</span>
                 </div>
 
                 <div className="cdialog-body">

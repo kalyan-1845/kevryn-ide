@@ -1,5 +1,5 @@
 /**
- * Kevryn AI Service — Your Neural Core
+ * KevRyn AI Service — Your Neural Core
  * Primary: Groq (Llama 3.1 8B — same base model your adapter was trained on)
  * Groq is always-on, zero cold starts, free, and ultra-fast.
  */
@@ -24,7 +24,7 @@ const chat = async (messages) => {
     for (let i = 0; i < GROQ_KEYS.length; i++) {
         const key = GROQ_KEYS[i];
         try {
-            console.log(`[NeuralCore] Attempting Kevryn Neural Core with Key ${i+1}...`);
+            console.log(`[NeuralCore] Attempting KevRyn Neural Core with Key ${i+1}...`);
 
             const response = await axios.post(GROQ_URL, {
                 model: GROQ_MODEL,
@@ -45,7 +45,7 @@ const chat = async (messages) => {
             const content = response.data?.choices?.[0]?.message?.content;
             if (!content) throw new Error('Model returned empty response');
 
-            return { content, model: 'Kevryn Neural Core' };
+            return { content, model: 'KevRyn Neural Core' };
         } catch (e) {
             console.error(`[NeuralCore] Key ${i+1} failed: ${e.message}`);
             lastError = e;
