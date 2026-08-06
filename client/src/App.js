@@ -10,7 +10,7 @@ import {
 import FileTree from './components/FileTree';
 import Terminal from './components/Terminal';
 import AIPanel from './components/AIPanel';
-import KevRynBackground from './components/KevRynBackground';
+import KevRynBackground from './components/KevrynBackground';
 import TopBroadcastBanner from './components/TopBroadcastBanner';
 import { GoogleLogin } from '@react-oauth/google';
 import './App.css';
