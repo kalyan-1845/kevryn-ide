@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUserShield, FaUsers, FaChartPie, FaExclamationCircle, FaCheckCircle, FaSearch, FaCode, FaSignOutAlt, FaRocket, FaClock, FaBuilding, FaPlus, FaCopy, FaTrashAlt, FaBullhorn, FaPaperPlane, FaVolumeUp } from 'react-icons/fa';
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { FaUserShield, FaUsers, FaChartPie, FaExclamationCircle, FaSearch, FaCode, FaSignOutAlt, FaRocket, FaClock, FaBuilding, FaPlus, FaCopy, FaTrashAlt, FaBullhorn, FaPaperPlane, FaVolumeUp } from 'react-icons/fa';
+import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import ParticleBackground from './ParticleBackground';
 
 // --- STYLES & ANIMATIONS ---
@@ -210,6 +210,24 @@ const AdminDashboard = ({ token, onLogout }) => {
             fontFamily: "'Rajdhani', sans-serif", overflow: 'hidden',
             display: 'flex', position: 'relative'
         }}>
+            {isLoading && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(5,5,5,0.85)', zIndex: 9999,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexDirection: 'column', gap: '16px'
+                }}>
+                    <div style={{
+                        width: '48px', height: '48px',
+                        border: '3px solid rgba(0, 212, 255, 0.2)',
+                        borderTop: '3px solid #00d4ff',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite'
+                    }} />
+                    <div style={{ color: '#00d4ff', fontSize: '13px', fontWeight: 'bold', letterSpacing: '2px', textTransform: 'uppercase' }}>INITIALIZING COMMAND CENTER...</div>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </div>
+            )}
             <style>{`
                 .hover-row:hover {
                     background: rgba(0, 212, 255, 0.05);

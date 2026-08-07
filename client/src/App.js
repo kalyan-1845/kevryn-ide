@@ -34,7 +34,7 @@ import FacultyHub from './components/FacultyHub'; // NEW: Unified Hub
 import StudentAssignmentView from './components/StudentAssignmentView'; // NEW: Student Assignments
 import AdminDashboard from './components/AdminDashboard'; // NEW: Admin Dashboard
 import IssueReporter from './components/IssueReporter'; // NEW: Issue Reporting
-import KevrnLogin from './components/KevrnLogin'; // NEW: Cinematic Login
+import KevrynLogin from './components/KevrynLogin'; // NEW: Cinematic Login
 import LiveAptitudeTest from './components/LiveAptitudeTest'; // NEW: Aptitude Module
 import LabTimer from './components/LabTimer'; // OPTIMIZATION: Extract timer to prevent global re-renders
 
@@ -453,7 +453,6 @@ function App() {
     // --- CLONE MODAL STATE ---
     const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
     const [isSwitchRepoModalOpen, setIsSwitchRepoModalOpen] = useState(false);
-    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
     // --- AI DIFF MODAL STATE ---
     const [isDiffModalOpen, setIsDiffModalOpen] = useState(false);
@@ -837,6 +836,7 @@ function App() {
         // Removed: /api/debug-env health check (unnecessary API call on every login)
 
         s.on('global-broadcast', (data) => setActiveBroadcast(data));
+        s.on('global-broadcast-dismissed', ({ id }) => { setActiveBroadcast(prev => (prev && prev._id === id) ? null : prev); });
 
         const handleReceiveMessage = (msg) => { setChatMessages(prev => [...prev, msg]); };
         s.on('receive-message', handleReceiveMessage);
@@ -916,6 +916,8 @@ function App() {
             s.off('session-started');
             s.off('assignment-created');
             s.off('session-ended');
+            s.off('global-broadcast');
+            s.off('global-broadcast-dismissed');
             window.removeEventListener('click', closeMenu);
         };
     }, [token, username, userId, fetchFiles, api, userRole, activeWorkspaceFolderId]); // Simplified dependencies
@@ -1163,7 +1165,6 @@ function App() {
             setIsAiLoading(true);
             const res = await api.post('/templates/create', { templateId, folderName, userId });
             console.log("Template Created:", res.data);
-            setIsTemplateModalOpen(false);
             if (res.data.folderId) {
                 setActiveWorkspaceFolderId(res.data.folderId);
             }
@@ -2124,7 +2125,7 @@ function App() {
                         transition={{ duration: 0.6, ease: "circOut" }}
                         style={{ height: '100%', width: '100%' }}
                     >
-                        <KevrnLogin
+                        <KevrynLogin
                             isFacultyLogin={isFacultyLogin}
                             setIsFacultyLogin={setIsFacultyLogin}
                             isLogin={isLogin}
@@ -2477,7 +2478,7 @@ function App() {
                                         <div onClick={() => setShowStudentAssignments(true)} className={`sidebar-icon-container ${showStudentAssignments ? 'active' : ''}`} style={{ flex: 1, padding: '8px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                                             <FaClipboardList title="My Learning (Assignments & Courses)" />
                                         </div>
-                                        <button className="icon-btn" title="New Template" onClick={() => setIsTemplateModalOpen(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 10px', cursor: 'pointer' }}><FaMagic size={11} /></button>
+                                        <button className="icon-btn" title="New Template" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 10px', cursor: 'pointer' }}><FaMagic size={11} /></button>
                                     </div>
                                     {/* Sidebar Tab Content Area (Ensure it takes space to push logout down) */}
                                     <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>

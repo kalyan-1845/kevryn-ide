@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaFolder, FaFolderOpen, FaJs, FaPython, FaCode, FaFile, FaPlus } from 'react-icons/fa';
+import { FaFolder, FaFolderOpen, FaJs, FaPython, FaCode, FaFile } from 'react-icons/fa';
 import { FiFilePlus, FiFolderPlus } from 'react-icons/fi';
 import { SiCplusplus } from 'react-icons/si';
 

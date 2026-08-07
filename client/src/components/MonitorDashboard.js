@@ -3,7 +3,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import {
     FaUserPlus, FaSignInAlt, FaChalkboardTeacher, FaDesktop, FaCode, FaCheckCircle,
-    FaExclamationTriangle, FaTimes, FaFile, FaSync, FaHistory, FaGraduationCap, FaChartLine, FaFilePdf
+    FaExclamationTriangle, FaTimes, FaFile, FaSync, FaHistory, FaChartLine, FaFilePdf
 } from 'react-icons/fa';
 
 const _raw = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCodeBranch, FaSync, FaCheck, FaArrowUp, FaArrowDown, FaRedo } from 'react-icons/fa';
+import { FaCheck, FaArrowUp, FaArrowDown, FaRedo } from 'react-icons/fa';
 import axios from 'axios';
 
 const GitPanel = ({ token, refreshTrigger, startRepo }) => {

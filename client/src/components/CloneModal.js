@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaTimes, FaGithub, FaDownload } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 

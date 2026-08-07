@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { FaSearch, FaTimes, FaFileAlt, FaChevronRight } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaFileAlt } from 'react-icons/fa';
 
 const GlobalSearch = ({ SERVER_URL, token, onFileClick, onClose }) => {
     const [query, setQuery] = useState('');

@@ -195,7 +195,7 @@ function useTilt(ref) {
 }
 
 // ── Main Login Component ─────────────────────────────────────
-export default function KevrnLogin({
+export default function KevrynLogin({
   isFacultyLogin,
   setIsFacultyLogin,
   isLogin,
