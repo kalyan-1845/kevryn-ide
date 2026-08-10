@@ -190,7 +190,10 @@ const AdminDashboard = ({ token, onLogout }) => {
 
     useEffect(() => {
         if (activeTab === 'overview') fetchData();
-        if (activeTab === 'users') fetchUsers();
+        if (activeTab === 'users') {
+            fetchUsers();
+            fetchColleges(); // Fix: Needed for the Create Account dropdown
+        }
         if (activeTab === 'issues') fetchData();
         if (activeTab === 'colleges') fetchColleges();
         if (activeTab === 'broadcast') fetchBroadcasts();
