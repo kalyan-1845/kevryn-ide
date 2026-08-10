@@ -66,7 +66,7 @@ router.patch('/users/:id/status', authenticate, checkAdmin, async (req, res) => 
 router.patch('/users/:id/role', authenticate, checkAdmin, async (req, res) => {
     try {
         const { role } = req.body;
-        if (!['admin', 'faculty', 'student'].includes(role)) {
+        if (!['admin', 'faculty', 'student', 'college_admin'].includes(role)) {
             return res.status(400).json({ error: "Invalid role specified" });
         }
         

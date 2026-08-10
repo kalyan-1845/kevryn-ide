@@ -658,15 +658,16 @@ const AdminDashboard = ({ token, onLogout }) => {
                                                                 onChange={(e) => changeUserRole(user._id, e.target.value)}
                                                                 style={{
                                                                     padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
-                                                                    background: user.role === 'admin' ? 'rgba(255, 77, 77, 0.2)' : user.role === 'faculty' ? 'rgba(0, 196, 159, 0.2)' : 'rgba(255,255,255,0.1)',
-                                                                    color: user.role === 'admin' ? '#FF4D4D' : user.role === 'faculty' ? '#00C49F' : '#aaa',
-                                                                    border: `1px solid ${user.role === 'admin' ? '#FF4D4D' : user.role === 'faculty' ? '#00C49F' : '#444'}`,
+                                                                    background: user.role === 'admin' ? 'rgba(255, 77, 77, 0.2)' : user.role === 'college_admin' ? 'rgba(168, 85, 247, 0.2)' : user.role === 'faculty' ? 'rgba(0, 196, 159, 0.2)' : 'rgba(255,255,255,0.1)',
+                                                                    color: user.role === 'admin' ? '#FF4D4D' : user.role === 'college_admin' ? '#c084fc' : user.role === 'faculty' ? '#00C49F' : '#aaa',
+                                                                    border: `1px solid ${user.role === 'admin' ? '#FF4D4D' : user.role === 'college_admin' ? '#c084fc' : user.role === 'faculty' ? '#00C49F' : '#444'}`,
                                                                     outline: 'none', cursor: 'pointer', appearance: 'none',
                                                                     textTransform: 'uppercase'
                                                                 }}
                                                             >
                                                                 <option value="student" style={{ background: '#111', color: '#fff' }}>STUDENT</option>
                                                                 <option value="faculty" style={{ background: '#111', color: '#fff' }}>FACULTY</option>
+                                                                <option value="college_admin" style={{ background: '#111', color: '#fff' }}>COLLEGE ADMIN</option>
                                                                 <option value="admin" style={{ background: '#111', color: '#fff' }}>ADMIN</option>
                                                             </select>
                                                         );
