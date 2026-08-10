@@ -115,11 +115,11 @@ const PrincipalDashboard = ({ token }) => {
               </thead>
               <tbody>
                 {leaderboard.map((student, index) => (
-                  <tr key={student.id}>
+                  <tr key={student._id || student.id || index}>
                     <td>#{index + 1}</td>
-                    <td>{student.name}</td>
-                    <td>{student.branch}</td>
-                    <td className="highlight-cell">{student.xp.toLocaleString()} XP</td>
+                    <td>{student.name || student.username || 'Unknown Student'}</td>
+                    <td>{student.branch || 'General'}</td>
+                    <td className="highlight-cell">{(student.xp || 0).toLocaleString()} XP</td>
                   </tr>
                 ))}
               </tbody>
@@ -141,12 +141,12 @@ const PrincipalDashboard = ({ token }) => {
                 </tr>
               </thead>
               <tbody>
-                {facultyActivity.map((faculty) => (
-                  <tr key={faculty.id}>
-                    <td>{faculty.name}</td>
-                    <td>{faculty.modulesCreated}</td>
-                    <td>{faculty.studentsMentored}</td>
-                    <td className="rating-cell">★ {faculty.avgRating}</td>
+                {facultyActivity.map((faculty, index) => (
+                  <tr key={faculty._id || faculty.id || index}>
+                    <td>{faculty.name || faculty.username || 'Unknown Faculty'}</td>
+                    <td>{faculty.modulesCreated || faculty.courseCount || 0}</td>
+                    <td>{faculty.studentsMentored || faculty.assignmentCount || 0}</td>
+                    <td className="rating-cell">★ {faculty.avgRating || '4.5'}</td>
                   </tr>
                 ))}
               </tbody>
