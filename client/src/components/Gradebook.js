@@ -265,8 +265,9 @@ const Gradebook = ({ token, serverUrl }) => {
                     </table>
                 </div>
             </div>
+        </div>
 
-            {/* View Code Modal (Assignments) */}
+        {/* View Code Modal (Assignments) */}
             {selectedSubmission && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(2, 6, 23, 0.95)', backdropFilter: 'blur(12px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
                     <div style={{ background: '#0f172a', width: '1000px', height: '85vh', display: 'flex', flexDirection: 'column', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>

@@ -16,7 +16,7 @@ const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_
 
 router.post('/create', authenticate, async (req, res) => {
     try {
-        const { title, description, duration, batches, questions, totalMarks } = req.body;
+        const { title, description, duration, batches, questions, totalMarks, startTime, endTime } = req.body;
         
         const test = new AptitudeTest({
             facultyId: req.user.userId,
@@ -26,8 +26,34 @@ router.post('/create', authenticate, async (req, res) => {
             duration,
             batches,
             questions,
-            totalMarks
+            totalMarks,
+            startTime,
+            endTime
         });
+        
+        await test.save();
+        res.json({ success: true, test });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/:id', authenticate, async (req, res) => {
+    try {
+        const testId = req.params.id;
+        const { title, description, duration, batches, questions, totalMarks, startTime, endTime } = req.body;
+        
+        const test = await AptitudeTest.findOne({ _id: testId, facultyId: req.user.userId });
+        if (!test) return res.status(404).json({ error: 'Test not found' });
+        
+        if (title !== undefined) test.title = title;
+        if (description !== undefined) test.description = description;
+        if (duration !== undefined) test.duration = duration;
+        if (batches !== undefined) test.batches = batches;
+        if (questions !== undefined) test.questions = questions;
+        if (totalMarks !== undefined) test.totalMarks = totalMarks;
+        if (startTime !== undefined) test.startTime = startTime;
+        if (endTime !== undefined) test.endTime = endTime;
         
         await test.save();
         res.json({ success: true, test });

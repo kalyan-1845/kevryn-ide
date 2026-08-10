@@ -61,9 +61,9 @@ const StudentAssignmentView = ({
 
     const fetchActiveAssignments = async () => {
         try {
-            const res = await api.get('/api/assignments/student/active');
+            const res = await api.get('/api/assignments');
             setActiveAssignments(res.data);
-        } catch (e) { console.error("Failed to fetch active assignments", e); }
+        } catch (e) { console.error("Failed to fetch all assignments", e); }
     };
 
     const fetchEnrolledCourses = async () => {
@@ -96,6 +96,12 @@ const StudentAssignmentView = ({
     };
 
     const openAssignment = (assignment) => {
+        const now = new Date();
+        const start = new Date(assignment.startTime);
+        if (now < start) {
+            alert(`Mission starts at ${start.toLocaleString()}`);
+            return;
+        }
         setSelectedAssignment(assignment);
         setCode(assignment.starterCode || '');
         setTestResults(null);
@@ -306,7 +312,7 @@ const StudentAssignmentView = ({
                         icon={<FaTrophy size={24} />}
                         color="#eab308"
                         onClick={() => setViewMode('aptitude-list')}
-                        count={activeAptitudeSession ? 1 : 0}
+                        count={activeAptitudeSession && new Date() >= new Date(activeAptitudeSession.startTime) && new Date() <= new Date(activeAptitudeSession.endTime) ? 1 : 0}
                     />
                     <HubCard 
                         title="Assignment Depot" 
@@ -314,7 +320,7 @@ const StudentAssignmentView = ({
                         icon={<FaClipboardList size={24} />}
                         color="#3b82f6"
                         onClick={() => setViewMode('courses')}
-                        count={activeAssignments.length}
+                        count={activeAssignments.filter(a => new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
                     />
                     <HubCard 
                         title="Academy Vault" 
@@ -448,6 +454,11 @@ const StudentAssignmentView = ({
                     </div>
                 )}
 
+                {selectedAssignment && new Date() > new Date(selectedAssignment.endTime) && (
+                    <div style={{ padding: '12px 32px', background: '#ef4444', color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', letterSpacing: '1px' }}>
+                        TIME WINDOW ENDED - READ ONLY MODE
+                    </div>
+                )}
                 <div style={{ padding: '16px 32px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(20px)', zIndex: 100 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaArrowLeft /></motion.button>
@@ -476,10 +487,12 @@ const StudentAssignmentView = ({
                             </div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '16px' }}>
-                        <motion.button onClick={runTests} style={{ padding: '10px 24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(30, 41, 59, 0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700' }}><FaPlay size={12} color="#60a5fa" /> EXECUTE LOGIC</motion.button>
-                        <motion.button onClick={submitAssignment} style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800' }}><FaPaperPlane size={12} /> DEPLOY SOLUTION</motion.button>
-                    </div>
+                    {!(selectedAssignment && new Date() > new Date(selectedAssignment.endTime)) && (
+                        <div style={{ display: 'flex', gap: '16px' }}>
+                            <motion.button onClick={runTests} style={{ padding: '10px 24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(30, 41, 59, 0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700' }}><FaPlay size={12} color="#60a5fa" /> EXECUTE LOGIC</motion.button>
+                            <motion.button onClick={submitAssignment} style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800' }}><FaPaperPlane size={12} /> DEPLOY SOLUTION</motion.button>
+                        </div>
+                    )}
                 </div>
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                     <div style={{ width: '400px', borderRight: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', background: 'rgba(15, 23, 42, 0.2)', backdropFilter: 'blur(5px)' }}>
@@ -496,7 +509,7 @@ const StudentAssignmentView = ({
                             ))}
                         </div>
                     </div>
-                    <div style={{ flex: 1 }}><Editor height="100%" theme="vs-dark" defaultValue={code} onChange={v => setCode(v)} language={selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language} options={{ fontSize: 16, fontFamily: 'JetBrains Mono', minimap: { enabled: false } }} /></div>
+                    <div style={{ flex: 1 }}><Editor height="100%" theme="vs-dark" defaultValue={code} onChange={v => setCode(v)} language={selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language} options={{ fontSize: 16, fontFamily: 'JetBrains Mono', minimap: { enabled: false }, readOnly: selectedAssignment && new Date() > new Date(selectedAssignment.endTime) }} /></div>
                 </div>
             </div>
         );
@@ -504,6 +517,29 @@ const StudentAssignmentView = ({
 
     // RENDER ASSIGNMENTS LIST
     if (viewMode === 'assignments') {
+        const now = new Date();
+        const activeNow = assignments.filter(a => now >= new Date(a.startTime) && now <= new Date(a.endTime));
+        const upcoming = assignments.filter(a => now < new Date(a.startTime));
+        const past = assignments.filter(a => now > new Date(a.endTime));
+
+        const renderAssignmentCards = (list) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+                {list.map(a => {
+                    const submission = submissions.find(s => s.assignmentId?._id === a._id);
+                    return (
+                        <motion.div key={a._id} onClick={() => openAssignment(a)} whileHover={{ y: -5 }} style={cardStyle}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Assignment</span>
+                                {submission && <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '12px', fontSize: '10px', fontWeight: '800' }}>SUBMITTED</span>}
+                            </div>
+                            <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>{a.title}</h3>
+                            <div style={{ color: '#94a3b8', fontSize: '13px' }}><FaCode size={10} /> {a.language} • {submission ? 'Achieved Score' : 'Target Score'}: {submission ? `${submission.score} / ${submission.maxScore}` : `${a.maxPoints || 100} Marks`}</div>
+                        </motion.div>
+                    );
+                })}
+            </div>
+        );
+
         return (
             <div style={rootStyle}>
                 <div style={watermarkStyle}>TASKS</div>
@@ -512,20 +548,26 @@ const StudentAssignmentView = ({
                         <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
                         <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>{selectedCourse?.name} Missions</h2>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px' }}>
-                        {assignments.map(a => {
-                            const submission = submissions.find(s => s.assignmentId?._id === a._id);
-                        return (
-                            <motion.div key={a._id} onClick={() => openAssignment(a)} whileHover={{ y: -5 }} style={cardStyle}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase' }}>Assignment</span>
-                                    {submission && <span style={{ padding: '2px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '12px', fontSize: '10px', fontWeight: '800' }}>SUBMITTED</span>}
-                                </div>
-                                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px' }}>{a.title}</h3>
-                                <div style={{ color: '#94a3b8', fontSize: '13px' }}><FaCode size={10} /> {a.language} • {submission ? 'Achieved Score' : 'Target Score'}: {submission ? `${submission.score} / ${submission.maxScore}` : `${a.maxPoints || 100} Marks`}</div>
-                            </motion.div>
-                        );})}
-                    </div>
+                    
+                    {activeNow.length > 0 && (
+                        <>
+                            <h3 style={{ color: '#10b981', fontSize: '18px', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>Active Now</h3>
+                            {renderAssignmentCards(activeNow)}
+                        </>
+                    )}
+                    {upcoming.length > 0 && (
+                        <>
+                            <h3 style={{ color: '#60a5fa', fontSize: '18px', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>Upcoming</h3>
+                            {renderAssignmentCards(upcoming)}
+                        </>
+                    )}
+                    {past.length > 0 && (
+                        <>
+                            <h3 style={{ color: '#94a3b8', fontSize: '18px', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>Past / Read-Only</h3>
+                            {renderAssignmentCards(past)}
+                        </>
+                    )}
+                    {assignments.length === 0 && <div style={{ color: '#94a3b8' }}>No assignments found for this course.</div>}
                 </div>
             </div>
         );

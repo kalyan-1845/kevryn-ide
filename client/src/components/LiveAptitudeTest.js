@@ -22,7 +22,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
     }, [session]);
 
     useEffect(() => {
-        if (hasStarted) {
+        if (hasStarted && !isReadOnly) {
             setTimeRemaining(computeTimeRemaining());
             const timerId = setInterval(() => {
                 const tr = computeTimeRemaining();
@@ -38,7 +38,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
 
     // Telemetry tracking
     useEffect(() => {
-        if (!hasStarted || isSubmitting) return;
+        if (!hasStarted || isSubmitting || isReadOnly) return;
 
         const reportViolation = async (event, details) => {
             try {
@@ -77,6 +77,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
         };
     }, [hasStarted, isSubmitting, session, api]);
 
+    const isReadOnly = session && session.endTime ? new Date() > new Date(session.endTime) : false;
     const [isSuccess, setIsSuccess] = useState(false);
     
     const submitExam = async (isAuto = false) => {
@@ -117,6 +118,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
     };
 
     const toggleAnswer = (questionId, value, isMulti) => {
+        if (isReadOnly) return;
         setAnswers(prev => {
             const current = prev[questionId] || [];
             if (!isMulti) {
@@ -129,6 +131,10 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
     };
 
     const handleStart = async () => {
+        if (isReadOnly) {
+            setHasStarted(true);
+            return;
+        }
         try {
             // Request Fullscreen
             await document.documentElement.requestFullscreen();
@@ -195,7 +201,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
                         onClick={handleStart}
                         style={{ padding: '16px 32px', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', width: '100%', boxShadow: '0 8px 20px rgba(99,102,241,0.4)', transition: 'all 0.2s' }}
                     >
-                        I understand, Start Exam
+                        {isReadOnly ? 'View Exam (Read-Only)' : 'I understand, Start Exam'}
                     </button>
                 </div>
             </div>
@@ -209,24 +215,35 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
             background: '#060b17', zIndex: 10000, color: '#f1f5f9', display: 'flex', flexDirection: 'column'
         }}>
             {/* Header / StatusBar */}
+            {isReadOnly && (
+                <div style={{ padding: '12px 32px', background: '#ef4444', color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', letterSpacing: '1px' }}>
+                    TIME WINDOW ENDED - READ ONLY MODE
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 32px', background: '#0a1020', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
                     <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '700' }}>{session?.title}</h2>
-                    <div style={{ fontSize: '12px', color: '#eab308', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                        <FaExclamationTriangle /> Strict Mode Active (Violations: {violations}/3)
-                    </div>
+                    {!isReadOnly && (
+                        <div style={{ fontSize: '12px', color: '#eab308', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                            <FaExclamationTriangle /> Strict Mode Active (Violations: {violations}/3)
+                        </div>
+                    )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: timeRemaining < 300 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', padding: '8px 16px', borderRadius: '8px', color: timeRemaining < 300 ? '#ef4444' : '#10b981', fontWeight: '800', fontSize: '20px' }}>
-                        <FaClock /> {formatTime(timeRemaining)}
-                    </div>
-                    <button
-                        onClick={() => { if(window.confirm("Are you sure you want to finish and submit?")) submitExam(false); }}
-                        disabled={isSubmitting}
-                        style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(59,130,246,0.4)' }}
-                    >
-                        {isSubmitting ? 'Submitting...' : <><FaPaperPlane /> Submit Exam</>}
-                    </button>
+                    {!isReadOnly && (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: timeRemaining < 300 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', padding: '8px 16px', borderRadius: '8px', color: timeRemaining < 300 ? '#ef4444' : '#10b981', fontWeight: '800', fontSize: '20px' }}>
+                                <FaClock /> {formatTime(timeRemaining)}
+                            </div>
+                            <button
+                                onClick={() => { if(window.confirm("Are you sure you want to finish and submit?")) submitExam(false); }}
+                                disabled={isSubmitting}
+                                style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(59,130,246,0.4)' }}
+                            >
+                                {isSubmitting ? 'Submitting...' : <><FaPaperPlane /> Submit Exam</>}
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -300,6 +317,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
                                     value={userAns[0] || ''}
                                     onChange={(e) => toggleAnswer(q._id, e.target.value, false)}
                                     placeholder={q.type === 'code' ? '// Initiate sequence solution...' : 'Input answer...'}
+                                    disabled={isReadOnly}
                                     style={{
                                         width: '100%', height: q.type === 'code' ? '250px' : '80px', padding: '20px',
                                         background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px',

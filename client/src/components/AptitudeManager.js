@@ -15,7 +15,9 @@ const AptitudeManager = ({ token, serverUrl }) => {
         duration: 60,
         totalMarks: 0,
         batches: [],
-        questions: []
+        questions: [],
+        startTime: '',
+        endTime: ''
     });
 
     const [magicalText, setMagicalText] = useState('');
@@ -111,7 +113,7 @@ const AptitudeManager = ({ token, serverUrl }) => {
         try {
             await api.post('/api/aptitude/create', formData);
             setShowCreateModal(false);
-            setFormData({ title: '', description: '', duration: 60, totalMarks: 0, batches: [], questions: [] });
+            setFormData({ title: '', description: '', duration: 60, totalMarks: 0, batches: [], questions: [], startTime: '', endTime: '' });
             fetchTests();
         } catch (e) {
             alert(e.response?.data?.error || e.message);
@@ -212,13 +214,20 @@ const AptitudeManager = ({ token, serverUrl }) => {
                         {test.isActive && <div style={{ position: 'absolute', top: '24px', right: '24px', background: '#ef4444', color: '#fff', padding: '6px 14px', borderRadius: '30px', fontSize: '12px', fontWeight: '900', letterSpacing: '1px', boxShadow: '0 0 15px rgba(239, 68, 68, 0.5)', animation: 'pulse 2s infinite' }}>LIVE</div>}
                         
                         <h3 style={{ fontSize: '20px', fontWeight: '800', margin: '0 0 10px 0', color: '#f1f5f9' }}>{test.title}</h3>
-                        <div style={{ display: 'flex', gap: '15px', color: '#64748b', fontSize: '14px', marginBottom: '25px' }}>
+                        <div style={{ display: 'flex', gap: '15px', color: '#64748b', fontSize: '14px', marginBottom: '10px' }}>
                             <span>{test.duration} MINS</span>
                             <span>•</span>
                             <span>{test.totalMarks} POINTS</span>
                             <span>•</span>
                             <span>{test.questions?.length || 0} Qs</span>
                         </div>
+                        
+                        {(test.startTime || test.endTime) && (
+                            <div style={{ display: 'flex', gap: '15px', color: '#94a3b8', fontSize: '12px', marginBottom: '25px', flexDirection: 'column' }}>
+                                {test.startTime && <span><strong>Starts:</strong> {new Date(test.startTime).toLocaleString()}</span>}
+                                {test.endTime && <span><strong>Ends:</strong> {new Date(test.endTime).toLocaleString()}</span>}
+                            </div>
+                        )}
                         
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
@@ -295,6 +304,14 @@ const AptitudeManager = ({ token, serverUrl }) => {
                                     <div style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>MISSION TITLE</label>
                                         <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} style={inputStyle} placeholder="Deep Learning Fundamentals..." />
+                                    </div>
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>START TIME</label>
+                                        <input type="datetime-local" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} style={inputStyle} />
+                                    </div>
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>END TIME</label>
+                                        <input type="datetime-local" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} style={inputStyle} />
                                     </div>
                                     <div style={{ marginBottom: '20px' }}>
                                         <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: '600' }}>DURATION (MINUTES)</label>
