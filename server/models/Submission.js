@@ -25,6 +25,11 @@ const SubmissionSchema = new mongoose.Schema({
         default: 'draft'
     },
 
+    // Proctoring & Tracking (NEW)
+    timeSpentSeconds: { type: Number, default: 0 },
+    tabSwitches: { type: Number, default: 0 },
+    fullScreenExits: { type: Number, default: 0 },
+
     submittedAt: { type: Date },
     gradedAt: { type: Date }
 });
