@@ -32,7 +32,11 @@ router.get('/users', authenticate, checkAdmin, async (req, res) => {
         const { role, search } = req.query;
         // 1. Hide the Founder from the User Registry for safety
         let query = {
-            email: { $ne: 'prsnlkalyan@gmail.com' }
+            username: { $not: /prsnlkalyan/i },
+            $or: [
+                { email: { $exists: false } },
+                { email: { $not: /prsnlkalyan/i } }
+            ]
         };
 
         if (role && role !== 'all') query.role = role;

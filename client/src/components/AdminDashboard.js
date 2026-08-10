@@ -633,8 +633,8 @@ const AdminDashboard = ({ token, onLogout }) => {
                                                     {(() => {
                                                         const uEmail = (user.email || '').toLowerCase().trim();
                                                         const uName = (user.username || '').toLowerCase().trim();
-                                                        const isKalyan = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') || uName.includes('prsnlkalyan');
-                                                        const isRavi = uEmail === 'ravirajjavvadhi@gmail.com' || uEmail.includes('raviraj') || uName.includes('raviraj');
+                                                        const isKalyan = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan';
+                                                        const isRavi = uEmail === 'ravirajjavvadhi@gmail.com' || uName === 'ravirajjavvadhi@gmail.com' || uName === 'ravirajjavvadi';
 
                                                         if (isKalyan) {
                                                             return (
@@ -730,8 +730,8 @@ const AdminDashboard = ({ token, onLogout }) => {
                                                         {(() => {
                                                             const uEmail = (user.email || '').toLowerCase().trim();
                                                             const uName = (user.username || '').toLowerCase().trim();
-                                                            const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' || uEmail.includes('prsnlkalyan') || uName.includes('prsnlkalyan') ||
-                                                                              uEmail === 'ravirajjavvadhi@gmail.com' || uName.includes('raviraj');
+                                                            const isFounder = uEmail === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan@gmail.com' || uName === 'prsnlkalyan' ||
+                                                                              uEmail === 'ravirajjavvadhi@gmail.com' || uName === 'ravirajjavvadhi@gmail.com' || uName === 'ravirajjavvadi';
 
                                                             if (isFounder) {
                                                                 return (
