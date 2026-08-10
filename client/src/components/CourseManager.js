@@ -17,7 +17,7 @@ const CourseManager = ({ token, serverUrl, userId }) => {
     const [batchToManage, setBatchToManage] = useState(null);
     const [studentInput, setStudentInput] = useState("");
     const [enrollStats, setEnrollStats] = useState(null);
-    const [newBatch, setNewBatch] = useState({ name: '', schedule: { day: '', time: '' } });
+    const [newBatch, setNewBatch] = useState({ name: '', year: '', section: '', schedule: { day: '', time: '' } });
 
     // Course Roster States (Phase 18)
     const [showCourseRosterModal, setShowCourseRosterModal] = useState(false);
@@ -73,6 +73,8 @@ const CourseManager = ({ token, serverUrl, userId }) => {
         try {
             const res = await api.post(`/api/courses/${selectedCourse._id}/batches`, {
                 name: newBatch.name,
+                year: newBatch.year,
+                section: newBatch.section,
                 schedule: newBatch.schedule
             });
             setCourses(courses.map(c => {
@@ -82,7 +84,7 @@ const CourseManager = ({ token, serverUrl, userId }) => {
                 return c;
             }));
             setShowBatchModal(false);
-            setNewBatch({ name: '', schedule: { day: '', time: '' } });
+            setNewBatch({ name: '', year: '', section: '', schedule: { day: '', time: '' } });
         } catch (e) {
             alert("Failed to create batch: " + (e.response?.data?.error || e.message));
         }
@@ -255,9 +257,16 @@ const CourseManager = ({ token, serverUrl, userId }) => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                     {course.batches.map(b => (
                                         <div key={b._id} style={{ background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <FaUsers size={10} color="#64748b" />
-                                                <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '600' }}>{b.name}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <FaUsers size={10} color="#64748b" />
+                                                    <span style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: '600' }}>{b.name}</span>
+                                                </div>
+                                                {(b.year || b.section) && (
+                                                    <span style={{ fontSize: '9px', color: '#94a3b8', paddingLeft: '16px' }}>
+                                                        {b.year ? `${b.year}` : ''} {b.section ? `(Sec: ${b.section})` : ''}
+                                                    </span>
+                                                )}
                                             </div>
                                             <button onClick={() => openStudentModal(course, b)} style={{ background: 'transparent', border: 'none', color: '#6366f1', fontSize: '10px', fontWeight: '700', cursor: 'pointer' }}>Manage</button>
                                         </div>
@@ -301,7 +310,17 @@ const CourseManager = ({ token, serverUrl, userId }) => {
                     <div style={{ background: '#1e293b', padding: '30px', borderRadius: '20px', width: '400px', border: '1px solid rgba(255,255,255,0.1)' }}>
                         <h2 style={{ color: '#fff', marginBottom: '10px', fontSize: '20px' }}>Add Batch</h2>
                         <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '20px' }}>{selectedCourse?.name}</p>
-                        <input placeholder="Batch Name" value={newBatch.name} onChange={e => setNewBatch({ ...newBatch, name: e.target.value })} style={{ width: '100%', padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '10px', marginBottom: '12px' }} />
+                        <input placeholder="Batch Name (e.g. Morning Batch)" value={newBatch.name} onChange={e => setNewBatch({ ...newBatch, name: e.target.value })} style={{ width: '100%', padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '10px', marginBottom: '12px' }} />
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                            <select value={newBatch.year} onChange={e => setNewBatch({ ...newBatch, year: e.target.value })} style={{ flex: 1, padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '10px' }}>
+                                <option value="">- Select Year -</option>
+                                <option value="1st Year">1st Year</option>
+                                <option value="2nd Year">2nd Year</option>
+                                <option value="3rd Year">3rd Year</option>
+                                <option value="4th Year">4th Year</option>
+                            </select>
+                            <input placeholder="Section (e.g. A)" value={newBatch.section} onChange={e => setNewBatch({ ...newBatch, section: e.target.value })} style={{ flex: 1, padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '10px' }} />
+                        </div>
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <input placeholder="Day" value={newBatch.schedule.day} onChange={e => setNewBatch({ ...newBatch, schedule: { ...newBatch.schedule, day: e.target.value } })} style={{ flex: 1, padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '10px' }} />
                             <input placeholder="Time" value={newBatch.schedule.time} onChange={e => setNewBatch({ ...newBatch, schedule: { ...newBatch.schedule, time: e.target.value } })} style={{ flex: 1, padding: '12px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '10px' }} />

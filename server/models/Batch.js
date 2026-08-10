@@ -4,6 +4,8 @@ const BatchSchema = new mongoose.Schema({
     collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
     name: { type: String, required: true }, // e.g., "Batch A"
+    year: { type: String }, // e.g., "1st Year", "2nd Year"
+    section: { type: String }, // e.g., "A", "B", "C"
 
     // Students Enrolled in this Batch
     students: [{

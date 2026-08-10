@@ -104,7 +104,7 @@ router.delete('/courses/:id', authenticate, async (req, res) => {
 // 4. Add a Batch to a Course
 router.post('/courses/:id/batches', authenticate, async (req, res) => {
     try {
-        const { name, schedule } = req.body;
+        const { name, schedule, year, section } = req.body;
         const course = await Course.findById(req.params.id);
 
         if (!course) return res.status(404).json({ error: "Course not found" });
@@ -114,6 +114,8 @@ router.post('/courses/:id/batches', authenticate, async (req, res) => {
             collegeId: req.user.collegeId || undefined,
             courseId: course._id,
             name,
+            year,
+            section,
             schedule
         });
 
