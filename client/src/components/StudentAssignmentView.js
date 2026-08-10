@@ -31,6 +31,10 @@ const StudentAssignmentView = ({
     const [testResults, setTestResults] = useState(null);
     const [submissionStatus, setSubmissionStatus] = useState(null);
 
+    // Fullscreen Proctoring State
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [proctorWarning, setProctorWarning] = useState('');
+
     const api = axios.create({ baseURL: serverUrl, headers: { Authorization: token } });
 
     useEffect(() => {
@@ -39,7 +43,21 @@ const StudentAssignmentView = ({
         fetchActiveAssignments();
         // Mock stats or fetch from backend if available
         setUserStats({ completed: 12, points: 450, rank: 'Pro Code-Warrior' });
-    }, []);
+
+        // Fullscreen Listener
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                setIsFullscreen(false);
+                if (viewMode === 'solve') {
+                    setProctorWarning('STRICT PROCTORING VIOLATION: You exited fullscreen. This incident has been logged.');
+                }
+            } else {
+                setIsFullscreen(true);
+            }
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, [viewMode]);
 
     const fetchActiveAssignments = async () => {
         try {
@@ -86,7 +104,12 @@ const StudentAssignmentView = ({
     };
 
     const handleBack = () => {
-        if (viewMode === 'solve') setViewMode('assignments');
+        if (viewMode === 'solve') {
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => console.error(e));
+            }
+            setViewMode('assignments');
+        }
         else if (viewMode === 'assignments') { setViewMode('courses'); setSelectedCourse(null); }
         else if (viewMode === 'courses' || viewMode === 'aptitude-list') setViewMode('hub');
         else onBack();
@@ -395,6 +418,36 @@ const StudentAssignmentView = ({
     if (viewMode === 'solve' && selectedAssignment) {
         return (
             <div style={{ display: 'flex', height: '100vh', flexDirection: 'column', background: '#020617', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif" }}>
+                
+                {/* STRICT PROCTORING FULLSCREEN OVERLAY */}
+                {!isFullscreen && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <FaExclamationTriangle size={64} color="#ef4444" style={{ marginBottom: '20px' }} />
+                        <h1 style={{ color: '#ef4444', fontSize: '32px', fontWeight: '900', marginBottom: '10px' }}>PROCTORING ACTIVE</h1>
+                        <p style={{ color: '#94a3b8', fontSize: '18px', marginBottom: '30px', textAlign: 'center', maxWidth: '500px' }}>
+                            Assignments are conducted in Strict Full-Screen mode. Exiting full-screen or switching tabs will be logged as a violation.
+                        </p>
+                        <button 
+                            onClick={() => document.documentElement.requestFullscreen().catch(err => console.error(err))}
+                            style={{ padding: '16px 40px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 0 30px rgba(239, 68, 68, 0.4)' }}
+                        >
+                            <FaTerminal /> ENTER FULLSCREEN
+                        </button>
+                    </div>
+                )}
+
+                {/* WARNING BANNER */}
+                {proctorWarning && (
+                    <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: '#ef4444', color: '#fff', padding: '16px 32px', borderRadius: '12px', zIndex: 10000, display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 10px 30px rgba(239, 68, 68, 0.5)', border: '2px solid rgba(255,255,255,0.2)' }}>
+                        <FaExclamationTriangle size={24} />
+                        <div>
+                            <div style={{ fontWeight: '900', fontSize: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>WARNING</div>
+                            <div style={{ fontSize: '14px', opacity: 0.9 }}>{proctorWarning}</div>
+                        </div>
+                        <button onClick={() => setProctorWarning('')} style={{ background: 'rgba(0,0,0,0.2)', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', marginLeft: '20px' }}>ACKNOWLEDGE</button>
+                    </div>
+                )}
+
                 <div style={{ padding: '16px 32px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(20px)', zIndex: 100 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FaArrowLeft /></motion.button>
