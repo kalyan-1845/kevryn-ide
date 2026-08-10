@@ -30,6 +30,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
     const [pastes, setPastes] = useState(0);
     const [handRaised, setHandRaised] = useState(false);
     const [announcement, setAnnouncement] = useState(null);
+    const [tabWarning, setTabWarning] = useState(null); // NEW: Student Warning
     const [lastSynced, setLastSynced] = useState(null); // NEW: Visual feedback
     const wcBridgeRef = useRef(null);
 
@@ -316,6 +317,19 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                     });
                 }
                 updateStatus('active');
+
+                // NEW: Trigger Tab Switch Warning
+                if (tabCountRef.current >= 3) {
+                    setTabWarning({
+                        level: 'critical',
+                        message: `🚨 EXTREME WARNING: You have switched tabs ${tabCountRef.current} times. Faculty has been notified.`
+                    });
+                } else if (tabCountRef.current > 0) {
+                    setTabWarning({
+                        level: 'warning',
+                        message: `⚠️ WARNING: Tab switching is recorded. You have switched tabs ${tabCountRef.current} times.`
+                    });
+                }
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -754,6 +768,36 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                     >
                         DISMISS
                     </button>
+                </div>
+            )}
+
+            {/* --- TAB WARNING BANNER --- */}
+            {tabWarning && (
+                <div style={{
+                    position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999,
+                    background: tabWarning.level === 'critical' ? 'linear-gradient(135deg, #dc2626, #991b1b)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    color: '#fff', padding: '16px 28px', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px',
+                    boxShadow: tabWarning.level === 'critical' ? '0 4px 20px rgba(220, 38, 38, 0.6)' : '0 4px 20px rgba(245, 158, 11, 0.4)',
+                    animation: 'slideDown 0.3s ease-out, pulse 2s infinite'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '24px' }}>{tabWarning.level === 'critical' ? '🚨' : '⚠️'}</span>
+                        <div style={{ fontSize: '15px', fontWeight: 'bold', letterSpacing: '0.5px' }}>{tabWarning.message}</div>
+                    </div>
+                    <button
+                        onClick={() => setTabWarning(null)}
+                        style={{
+                            background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+                            padding: '6px 16px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 'bold', transition: '0.2s'
+                        }}
+                        onMouseOver={e => e.target.style.background = 'rgba(255,255,255,0.35)'}
+                        onMouseOut={e => e.target.style.background = 'rgba(255,255,255,0.2)'}
+                    >
+                        ACKNOWLEDGE
+                    </button>
+                    <style>{`@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.9; } 100% { opacity: 1; } }`}</style>
                 </div>
             )}
 
