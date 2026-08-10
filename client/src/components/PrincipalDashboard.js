@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './PrincipalDashboard.css';
 
-const PrincipalDashboard = () => {
+const _rawServerUrl = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
+const SERVER_URL = _rawServerUrl.startsWith('http') ? _rawServerUrl : `https://${_rawServerUrl}`;
+
+const PrincipalDashboard = ({ token }) => {
   const [stats, setStats] = useState({ totalStudents: 0, activeFaculty: 0, labsCompleted: 0 });
   const [leaderboard, setLeaderboard] = useState([]);
   const [facultyActivity, setFacultyActivity] = useState([]);
@@ -10,10 +13,15 @@ const PrincipalDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
         const [statsRes, leaderboardRes, facultyRes] = await Promise.all([
-          fetch('/api/principal/stats').then(res => res.ok ? res.json() : {}),
-          fetch('/api/principal/leaderboard').then(res => res.ok ? res.json() : []),
-          fetch('/api/principal/faculty-activity').then(res => res.ok ? res.json() : [])
+          fetch(`${SERVER_URL}/api/principal/stats`, { headers }).then(res => res.ok ? res.json() : {}),
+          fetch(`${SERVER_URL}/api/principal/leaderboard`, { headers }).then(res => res.ok ? res.json() : []),
+          fetch(`${SERVER_URL}/api/principal/faculty-activity`, { headers }).then(res => res.ok ? res.json() : [])
         ]);
         
         setStats(statsRes || { totalStudents: 1450, activeFaculty: 84, labsCompleted: 12050 });
