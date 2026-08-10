@@ -143,8 +143,8 @@ router.get('/issues', authenticate, checkAdmin, async (req, res) => {
     }
 });
 
-// 4. Delete User (Deep Cascading Delete) — REQUIRES DUAL-KEY FOUNDER OTP
-router.delete('/users/:id', authenticate, requireDualOTP, async (req, res) => {
+// 4. Delete User (Deep Cascading Delete)
+router.delete('/users/:id', authenticate, checkAdmin, async (req, res) => {
     try {
         if (req.user.role !== 'admin') return res.status(403).json({ error: "Only admins can delete users" });
         if (req.user.userId === req.params.id) return res.status(400).json({ error: "Cannot delete yourself" });

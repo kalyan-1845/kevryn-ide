@@ -215,16 +215,8 @@ const AdminDashboard = ({ token, onLogout }) => {
     const handleDeleteUser = async (userId, username) => {
         if (!window.confirm(`CRITICAL WARNING: Are you sure you want to PERMANENTLY delete user "${username}" and ALL their associated data? This cannot be undone.`)) return;
         
-        const otp = window.prompt("DUAL-KEY OTP REQUIRED\nThis action requires both founders to authorize it.\n\nEnter the 6-digit combined OTP (First 3 digits from Founder 1, Last 3 digits from Founder 2):");
-        if (!otp || otp.length !== 6) {
-            alert("Valid 6-digit OTP is required. Action aborted.");
-            return;
-        }
-
         try {
-            await api.delete(`/api/admin/users/${userId}`, {
-                headers: { 'x-founder-otp': otp }
-            });
+            await api.delete(`/api/admin/users/${userId}`);
             fetchUsers();
             fetchData(); // Refresh stats
             alert(`User ${username} deleted successfully.`);
