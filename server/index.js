@@ -467,6 +467,7 @@ app.use('/api', broadcastRouter);
 app.use('/api', courseManager);
 app.use('/api/assignments', assignmentManager);
 app.use('/api/admin', adminRouter); // NEW: Admin API
+app.use('/api/principal', require('./routes/principal'));
 app.use('/api/issues', issuesRouter); // NEW: Issue Reporting
 app.use('/api', collegeRouter); // NEW: Multi-College Routes (/api/college/join, /api/admin/colleges)
 app.use('/ai', aiRouter); // Mount AI routes

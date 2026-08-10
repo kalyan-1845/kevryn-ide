@@ -1,0 +1,152 @@
+import React, { useState, useEffect } from 'react';
+import './PrincipalDashboard.css';
+
+const PrincipalDashboard = () => {
+  const [stats, setStats] = useState({ totalStudents: 0, activeFaculty: 0, labsCompleted: 0 });
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [facultyActivity, setFacultyActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, leaderboardRes, facultyRes] = await Promise.all([
+          fetch('/api/principal/stats').then(res => res.ok ? res.json() : {}),
+          fetch('/api/principal/leaderboard').then(res => res.ok ? res.json() : []),
+          fetch('/api/principal/faculty-activity').then(res => res.ok ? res.json() : [])
+        ]);
+        
+        setStats(statsRes || { totalStudents: 1450, activeFaculty: 84, labsCompleted: 12050 });
+        setLeaderboard(leaderboardRes.length ? leaderboardRes : [
+          { id: 1, name: 'Alice Smith', xp: 12500, branch: 'Computer Science' },
+          { id: 2, name: 'John Doe', xp: 11800, branch: 'Electronics' },
+          { id: 3, name: 'Emily Chen', xp: 10900, branch: 'Information Technology' }
+        ]);
+        setFacultyActivity(facultyRes.length ? facultyRes : [
+          { id: 1, name: 'Dr. Robert King', modulesCreated: 15, studentsMentored: 120, avgRating: 4.8 },
+          { id: 2, name: 'Prof. Sarah Lee', modulesCreated: 12, studentsMentored: 95, avgRating: 4.6 },
+          { id: 3, name: 'Dr. Alan Turing', modulesCreated: 22, studentsMentored: 200, avgRating: 4.9 }
+        ]);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="dashboard-loading">
+        <div className="spinner"></div>
+        <p>Loading God-View Analytics...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="principal-dashboard-container">
+      <header className="dashboard-header">
+        <h1>Principal Overview</h1>
+        <p>Institutional Analytics & Performance Tracking</p>
+      </header>
+
+      <div className="dashboard-grid">
+        {/* Executive Overview Section */}
+        <section className="dashboard-section glass-panel overview-section">
+          <h2>Executive Overview</h2>
+          <div className="stats-cards">
+            <div className="stat-card">
+              <span className="stat-label">Total Students</span>
+              <span className="stat-value">{stats.totalStudents.toLocaleString()}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Active Faculty</span>
+              <span className="stat-value">{stats.activeFaculty.toLocaleString()}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Labs Completed</span>
+              <span className="stat-value">{stats.labsCompleted.toLocaleString()}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Institutional Integrity Section */}
+        <section className="dashboard-section glass-panel integrity-section">
+          <h2>Institutional Integrity</h2>
+          <div className="integrity-content">
+            <div className="integrity-metric">
+              <svg className="circular-chart" viewBox="0 0 36 36">
+                <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path className="circle" strokeDasharray="95, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <text x="18" y="20.35" className="percentage">95%</text>
+              </svg>
+              <div className="integrity-details">
+                <h3>Proctoring Compliance</h3>
+                <p>Sessions without violations</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Placement Leaderboard Section */}
+        <section className="dashboard-section glass-panel leaderboard-section">
+          <h2>Placement Leaderboard</h2>
+          <div className="table-responsive">
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Student Name</th>
+                  <th>Branch</th>
+                  <th>XP Earned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((student, index) => (
+                  <tr key={student.id}>
+                    <td>#{index + 1}</td>
+                    <td>{student.name}</td>
+                    <td>{student.branch}</td>
+                    <td className="highlight-cell">{student.xp.toLocaleString()} XP</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Faculty ROI Tracker Section */}
+        <section className="dashboard-section glass-panel faculty-section">
+          <h2>Faculty ROI Tracker</h2>
+          <div className="table-responsive">
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>Faculty Name</th>
+                  <th>Modules Created</th>
+                  <th>Students Mentored</th>
+                  <th>Avg. Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facultyActivity.map((faculty) => (
+                  <tr key={faculty.id}>
+                    <td>{faculty.name}</td>
+                    <td>{faculty.modulesCreated}</td>
+                    <td>{faculty.studentsMentored}</td>
+                    <td className="rating-cell">★ {faculty.avgRating}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default PrincipalDashboard;

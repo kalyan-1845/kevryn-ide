@@ -33,6 +33,9 @@ const AdminDashboard = ({ token, onLogout }) => {
     const [showWelcome, setShowWelcome] = useState(true);
     const [showCreateCollege, setShowCreateCollege] = useState(false); // NEW: College Modal
     const [newCollegeName, setNewCollegeName] = useState("");
+    const [showCreateUser, setShowCreateUser] = useState(false);
+    const [createUserForm, setCreateUserForm] = useState({ username: '', password: '', role: 'student', collegeId: '' });
+    const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [broadcastsList, setBroadcastsList] = useState([]);
     const [broadcastForm, setBroadcastForm] = useState({
         title: '',
@@ -97,6 +100,23 @@ const AdminDashboard = ({ token, onLogout }) => {
             const res = await api.get('/api/admin/broadcasts');
             setBroadcastsList(res.data || []);
         } catch (e) { console.error("Broadcast fetch failed", e); }
+    };
+
+    const handleCreateUser = async (e) => {
+        e.preventDefault();
+        if (!createUserForm.username || !createUserForm.password) return alert("Username and Password required");
+        setIsCreatingUser(true);
+        try {
+            await api.post('/api/admin/create-user', createUserForm);
+            alert("User created successfully!");
+            setCreateUserForm({ username: '', password: '', role: 'student', collegeId: '' });
+            setShowCreateUser(false);
+            fetchUsers();
+        } catch (err) {
+            alert("Failed to create user: " + (err.response?.data?.error || err.message));
+        } finally {
+            setIsCreatingUser(false);
+        }
     };
 
     const handleSendBroadcast = async (e) => {
@@ -427,10 +447,23 @@ const AdminDashboard = ({ token, onLogout }) => {
                                     <h2 style={headerStyle}>USER REGISTRY</h2>
                                     <p style={{ color: '#888', fontSize: '12px', margin: '4px 0 0' }}>Comprehensive User Directory & Multi-Tenancy Classification</p>
                                 </div>
-                                <div style={{ position: 'relative' }}>
-                                    <FaSearch style={{ position: 'absolute', left: '15px', top: '12px', color: '#00d4ff' }} />
-                                    <input
-                                        type="text" placeholder="Search by Username, Email, College Code..."
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                                    <button
+                                        onClick={() => setShowCreateUser(true)}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #00d4ff, #0088FE)',
+                                            color: '#000', border: 'none', padding: '10px 20px',
+                                            borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                            boxShadow: '0 0 10px rgba(0, 212, 255, 0.4)'
+                                        }}
+                                    >
+                                        <FaPlus /> Create Account
+                                    </button>
+                                    <div style={{ position: 'relative' }}>
+                                        <FaSearch style={{ position: 'absolute', left: '15px', top: '12px', color: '#00d4ff' }} />
+                                        <input
+                                            type="text" placeholder="Search by Username, Email, College Code..."
                                         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                                         style={{
                                             background: 'rgba(0,0,0,0.5)', border: '1px solid #333', padding: '10px 10px 10px 40px',
@@ -440,6 +473,71 @@ const AdminDashboard = ({ token, onLogout }) => {
                                     />
                                 </div>
                             </div>
+
+                            {/* CREATE USER MODAL */}
+                            <AnimatePresence>
+                                {showCreateUser && (
+                                    <motion.div
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                        style={{
+                                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                                            background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)'
+                                        }}
+                                    >
+                                        <motion.div
+                                            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                                            style={{
+                                                background: '#1a1a1a', border: '1px solid #333',
+                                                padding: '30px', borderRadius: '16px', width: '400px',
+                                                boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+                                            }}
+                                        >
+                                            <h3 style={{ color: '#fff', marginTop: 0, marginBottom: '20px' }}>Create New Account</h3>
+                                            <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                                <input
+                                                    type="text" placeholder="Username" required
+                                                    value={createUserForm.username}
+                                                    onChange={e => setCreateUserForm({ ...createUserForm, username: e.target.value })}
+                                                    style={{ background: '#222', border: '1px solid #444', color: '#fff', padding: '12px', borderRadius: '8px', outline: 'none' }}
+                                                />
+                                                <input
+                                                    type="password" placeholder="Password" required
+                                                    value={createUserForm.password}
+                                                    onChange={e => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                                                    style={{ background: '#222', border: '1px solid #444', color: '#fff', padding: '12px', borderRadius: '8px', outline: 'none' }}
+                                                />
+                                                <select
+                                                    value={createUserForm.role}
+                                                    onChange={e => setCreateUserForm({ ...createUserForm, role: e.target.value })}
+                                                    style={{ background: '#222', border: '1px solid #444', color: '#fff', padding: '12px', borderRadius: '8px', outline: 'none' }}
+                                                >
+                                                    <option value="student">Student</option>
+                                                    <option value="faculty">Faculty</option>
+                                                    <option value="college_admin">College Admin</option>
+                                                    <option value="admin">Super Admin</option>
+                                                </select>
+                                                <select
+                                                    value={createUserForm.collegeId}
+                                                    onChange={e => setCreateUserForm({ ...createUserForm, collegeId: e.target.value })}
+                                                    style={{ background: '#222', border: '1px solid #444', color: '#fff', padding: '12px', borderRadius: '8px', outline: 'none' }}
+                                                >
+                                                    <option value="">No College (Global)</option>
+                                                    {colleges.map(c => (
+                                                        <option key={c._id} value={c._id}>{c.name} ({c.code})</option>
+                                                    ))}
+                                                </select>
+                                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                                    <button type="button" onClick={() => setShowCreateUser(false)} style={{ flex: 1, padding: '12px', background: '#333', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                                                    <button type="submit" disabled={isCreatingUser} style={{ flex: 1, padding: '12px', background: '#00d4ff', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                                        {isCreatingUser ? 'Creating...' : 'Create Account'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </motion.div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             {/* CATEGORY FILTER PILLS */}
                             {(() => {

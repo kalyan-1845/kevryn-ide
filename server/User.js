@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
   // Multi-College Tenancy: Permanent college binding
   collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
   // KevRyn Lab Monitor Role
-  role: { type: String, enum: ['student', 'faculty', 'admin', 'user'], default: 'student' },
+  role: { type: String, enum: ['student', 'faculty', 'admin', 'user', 'college_admin'], default: 'student' },
   isFacultyActive: { type: Boolean, default: false }, // Faculty approval status
 
   // Unified KevRyn Lab System: Link to Batches

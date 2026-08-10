@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const User = require('../User');
 const LabSession = require('../LabSessionModel');
@@ -199,6 +200,30 @@ router.delete('/users/:id', authenticate, requireDualOTP, async (req, res) => {
         await User.findByIdAndDelete(req.params.id);
 
         res.json({ success: true, message: "User and all associated data permanently deleted" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 5. Create User (Admin Only)
+router.post('/create-user', authenticate, checkAdmin, async (req, res) => {
+    try {
+        const { username, password, role, collegeId } = req.body;
+        if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+        
+        const existing = await User.findOne({ username });
+        if (existing) return res.status(400).json({ error: "Username taken" });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = new User({
+            username,
+            password: hashedPassword,
+            role: role || 'user',
+            collegeId: collegeId || undefined
+        });
+        await user.save();
+
+        res.json({ success: true, user: { _id: user._id, username: user.username, role: user.role, collegeId: user.collegeId } });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

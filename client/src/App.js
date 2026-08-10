@@ -33,6 +33,7 @@ import { ExecutionService } from './services/execution/ExecutionService';
 import FacultyHub from './components/FacultyHub'; // NEW: Unified Hub
 import StudentAssignmentView from './components/StudentAssignmentView'; // NEW: Student Assignments
 import AdminDashboard from './components/AdminDashboard'; // NEW: Admin Dashboard
+import PrincipalDashboard from './components/PrincipalDashboard';
 import IssueReporter from './components/IssueReporter'; // NEW: Issue Reporting
 import KevrynLogin from './components/KevrynLogin'; // NEW: Cinematic Login
 import LiveAptitudeTest from './components/LiveAptitudeTest'; // NEW: Aptitude Module
@@ -1784,7 +1785,7 @@ function App() {
 
                 // --- STRICT ROLE VALIDATION ---
                 // Admins can login via Faculty Portal
-                if (isFacultyLogin && role !== 'faculty' && role !== 'admin') {
+                if (isFacultyLogin && role !== 'faculty' && role !== 'admin' && role !== 'college_admin') {
                     showDialog({ type: 'alert', title: 'Access Denied', message: 'You are logging in as Faculty, but this account is a Student. Please use the Student Login.' });
                     return;
                 }
@@ -1810,7 +1811,7 @@ function App() {
 
             // --- STRICT ROLE VALIDATION FOR GOOGLE LOGIN ---
             // If they are on Faculty Login screen, they must be Faculty or Admin
-            if (isFacultyLogin && userRole !== 'faculty' && userRole !== 'admin') {
+            if (isFacultyLogin && userRole !== 'faculty' && userRole !== 'admin' && userRole !== 'college_admin') {
                 showDialog({ type: 'alert', title: 'Access Denied', message: 'This Google account is a Student. Please switch to Student Login.' });
                 return;
             }
@@ -1936,8 +1937,19 @@ function App() {
         return <LoadingScreen />;
     }
 
+    if (window.location.pathname === '/principal' && (!token || userRole !== 'college_admin')) {
+        window.history.replaceState(null, '', '/');
+    }
+
     if (token && userRole === 'admin') {
         return <AdminDashboard token={token} onLogout={handleLogout} />;
+    }
+
+    if (token && userRole === 'college_admin') {
+        if (window.location.pathname !== '/principal') {
+            window.history.replaceState(null, '', '/principal');
+        }
+        return <PrincipalDashboard token={token} onLogout={handleLogout} />;
     }
 
     if (token && userRole === 'faculty') {
