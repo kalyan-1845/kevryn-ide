@@ -30,14 +30,20 @@ const checkAdmin = async (req, res, next) => {
 router.get('/users', authenticate, checkAdmin, async (req, res) => {
     try {
         const { role, search } = req.query;
-        let query = {};
+        // 1. Hide the Founder from the User Registry for safety
+        let query = {
+            email: { $ne: 'prsnlkalyan@gmail.com' }
+        };
 
         if (role && role !== 'all') query.role = role;
         if (search) {
-            query.$or = [
-                { username: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } }
-            ];
+            query.$and = query.$and || [];
+            query.$and.push({
+                $or: [
+                    { username: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } }
+                ]
+            });
         }
 
         const users = await User.find(query).populate('collegeId', 'name code').select('-password').sort({ _id: -1 });

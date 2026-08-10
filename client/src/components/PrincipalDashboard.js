@@ -19,22 +19,23 @@ const PrincipalDashboard = ({ token }) => {
         };
 
         const [statsRes, leaderboardRes, facultyRes] = await Promise.all([
-          fetch(`${SERVER_URL}/api/principal/stats`, { headers }).then(res => res.ok ? res.json() : {}),
+          fetch(`${SERVER_URL}/api/principal/stats`, { headers }).then(res => res.ok ? res.json() : null),
           fetch(`${SERVER_URL}/api/principal/leaderboard`, { headers }).then(res => res.ok ? res.json() : []),
           fetch(`${SERVER_URL}/api/principal/faculty-activity`, { headers }).then(res => res.ok ? res.json() : [])
         ]);
         
-        setStats(statsRes || { totalStudents: 1450, activeFaculty: 84, labsCompleted: 12050 });
-        setLeaderboard(leaderboardRes.length ? leaderboardRes : [
-          { id: 1, name: 'Alice Smith', xp: 12500, branch: 'Computer Science' },
-          { id: 2, name: 'John Doe', xp: 11800, branch: 'Electronics' },
-          { id: 3, name: 'Emily Chen', xp: 10900, branch: 'Information Technology' }
-        ]);
-        setFacultyActivity(facultyRes.length ? facultyRes : [
-          { id: 1, name: 'Dr. Robert King', modulesCreated: 15, studentsMentored: 120, avgRating: 4.8 },
-          { id: 2, name: 'Prof. Sarah Lee', modulesCreated: 12, studentsMentored: 95, avgRating: 4.6 },
-          { id: 3, name: 'Dr. Alan Turing', modulesCreated: 22, studentsMentored: 200, avgRating: 4.9 }
-        ]);
+        if (statsRes) {
+            setStats({
+                totalStudents: statsRes.totalStudents || 0,
+                activeFaculty: statsRes.totalFaculty || 0, // Backend returns totalFaculty
+                labsCompleted: statsRes.totalSubmissions || 0 // Backend returns totalSubmissions
+            });
+        } else {
+            setStats({ totalStudents: 0, activeFaculty: 0, labsCompleted: 0 });
+        }
+        
+        setLeaderboard(leaderboardRes.length ? leaderboardRes : []);
+        setFacultyActivity(facultyRes.length ? facultyRes : []);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -57,7 +58,7 @@ const PrincipalDashboard = ({ token }) => {
   return (
     <div className="principal-dashboard-container">
       <header className="dashboard-header">
-        <h1>Principal Overview</h1>
+        <h1>College Admin Overview</h1>
         <p>Institutional Analytics & Performance Tracking</p>
       </header>
 
