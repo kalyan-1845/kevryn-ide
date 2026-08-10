@@ -4,7 +4,7 @@ import './PrincipalDashboard.css';
 const _rawServerUrl = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
 const SERVER_URL = _rawServerUrl.startsWith('http') ? _rawServerUrl : `https://${_rawServerUrl}`;
 
-const PrincipalDashboard = ({ token }) => {
+const PrincipalDashboard = ({ token, onLogout }) => {
   const [stats, setStats] = useState({ totalStudents: 0, activeFaculty: 0, labsCompleted: 0 });
   const [leaderboard, setLeaderboard] = useState([]);
   const [facultyActivity, setFacultyActivity] = useState([]);
@@ -57,9 +57,18 @@ const PrincipalDashboard = ({ token }) => {
 
   return (
     <div className="principal-dashboard-container">
-      <header className="dashboard-header">
-        <h1>College Admin Overview</h1>
-        <p>Institutional Analytics & Performance Tracking</p>
+      <header className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>College Admin Overview</h1>
+          <p>Institutional Analytics & Performance Tracking</p>
+        </div>
+        <button className="logout-btn" onClick={onLogout} style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
+          background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px', color: '#ff4b4b', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.3s ease'
+        }}>
+          Logout
+        </button>
       </header>
 
       <div className="dashboard-grid">

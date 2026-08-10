@@ -273,7 +273,7 @@ body {
     radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.15) 0, transparent 50%);
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
-  overflow: hidden;
+  overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 100vh;
 }
