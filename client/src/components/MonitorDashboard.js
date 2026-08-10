@@ -101,6 +101,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                     setSemester(s.semester);
                     setSessionStartTime(s.startTime); // NEW
                     setSessionDuration(s.duration || 60); // NEW
+                    setSelectedCourseId(s.courseId || ""); // FIX: Set selectedCourseId for reports
                     setIsCreatingSession(false);
 
                     // Initial student load happens via socket 'lab-initial-state'
@@ -280,10 +281,12 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
             // Actually, let's just make the backend endpoint accept username for convenience or lookup.
             // OR: Fetch report by `subject` and filter client side?
             // `GET /lab/reports/:courseName` returns ALL reports. Efficient enough for class size.
-            // NEW: Resolve Course ID from Subject Name
-            // Because backend now expects /lab/reports/:courseId
-            const course = courses.find(c => c.name === subject);
-            const courseId = course ? course._id : null;
+            // Resolve Course ID from state or Subject Name
+            let courseId = selectedCourseId;
+            if (!courseId) {
+                const course = courses.find(c => c.name === subject);
+                courseId = course ? course._id : null;
+            }
 
             if (!courseId) {
                 console.warn(`Course ID not found for subject: ${subject}`);
@@ -321,8 +324,12 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
         if (!reportData) {
             try {
                 // Try fetching current session report first
-                const course = courses.find(c => c.name === subject);
-                const courseId = course?._id || selectedCourseId;
+                let courseId = selectedCourseId;
+                if (!courseId) {
+                    const course = courses.find(c => c.name === subject);
+                    courseId = course ? course._id : null;
+                }
+                
                 if (!courseId) return alert("Course context missing for report");
 
                 const res = await api.get(`/lab/reports/${courseId}`);
@@ -348,13 +355,19 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                 `${f.code}\n\n`
             )).join("\n");
 
-        const element = document.createElement("a");
-        const file = new Blob([reportText], { type: 'text/plain' });
-        element.href = URL.createObjectURL(file);
-        element.download = `${studentName}_Lab_Report.txt`;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
+        // FIX: Native PDF generation via print window
+        const printWindow = window.open('', '', 'height=600,width=800');
+        printWindow.document.write('<html><head><title>Lab Report - ' + studentName + '</title>');
+        printWindow.document.write('<style>body { font-family: monospace; padding: 30px; white-space: pre-wrap; }</style>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(reportText.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
     };
 
     const handleBroadcast = () => {
@@ -715,7 +728,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                                     ACADEMIC RECORD
                                 </button>
                                 <button onClick={downloadReport} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', alignSelf: 'center' }}>
-                                    <FaFilePdf size={12} /> DOWNLOAD TXT
+                                    <FaFilePdf size={12} /> DOWNLOAD PDF
                                 </button>
                             </div>
                         </div>
