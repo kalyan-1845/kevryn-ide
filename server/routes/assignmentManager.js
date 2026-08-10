@@ -10,7 +10,7 @@ const { runAutoGrader } = require('../utils/autoGrader');
 // 1. Create Assignment (Faculty Only)
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { courseId, batchId, title, description, language, starterCode, testCases, points, dueDate } = req.body;
+        const { courseId, batchId, title, description, language, starterCode, testCases, points, startTime, endTime } = req.body;
 
         // Verify Faculty Role
         if (req.user.role !== 'faculty') return res.status(403).json({ error: "Only faculty can create assignments" });
@@ -31,7 +31,8 @@ router.post('/', authenticate, async (req, res) => {
             starterCode,
             testCases,
             maxPoints: points,
-            dueDate
+            startTime,
+            endTime
         });
 
         await newAssignment.save();
@@ -181,7 +182,7 @@ router.put('/:id', authenticate, async (req, res) => {
     try {
         if (req.user.role !== 'faculty') return res.status(403).json({ error: "Unauthorized" });
         
-        const { title, description, language, starterCode, testCases, points, dueDate, batchId } = req.body;
+        const { title, description, language, starterCode, testCases, points, startTime, endTime, batchId } = req.body;
         
         const updated = await Assignment.findByIdAndUpdate(req.params.id, {
             title,
@@ -190,7 +191,8 @@ router.put('/:id', authenticate, async (req, res) => {
             starterCode,
             testCases,
             maxPoints: points,
-            dueDate,
+            startTime,
+            endTime,
             batchId: batchId || null
         }, { new: true });
         
@@ -240,7 +242,7 @@ router.get('/student/active', authenticate, async (req, res) => {
             ]
         })
             .populate('courseId', 'name')
-            .sort({ dueDate: 1 }); // Sort by due date (closest first)
+            .sort({ endTime: 1 }); // Sort by end time (closest first)
 
         // Fetch submissions to filter out completed ones
         const assignmentIds = assignments.map(a => a._id);

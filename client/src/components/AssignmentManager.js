@@ -19,7 +19,8 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
         batchId: '', // Added for targeted assignments
         starterCode: '# Write your code here\n',
         points: 100,
-        dueDate: '',
+        startTime: '',
+        endTime: '',
         difficulty: 'Medium',
         testCases: [{ input: '', expectedOutput: '', isHidden: false, points: 10 }]
     });
@@ -98,7 +99,8 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
             starterCode: assignment.starterCode,
             testCases: assignment.testCases,
             points: assignment.maxPoints || 100,
-            dueDate: assignment.dueDate ? assignment.dueDate.split('T')[0] : '',
+            startTime: assignment.startTime ? new Date(assignment.startTime).toISOString().slice(0, 16) : '',
+            endTime: assignment.endTime ? new Date(assignment.endTime).toISOString().slice(0, 16) : '',
             batchId: assignment.batchId || '',
             difficulty: assignment.difficulty || 'Medium'
         });
@@ -110,7 +112,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
     const handleCreateClick = () => {
         setFormData({
             title: '', description: '', language: 'python', starterCode: '',
-            testCases: [], points: 100, dueDate: '', batchId: '', difficulty: 'Medium'
+            testCases: [], points: 100, startTime: '', endTime: '', batchId: '', difficulty: 'Medium'
         });
         setIsEditing(false);
         setEditingAssignmentId(null);
@@ -174,7 +176,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '15px', color: '#94a3b8', fontSize: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <FaCalendarAlt color="#64748b" /> {a.dueDate ? new Date(a.dueDate).toLocaleDateString() : 'No Deadline'}
+                                <FaCalendarAlt color="#64748b" /> {a.startTime ? new Date(a.startTime).toLocaleString() : 'No Start'} - {a.endTime ? new Date(a.endTime).toLocaleString() : 'No End'}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <FaFlask color="#64748b" /> {a.testCases.length} Tests
@@ -234,7 +236,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Title</label>
                                 <input
@@ -256,11 +258,20 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Due Date</label>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Start Time</label>
                                 <input
-                                    type="date"
-                                    value={formData.dueDate}
-                                    onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+                                    type="datetime-local"
+                                    value={formData.startTime}
+                                    onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+                                    style={{ padding: '11px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>End Time</label>
+                                <input
+                                    type="datetime-local"
+                                    value={formData.endTime}
+                                    onChange={e => setFormData({ ...formData, endTime: e.target.value })}
                                     style={{ padding: '11px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
                                 />
                             </div>

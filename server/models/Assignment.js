@@ -21,7 +21,8 @@ const AssignmentSchema = new mongoose.Schema({
     }],
 
     maxPoints: { type: Number, default: 100 },
-    dueDate: { type: Date },
+    startTime: { type: Date },
+    endTime: { type: Date },
 
     createdAt: { type: Date, default: Date.now }
 });
