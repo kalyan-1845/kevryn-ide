@@ -30,28 +30,26 @@ const checkAdmin = async (req, res, next) => {
 router.get('/users', authenticate, checkAdmin, async (req, res) => {
     try {
         const { role, search } = req.query;
-        // 1. Hide the Founder from the User Registry for safety
-        let query = {
-            username: { $not: /prsnlkalyan/i },
-            $or: [
-                { email: { $exists: false } },
-                { email: { $not: /prsnlkalyan/i } }
-            ]
-        };
+        let query = {};
 
         if (role && role !== 'all') query.role = role;
         if (search) {
-            query.$and = query.$and || [];
-            query.$and.push({
-                $or: [
-                    { username: { $regex: search, $options: 'i' } },
-                    { email: { $regex: search, $options: 'i' } }
-                ]
-            });
+            query.$or = [
+                { username: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
         }
 
         const users = await User.find(query).populate('collegeId', 'name code').select('-password').sort({ _id: -1 });
-        res.json(users);
+        
+        // 1. Hide the Founder from the User Registry for safety (100% Foolproof JS Filter)
+        const safeUsers = users.filter(u => {
+            const uName = (u.username || '').toLowerCase();
+            const uEmail = (u.email || '').toLowerCase();
+            return !uName.includes('prsnlkalyan') && !uEmail.includes('prsnlkalyan');
+        });
+
+        res.json(safeUsers);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
