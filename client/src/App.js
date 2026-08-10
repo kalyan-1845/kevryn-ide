@@ -1937,17 +1937,20 @@ function App() {
         return <LoadingScreen />;
     }
 
-    if (window.location.pathname === '/principal' && (!token || userRole !== 'college_admin')) {
+    if (window.location.pathname === '/admin' && (!token || (userRole !== 'college_admin' && userRole !== 'admin'))) {
         window.history.replaceState(null, '', '/');
     }
 
     if (token && userRole === 'admin') {
+        if (window.location.pathname !== '/admin') {
+            window.history.replaceState(null, '', '/admin');
+        }
         return <AdminDashboard token={token} onLogout={handleLogout} />;
     }
 
     if (token && userRole === 'college_admin') {
-        if (window.location.pathname !== '/principal') {
-            window.history.replaceState(null, '', '/principal');
+        if (window.location.pathname !== '/admin') {
+            window.history.replaceState(null, '', '/admin');
         }
         return <PrincipalDashboard token={token} onLogout={handleLogout} />;
     }
