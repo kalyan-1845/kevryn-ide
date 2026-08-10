@@ -6,6 +6,7 @@ const AssignmentSchema = new mongoose.Schema({
     batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }, // Targeted batch (optional)
     title: { type: String, required: true }, // "Lab 1: Hello World"
     description: { type: String }, // Markdown supported
+    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard'], default: 'Medium' }, // NEW: Added difficulty level
 
     // Code Execution Config
     language: { type: String, default: 'python' }, // python, javascript, c, cpp

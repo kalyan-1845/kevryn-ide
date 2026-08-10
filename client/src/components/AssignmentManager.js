@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
-import { FaPlus, FaTrash, FaSave } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaSave, FaCode, FaPython, FaJs, FaJava, FaCalendarAlt, FaFlask, FaStar, FaFire } from 'react-icons/fa';
 
 const AssignmentManager = ({ token, serverUrl, userId }) => {
     const [courses, setCourses] = useState([]);
@@ -20,6 +20,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
         starterCode: '# Write your code here\n',
         points: 100,
         dueDate: '',
+        difficulty: 'Medium',
         testCases: [{ input: '', expectedOutput: '', isHidden: false, points: 10 }]
     });
 
@@ -98,7 +99,8 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
             testCases: assignment.testCases,
             points: assignment.maxPoints || 100,
             dueDate: assignment.dueDate ? assignment.dueDate.split('T')[0] : '',
-            batchId: assignment.batchId || ''
+            batchId: assignment.batchId || '',
+            difficulty: assignment.difficulty || 'Medium'
         });
         setEditingAssignmentId(assignment._id);
         setIsEditing(true);
@@ -108,7 +110,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
     const handleCreateClick = () => {
         setFormData({
             title: '', description: '', language: 'python', starterCode: '',
-            testCases: [], points: 100, dueDate: '', batchId: ''
+            testCases: [], points: 100, dueDate: '', batchId: '', difficulty: 'Medium'
         });
         setIsEditing(false);
         setEditingAssignmentId(null);
@@ -135,36 +137,67 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
                 <FaPlus /> Create Assignment
             </button>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-                {assignments.map(a => (
-                    <div key={a._id} style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', border: '1px solid #334155', position: 'relative' }}>
-                        <h3>{a.title}</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '14px' }}>Due: {a.dueDate ? new Date(a.dueDate).toLocaleDateString() : 'No due date'}</p>
-                        <div style={{ marginTop: '10px', fontSize: '12px', color: '#cbd5e1' }}>
-                            {a.testCases.length} Test Cases | {a.maxPoints} Points
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                {assignments.map(a => {
+                    const diffColors = {
+                        'Easy': { bg: 'rgba(16, 185, 129, 0.1)', text: '#10b981', border: 'rgba(16, 185, 129, 0.2)' },
+                        'Medium': { bg: 'rgba(245, 158, 11, 0.1)', text: '#f59e0b', border: 'rgba(245, 158, 11, 0.2)' },
+                        'Hard': { bg: 'rgba(239, 68, 68, 0.1)', text: '#ef4444', border: 'rgba(239, 68, 68, 0.2)' }
+                    };
+                    const diff = diffColors[a.difficulty || 'Medium'];
+                    
+                    return (
+                    <div key={a._id} style={{ background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)', padding: '24px', borderRadius: '16px', border: '1px solid #334155', position: 'relative', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#f8fafc', paddingRight: '60px' }}>{a.title}</h3>
+                            <button 
+                                onClick={() => handleEditClick(a)}
+                                style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: 'all 0.2s' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)'}
+                            >
+                                EDIT
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => handleEditClick(a)}
-                            style={{ position: 'absolute', top: '15px', right: '15px', background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                        >
-                            EDIT
-                        </button>
+                        
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', background: diff.bg, color: diff.text, border: `1px solid ${diff.border}`, padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <FaFire size={10} /> {a.difficulty || 'Medium'}
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <FaCode size={10} /> {a.language === 'any' ? 'Any Lang' : a.language.toUpperCase()}
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', background: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.2)', padding: '4px 10px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <FaStar size={10} /> {a.maxPoints} Pts
+                            </span>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '15px', color: '#94a3b8', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <FaCalendarAlt color="#64748b" /> {a.dueDate ? new Date(a.dueDate).toLocaleDateString() : 'No Deadline'}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <FaFlask color="#64748b" /> {a.testCases.length} Tests
+                            </div>
+                        </div>
                     </div>
-                ))}
+                )})}
             </div>
 
             {showCreateModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
                     <div style={{ background: '#0f172a', width: '800px', maxHeight: '90vh', overflowY: 'auto', padding: '30px', borderRadius: '12px', border: '1px solid #334155' }}>
-                        <h2 style={{ marginBottom: '20px' }}>{isEditing ? 'Edit Assignment' : 'Create Assignment'}</h2>
+                        <h2 style={{ marginBottom: '25px', color: '#f8fafc', fontSize: '24px', fontWeight: '800', borderBottom: '1px solid #1e293b', paddingBottom: '15px' }}>
+                            {isEditing ? 'Configure Assignment' : 'Create New Assignment'}
+                        </h2>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '15px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ color: '#94a3b8', fontSize: '13px' }}>Target Audience</label>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Target Audience</label>
                                 <select 
                                     value={formData.batchId} 
                                     onChange={e => setFormData({ ...formData, batchId: e.target.value })}
-                                    style={{ padding: '10px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
+                                    style={{ padding: '12px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
                                 >
                                     <option value="">- Entire Course -</option>
                                     {courses.find(c => c._id === selectedCourseId)?.batches?.map(b => (
@@ -173,13 +206,13 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
                                 </select>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ color: '#94a3b8', fontSize: '13px' }}>Language Restriction</label>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Language Restriction</label>
                                 <select 
                                     value={formData.language} 
                                     onChange={e => setFormData({ ...formData, language: e.target.value })}
-                                    style={{ padding: '10px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
+                                    style={{ padding: '12px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
                                 >
-                                    <option value="any">Any Language (Student Choice)</option>
+                                    <option value="any">Any Language</option>
                                     <option value="python">Python</option>
                                     <option value="javascript">JavaScript</option>
                                     <option value="c">C</option>
@@ -187,38 +220,61 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
                                     <option value="java">Java</option>
                                 </select>
                             </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Difficulty</label>
+                                <select 
+                                    value={formData.difficulty} 
+                                    onChange={e => setFormData({ ...formData, difficulty: e.target.value })}
+                                    style={{ padding: '12px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
+                                >
+                                    <option value="Easy">🟢 Easy</option>
+                                    <option value="Medium">🟡 Medium</option>
+                                    <option value="Hard">🔴 Hard</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '15px' }}>
-                            <input
-                                placeholder="Assignment Title"
-                                value={formData.title}
-                                onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                style={{ padding: '10px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
-                            />
-                            <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', border: '1px solid #334155', borderRadius: '6px', overflow: 'hidden' }}>
-                                <span style={{ padding: '10px', color: '#94a3b8', fontSize: '13px', background: 'rgba(0,0,0,0.2)' }}>Max Points</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Title</label>
                                 <input
-                                    type="number"
-                                    value={formData.points}
-                                    onChange={e => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
-                                    style={{ padding: '10px', background: 'transparent', border: 'none', color: '#fff', width: '100%', outline: 'none' }}
+                                    placeholder="e.g. Two Sum"
+                                    value={formData.title}
+                                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                    style={{ padding: '12px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
                                 />
                             </div>
-                            <input
-                                type="date"
-                                value={formData.dueDate}
-                                onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
-                                style={{ padding: '10px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '6px' }}
-                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Max Points</label>
+                                <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <input
+                                        type="number"
+                                        value={formData.points}
+                                        onChange={e => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
+                                        style={{ padding: '12px', background: 'transparent', border: 'none', color: '#fff', width: '100%', outline: 'none' }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Due Date</label>
+                                <input
+                                    type="date"
+                                    value={formData.dueDate}
+                                    onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+                                    style={{ padding: '11px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
+                                />
+                            </div>
                         </div>
 
-                        <textarea
-                            placeholder="Description (Markdown supported)"
-                            value={formData.description}
-                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            style={{ width: '100%', height: '100px', padding: '10px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '6px', marginBottom: '15px' }}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '20px' }}>
+                            <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Description (Markdown Supported)</label>
+                            <textarea
+                                placeholder="Write the problem statement, constraints, and examples here..."
+                                value={formData.description}
+                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                style={{ width: '100%', height: '120px', padding: '12px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none', fontFamily: 'monospace' }}
+                            />
+                        </div>
 
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', marginBottom: '5px', color: '#94a3b8' }}>Starter Code ({formData.language})</label>
