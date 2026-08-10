@@ -31,6 +31,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
     const [handRaised, setHandRaised] = useState(false);
     const [announcement, setAnnouncement] = useState(null);
     const [tabWarning, setTabWarning] = useState(null); // NEW: Student Warning
+    const [isFullscreen, setIsFullscreen] = useState(false); // NEW: Fullscreen strict mode
     const [lastSynced, setLastSynced] = useState(null); // NEW: Visual feedback
     const wcBridgeRef = useRef(null);
 
@@ -245,42 +246,53 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const interval = setInterval(() => sendHeartbeat(), 15000); // 15s backup
         sendHeartbeat(); // Immediate
 
-        const onFocus = () => { 
+        const handleViolation = () => {
+            const sId = session.sessionId || session._id;
+            tabCountRef.current += 1;
+            setTabSwitches(tabCountRef.current);
+            
+            if (socketRef.current) {
+                socketRef.current.emit('student-tab-switch', {
+                    sessionId: sId,
+                    username,
+                    direction: 'left',
+                    count: tabCountRef.current,
+                    type: 'proctor-violation'
+                });
+            }
+            updateStatus('idle');
+
+            // Trigger Tab Switch Warning
+            if (tabCountRef.current >= 3) {
+                setTabWarning({
+                    level: 'critical',
+                    message: `🚨 EXTREME WARNING: You have left the lab environment ${tabCountRef.current} times. Faculty has been notified.`
+                });
+            } else {
+                setTabWarning({
+                    level: 'warning',
+                    message: `⚠️ STRICT PROCTORING: You clicked outside the lab or switched tabs. This is recorded (${tabCountRef.current} times).`
+                });
+            }
+        };
+
+        const handleReturn = () => {
             sendHeartbeat('active'); 
             updateStatus('active'); 
-            // Return from Alt+Tab in Desktop App
-            if (localWorkspacePath && window.electronAPI) {
-                const sId = session.sessionId || session._id;
-                if (socketRef.current) {
-                    socketRef.current.emit('student-tab-switch', {
-                        sessionId: sId,
-                        username,
-                        direction: 'returned',
-                        count: tabCountRef.current,
-                        type: 'alt-tab'
-                    });
-                }
+            const sId = session.sessionId || session._id;
+            if (socketRef.current) {
+                socketRef.current.emit('student-tab-switch', {
+                    sessionId: sId,
+                    username,
+                    direction: 'returned',
+                    count: tabCountRef.current,
+                    type: 'proctor-return'
+                });
             }
         };
-        const onBlur = () => { 
-            sendHeartbeat('idle'); 
-            updateStatus('idle'); 
-            // Track Alt+Tab in Desktop App
-            if (localWorkspacePath && window.electronAPI) {
-                const sId = session.sessionId || session._id;
-                tabCountRef.current += 1;
-                setTabSwitches(tabCountRef.current);
-                if (socketRef.current) {
-                    socketRef.current.emit('student-tab-switch', {
-                        sessionId: sId,
-                        username,
-                        direction: 'left',
-                        count: tabCountRef.current,
-                        type: 'alt-tab'
-                    });
-                }
-            }
-        };
+
+        const onFocus = () => handleReturn();
+        const onBlur = () => handleViolation();
 
         window.addEventListener('focus', onFocus);
         window.addEventListener('blur', onBlur);
@@ -291,45 +303,12 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         window.addEventListener('mouseenter', handleMouseEnter);
         window.addEventListener('mouseleave', handleMouseLeave);
 
-        // NEW: Tab Switch Tracking
+        // NEW: Tab Switch Tracking (Visibility Change)
         const handleVisibilityChange = () => {
-            const isHidden = document.visibilityState === 'hidden';
-            const sId = session.sessionId || session._id;
-            if (isHidden) {
-                tabCountRef.current += 1;
-                setTabSwitches(tabCountRef.current);
-                if (socketRef.current) {
-                    socketRef.current.emit('student-tab-switch', {
-                        sessionId: sId,
-                        username,
-                        direction: 'left',
-                        count: tabCountRef.current
-                    });
-                }
-                updateStatus('idle');
+            if (document.visibilityState === 'hidden') {
+                handleViolation();
             } else {
-                if (socketRef.current) {
-                    socketRef.current.emit('student-tab-switch', {
-                        sessionId: sId,
-                        username,
-                        direction: 'returned',
-                        count: tabCountRef.current
-                    });
-                }
-                updateStatus('active');
-
-                // NEW: Trigger Tab Switch Warning
-                if (tabCountRef.current >= 3) {
-                    setTabWarning({
-                        level: 'critical',
-                        message: `🚨 EXTREME WARNING: You have switched tabs ${tabCountRef.current} times. Faculty has been notified.`
-                    });
-                } else if (tabCountRef.current > 0) {
-                    setTabWarning({
-                        level: 'warning',
-                        message: `⚠️ WARNING: Tab switching is recorded. You have switched tabs ${tabCountRef.current} times.`
-                    });
-                }
+                handleReturn();
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -350,6 +329,17 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             }
         };
         document.addEventListener('paste', handlePaste);
+
+        // NEW: Full Screen Tracking
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement) {
+                setIsFullscreen(false);
+                handleViolation(); // Exiting full screen is a violation
+            } else {
+                setIsFullscreen(true);
+            }
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
 
         // Security: Block Copy/Paste and Fullscreen Exits
         const blockShortcuts = (e) => {
@@ -374,6 +364,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             window.removeEventListener('mouseleave', handleMouseLeave);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('paste', handlePaste);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
             window.removeEventListener('keydown', blockShortcuts);
             document.removeEventListener('contextmenu', blockContextMenu);
             if (codeChangeTimeoutRef.current) clearTimeout(codeChangeTimeoutRef.current);
@@ -737,6 +728,38 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             backgroundImage: 'radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.1) 0, transparent 40%), radial-gradient(at 100% 0%, rgba(88, 28, 135, 0.1) 0, transparent 40%)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'Inter, sans-serif'
         }}>
+
+            {/* --- FULL SCREEN ENFORCEMENT OVERLAY --- */}
+            {!isFullscreen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000,
+                    background: 'rgba(2, 6, 23, 0.98)', backdropFilter: 'blur(15px)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontFamily: 'Inter, sans-serif'
+                }}>
+                    <div style={{ fontSize: '56px', marginBottom: '24px' }}>🛡️</div>
+                    <h2 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '16px', color: '#ef4444', letterSpacing: '-0.5px' }}>
+                        Strict Proctoring Enabled
+                    </h2>
+                    <p style={{ fontSize: '18px', color: '#94a3b8', maxWidth: '600px', textAlign: 'center', marginBottom: '40px', lineHeight: '1.6' }}>
+                        This lab session requires Full-Screen mode to prevent the use of external tools like AI assistants or unauthorized resources. <strong style={{ color: '#fff' }}>Exiting full-screen or clicking outside the window will be recorded as a violation.</strong>
+                    </p>
+                    <button
+                        onClick={() => document.documentElement.requestFullscreen().catch(err => console.error(err))}
+                        style={{
+                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                            color: 'white', border: 'none', padding: '18px 40px',
+                            borderRadius: '12px', fontSize: '18px', fontWeight: 'bold',
+                            cursor: 'pointer', boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)',
+                            transition: 'all 0.2s ease', letterSpacing: '0.5px'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                        onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        ENTER FULL SCREEN TO START
+                    </button>
+                </div>
+            )}
 
             {/* --- FACULTY ANNOUNCEMENT BANNER --- */}
             {announcement && (
