@@ -473,8 +473,9 @@ const AdminDashboard = ({ token, onLogout }) => {
                                     />
                                 </div>
                             </div>
+                        </div>
 
-                            {/* CREATE USER MODAL */}
+                        {/* CREATE USER MODAL */}
                             <AnimatePresence>
                                 {showCreateUser && (
                                     <motion.div
