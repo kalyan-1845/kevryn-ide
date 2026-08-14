@@ -25,13 +25,72 @@ const checkManagement = async (req, res, next) => {
 // 1. COLLEGE STRUCTURE (Management)
 // ------------------------------------------------------------------
 
-// Get College Structure
+// Get College Structure with Student Counts
 router.get('/structure', authenticate, checkManagement, async (req, res) => {
     try {
-        // Find structures for this college (or generic if no collegeId)
         const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
-        const structures = await CollegeStructure.find(query);
+        const structures = await CollegeStructure.find(query).lean();
+        
+        // Fetch student counts per section
+        for (let struct of structures) {
+            struct.sectionCounts = {};
+            for (let sec of struct.sections) {
+                const count = await User.countDocuments({
+                    role: 'student',
+                    department: struct.department,
+                    year: struct.year,
+                    section: sec,
+                    isActiveStudent: true,
+                    collegeId: req.user.collegeId || undefined
+                });
+                struct.sectionCounts[sec] = count;
+            }
+        }
+        
         res.json(structures);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get Global Analytics
+router.get('/analytics', authenticate, checkManagement, async (req, res) => {
+    try {
+        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        
+        const totalStudents = await User.countDocuments({ ...query, role: 'student', isActiveStudent: true });
+        const totalFaculty = await User.countDocuments({ ...query, role: 'faculty' });
+        
+        // Get today's day of week (e.g., 'Monday')
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = days[new Date().getDay()];
+        
+        const sessionsToday = await Timetable.countDocuments({ ...query, dayOfWeek: today });
+        
+        // Utilization: approx percentage of students having a lab today
+        // (Just a simple metric for now)
+        let utilization = 0;
+        if (totalStudents > 0) {
+            // Find unique students scheduled for a lab today
+            const todaysLabs = await Timetable.find({ ...query, dayOfWeek: today });
+            let scheduledStudents = 0;
+            for (const lab of todaysLabs) {
+                const count = await User.countDocuments({
+                    role: 'student', isActiveStudent: true,
+                    department: lab.department, year: lab.year, section: lab.section,
+                    collegeId: req.user.collegeId || undefined
+                });
+                scheduledStudents += count;
+            }
+            utilization = Math.min(Math.round((scheduledStudents / totalStudents) * 100), 100);
+        }
+
+        res.json({
+            totalStudents,
+            totalFaculty,
+            sessionsToday,
+            platformUtilization: `${utilization}%`
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

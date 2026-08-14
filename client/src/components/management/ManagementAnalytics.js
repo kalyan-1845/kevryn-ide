@@ -1,8 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FaChartLine, FaUsers, FaChalkboardTeacher, FaDesktop } from 'react-icons/fa';
 
 const ManagementAnalytics = ({ token }) => {
+    const [stats, setStats] = useState({
+        totalStudents: '...',
+        totalFaculty: '...',
+        sessionsToday: '...',
+        platformUtilization: '...'
+    });
+
+    useEffect(() => {
+        const fetchAnalytics = async () => {
+            try {
+                const res = await axios.get('/api/timetable/analytics', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setStats({
+                    totalStudents: res.data.totalStudents || 0,
+                    totalFaculty: res.data.totalFaculty || 0,
+                    sessionsToday: res.data.sessionsToday || 0,
+                    platformUtilization: res.data.platformUtilization || '0%'
+                });
+            } catch (err) {
+                console.error("Failed to load analytics:", err);
+            }
+        };
+        fetchAnalytics();
+    }, [token]);
+
     const containerStyle = { padding: '40px', maxWidth: '1200px', margin: '0 auto' };
     const cardStyle = {
         background: '#ffffff', borderRadius: '16px', padding: '24px',
@@ -11,10 +38,10 @@ const ManagementAnalytics = ({ token }) => {
     };
 
     const statCards = [
-        { title: 'Total Active Students', value: '4,250', icon: <FaUsers size={24} color="#3b82f6" />, bg: '#eff6ff' },
-        { title: 'Faculty Members', value: '142', icon: <FaChalkboardTeacher size={24} color="#8b5cf6" />, bg: '#f5f3ff' },
-        { title: 'Lab Sessions Today', value: '38', icon: <FaDesktop size={24} color="#10b981" />, bg: '#ecfdf5' },
-        { title: 'Platform Utilization', value: '94%', icon: <FaChartLine size={24} color="#f59e0b" />, bg: '#fffbeb' }
+        { title: 'Total Active Students', value: stats.totalStudents, icon: <FaUsers size={24} color="#3b82f6" />, bg: '#eff6ff' },
+        { title: 'Faculty Members', value: stats.totalFaculty, icon: <FaChalkboardTeacher size={24} color="#8b5cf6" />, bg: '#f5f3ff' },
+        { title: 'Lab Sessions Today', value: stats.sessionsToday, icon: <FaDesktop size={24} color="#10b981" />, bg: '#ecfdf5' },
+        { title: 'Platform Utilization (Today)', value: stats.platformUtilization, icon: <FaChartLine size={24} color="#f59e0b" />, bg: '#fffbeb' }
     ];
 
     return (
