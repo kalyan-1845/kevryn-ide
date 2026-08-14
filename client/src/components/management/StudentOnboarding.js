@@ -59,8 +59,8 @@ const StudentOnboarding = ({ token }) => {
         setMessage('');
         try {
             const rolls = rollNumbers.split(',').map(r => r.trim()).filter(r => r);
-            const res = await api.post('/timetable/students/bulk-register', {
-                department, year, section, rollNumbers: rolls
+            const res = await api.post('/timetable/students/bulk-add', {
+                department, year, section, rollNumbersString: rollNumbers
             });
             setMessage(res.data.message || 'Students synthesized successfully');
             setRollNumbers('');
