@@ -314,9 +314,9 @@ const InstitutionSetup = ({ token }) => {
                                             <tbody>
                                                 {students.map(s => (
                                                     <tr key={s._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>{s.rollNumber}</td>
+                                                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>{s.rollNumber || s.username}</td>
                                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                                            {s.isActiveStudent ? 
+                                                            {s.isActiveStudent !== false ? 
                                                                 <span style={{ color: '#16a34a', background: '#dcfce7', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>AUTHORIZED</span> :
                                                                 <span style={{ color: '#dc2626', background: '#fee2e2', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>REVOKED</span>
                                                             }
@@ -324,9 +324,9 @@ const InstitutionSetup = ({ token }) => {
                                                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                                                             <button 
                                                                 onClick={() => handleToggleStudent(s._id, s.isActiveStudent)}
-                                                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: s.isActiveStudent ? '#ef4444' : '#22c55e', padding: '4px' }}
+                                                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: s.isActiveStudent !== false ? '#ef4444' : '#22c55e', padding: '4px' }}
                                                             >
-                                                                {s.isActiveStudent ? <FaTimes /> : <FaCheck />}
+                                                                {s.isActiveStudent !== false ? <FaTimes /> : <FaCheck />}
                                                             </button>
                                                         </td>
                                                     </tr>

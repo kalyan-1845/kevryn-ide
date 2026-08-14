@@ -17,7 +17,7 @@ const File = require('../File');
 // Middleware to check Admin role
 const checkAdmin = async (req, res, next) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'college_admin') {
             return res.status(403).json({ error: "Access denied. Admin only." });
         }
         next();

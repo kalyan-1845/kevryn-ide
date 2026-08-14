@@ -41,7 +41,7 @@ router.get('/structure', authenticate, checkManagement, async (req, res) => {
                     department: struct.department,
                     year: struct.year,
                     section: sec,
-                    isActiveStudent: true,
+                    isActiveStudent: { $ne: false },
                     collegeId: cId || undefined
                 });
                 struct.sectionCounts[sec] = count;
@@ -60,7 +60,7 @@ router.get('/analytics', authenticate, checkManagement, async (req, res) => {
         const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
         const query = cId ? { collegeId: cId } : {};
         
-        const totalStudents = await User.countDocuments({ ...query, role: 'student', isActiveStudent: true });
+        const totalStudents = await User.countDocuments({ ...query, role: 'student', isActiveStudent: { $ne: false } });
         const totalFaculty = await User.countDocuments({ ...query, role: 'faculty' });
         
         // Get today's day of week (e.g., 'Monday')
@@ -78,7 +78,7 @@ router.get('/analytics', authenticate, checkManagement, async (req, res) => {
             let scheduledStudents = 0;
             for (const lab of todaysLabs) {
                 const count = await User.countDocuments({
-                    role: 'student', isActiveStudent: true,
+                    role: 'student', isActiveStudent: { $ne: false },
                     department: lab.department, year: lab.year, section: lab.section,
                     collegeId: cId || undefined
                 });
