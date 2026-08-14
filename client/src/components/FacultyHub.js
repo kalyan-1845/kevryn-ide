@@ -12,6 +12,7 @@ import Gradebook from './Gradebook';
 import StudentReports from './StudentReports';
 import LabReports from './LabReports';
 import CodingArena from './CodingArena';
+import TimetableWidget from './TimetableWidget'; // NEW: Timetable
 import axios from 'axios';
 
 // Fallback local constants
@@ -298,6 +299,11 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate }
                     {greeting}, <span style={{ background: 'linear-gradient(135deg, #6366f1, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{facultyName}</span> 👋
                 </h1>
                 <p style={{ color: '#64748b', fontSize: '15px', margin: 0 }}>Welcome to your faculty command center. Here's your overview.</p>
+            </div>
+
+            {/* NEW: Today's Schedule Widget */}
+            <div style={{ animation: 'fadeUp 0.5s ease 0.1s both' }}>
+                <TimetableWidget token={localStorage.getItem('token')} onLabStarted={() => onNavigate('active-labs')} />
             </div>
 
             {/* Stat Cards */}

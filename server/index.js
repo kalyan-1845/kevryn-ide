@@ -116,6 +116,7 @@ const aiRouter = require('./routes/ai');
 const adminRouter = require('./routes/admin'); // NEW: Admin Dashboard
 const issuesRouter = require('./routes/issues'); // NEW: Issue Reporting
 const collegeRouter = require('./routes/college'); // NEW: Multi-College Tenancy
+const timetableRouter = require('./routes/timetable'); // NEW: Automated Timetable Manager
 const College = require('./models/College'); // NEW: College Model
 const aptitudeRouter = require('./routes/aptitude'); // NEW: Aptitude Test Module
 const DeployManager = require('./deploy/DeployManager');
@@ -469,6 +470,7 @@ app.use('/api/assignments', assignmentManager);
 app.use('/api/admin', adminRouter); // NEW: Admin API
 app.use('/api/principal', require('./routes/principal'));
 app.use('/api/issues', issuesRouter); // NEW: Issue Reporting
+app.use('/api/timetable', timetableRouter); // NEW: Timetable API
 app.use('/api', collegeRouter); // NEW: Multi-College Routes (/api/college/join, /api/admin/colleges)
 app.use('/ai', aiRouter); // Mount AI routes
 app.use('/api/aptitude', aptitudeRouter); // NEW: Aptitude Module
@@ -2283,6 +2285,10 @@ app.post('/auth/login', async (req, res) => {
         
         if (!user) {
             return res.status(404).json({ error: "User not found" });
+        }
+
+        if (user.role === 'student' && user.isActiveStudent === false) {
+            return res.status(403).json({ error: "Your account has been deactivated. Please contact management." });
         }
 
         if (user.password && await bcrypt.compare(password, user.password)) {

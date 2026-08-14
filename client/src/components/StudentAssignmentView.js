@@ -8,6 +8,7 @@ import {
     FaBolt, FaHistory, FaTrophy, FaCalendarAlt
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import StudentTimetableWidget from './StudentTimetableWidget'; // NEW: Student Timetable
 
 const StudentAssignmentView = ({ 
     token, serverUrl, userId, onBack, 
@@ -221,6 +222,11 @@ const StudentAssignmentView = ({
                     >
                         <FaCode /> OPEN PERSONAL WORKSPACE
                     </button>
+                </div>
+
+                {/* NEW: Today's Schedule Widget */}
+                <div style={{ marginBottom: '40px' }}>
+                    <StudentTimetableWidget token={token} activeSessionId={activeSessionId} onEnterLab={onEnterLab} />
                 </div>
 
                 {/* Mission Control (Active) */}

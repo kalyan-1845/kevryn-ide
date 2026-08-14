@@ -9,3 +9,10 @@
 {"timestamp":"2026-07-20T06:44:19.350Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #9 from 99.99.99.99","ip":"99.99.99.99"}
 {"timestamp":"2026-07-20T06:44:19.350Z","level":"WARN","category":"BRUTE_FORCE","message":"Failed login attempt #10 from 99.99.99.99","ip":"99.99.99.99"}
 {"timestamp":"2026-07-20T06:44:19.351Z","level":"BLOCK","category":"FIREWALL","message":"IP BLOCKED: 99.99.99.99 — Brute-force: 10 failed login attempts","ip":"99.99.99.99","reason":"Brute-force: 10 failed login attempts","duration":"30 minutes"}
+{"timestamp":"2026-08-14T05:21:27.100Z","level":"INFO","category":"SYSTEM","message":"══════════════════════════════════════════"}
+{"timestamp":"2026-08-14T05:21:27.106Z","level":"INFO","category":"SYSTEM","message":"🛡️  KEVRYN GREEN AI - Security Monitor"}
+{"timestamp":"2026-08-14T05:21:27.107Z","level":"INFO","category":"SYSTEM","message":"   Watching. Protecting. Always On."}
+{"timestamp":"2026-08-14T05:21:27.109Z","level":"INFO","category":"SYSTEM","message":"══════════════════════════════════════════"}
+{"timestamp":"2026-08-14T05:21:27.112Z","level":"INFO","category":"SYSTEM","message":"🟢 Green AI Admin API routes mounted"}
+{"timestamp":"2026-08-14T05:21:27.114Z","level":"INFO","category":"SYSTEM","message":"🟢 Green AI Health Monitor started"}
+{"timestamp":"2026-08-14T05:21:27.117Z","level":"INFO","category":"SYSTEM","message":"🟢 Green AI initialized | Config: Block after 10 failed logins | Flood threshold: 200 req/min"}

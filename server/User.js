@@ -11,11 +11,20 @@ const UserSchema = new mongoose.Schema({
   githubUsername: { type: String },
   // New field to remember who you are working with
   collaborators: [{ type: String }],
-  // Multi-College Tenancy: Permanent college binding
+  // Multi-College Tenancy: Permanent college binding (Default to ACEEN-A5EC for students)
   collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
+  collegeCode: { type: String }, // NEW: Store hardcoded college code 'ACEEN-A5EC' for reference
+  
   // KevRyn Lab Monitor Role
   role: { type: String, enum: ['student', 'faculty', 'admin', 'user', 'college_admin'], default: 'student' },
   isFacultyActive: { type: Boolean, default: false }, // Faculty approval status
+
+  // Student Timetable & Section Targets
+  rollNumber: { type: String, unique: true, sparse: true },
+  department: { type: String }, // e.g., 'CSE'
+  year: { type: String },       // e.g., '3'
+  section: { type: String },    // e.g., 'D'
+  isActiveStudent: { type: Boolean, default: true }, // For management soft-deactivation
 
   // Unified KevRyn Lab System: Link to Batches
   enrolledBatches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }],

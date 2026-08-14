@@ -32,7 +32,7 @@ import CustomDialog from './components/CustomDialog';
 import { ExecutionService } from './services/execution/ExecutionService';
 import FacultyHub from './components/FacultyHub'; // NEW: Unified Hub
 import StudentAssignmentView from './components/StudentAssignmentView'; // NEW: Student Assignments
-import AdminDashboard from './components/AdminDashboard'; // NEW: Admin Dashboard
+import ManagementDashboard from './components/management/ManagementDashboard'; // NEW: Automated Management Dashboard
 import PrincipalDashboard from './components/PrincipalDashboard';
 import IssueReporter from './components/IssueReporter'; // NEW: Issue Reporting
 import KevrynLogin from './components/KevrynLogin'; // NEW: Cinematic Login
@@ -1945,7 +1945,7 @@ function App() {
         if (window.location.pathname !== '/admin') {
             window.history.replaceState(null, '', '/admin');
         }
-        return <AdminDashboard token={token} onLogout={handleLogout} />;
+        return <ManagementDashboard token={token} onLogout={handleLogout} userRole={userRole} />;
     }
 
     if (token && userRole === 'college_admin') {

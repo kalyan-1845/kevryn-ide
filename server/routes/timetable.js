@@ -1,0 +1,287 @@
+const express = require('express');
+const router = express.Router();
+const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
+
+const Timetable = require('../models/Timetable');
+const CollegeStructure = require('../models/CollegeStructure');
+const User = require('../User');
+const LabSession = require('../LabSessionModel');
+const { authenticate } = require('../utils/authMiddleware');
+
+// Middleware to check Management Role (admin or college_admin)
+const checkManagement = async (req, res, next) => {
+    try {
+        if (req.user.role !== 'admin' && req.user.role !== 'college_admin') {
+            return res.status(403).json({ error: "Access denied. Management only." });
+        }
+        next();
+    } catch (e) {
+        res.status(500).json({ error: "Authorization error" });
+    }
+};
+
+// ------------------------------------------------------------------
+// 1. COLLEGE STRUCTURE (Management)
+// ------------------------------------------------------------------
+
+// Get College Structure
+router.get('/structure', authenticate, checkManagement, async (req, res) => {
+    try {
+        // Find structures for this college (or generic if no collegeId)
+        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const structures = await CollegeStructure.find(query);
+        res.json(structures);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Create/Update College Structure (Define Sections for Dept & Year)
+router.post('/structure', authenticate, checkManagement, async (req, res) => {
+    try {
+        const { department, year, sections } = req.body;
+        if (!department || !year || !sections || !Array.isArray(sections)) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const collegeId = req.user.collegeId || undefined;
+        
+        let structure = await CollegeStructure.findOne({ collegeId, department, year });
+        if (structure) {
+            structure.sections = sections;
+            await structure.save();
+        } else {
+            structure = new CollegeStructure({ collegeId, department, year, sections });
+            await structure.save();
+        }
+        res.json({ success: true, structure });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------------------------------
+// 2. TIMETABLE MANAGER (Management)
+// ------------------------------------------------------------------
+
+router.get('/schedule', authenticate, checkManagement, async (req, res) => {
+    try {
+        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const schedule = await Timetable.find(query).populate('facultyId', 'username');
+        res.json(schedule);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/schedule', authenticate, checkManagement, async (req, res) => {
+    try {
+        const { department, year, section, subjectName, subjectCode, facultyId, dayOfWeek, startTime, endTime } = req.body;
+        
+        const newEntry = new Timetable({
+            collegeId: req.user.collegeId || undefined,
+            department, year, section, subjectName, subjectCode, facultyId, dayOfWeek, startTime, endTime
+        });
+        await newEntry.save();
+        res.json({ success: true, entry: newEntry });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/schedule/:id', authenticate, checkManagement, async (req, res) => {
+    try {
+        await Timetable.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------------------------------
+// 3. STUDENT ONBOARDING & MANAGEMENT
+// ------------------------------------------------------------------
+
+// Get students by section
+router.get('/students', authenticate, checkManagement, async (req, res) => {
+    try {
+        const { department, year, section } = req.query;
+        if (!department || !year || !section) {
+            return res.status(400).json({ error: "department, year, and section required" });
+        }
+
+        const query = { role: 'student', department, year, section };
+        if (req.user.collegeId) query.collegeId = req.user.collegeId;
+        
+        const students = await User.find(query).select('-password');
+        res.json(students);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Bulk add students via comma-separated roll numbers
+router.post('/students/bulk-add', authenticate, checkManagement, async (req, res) => {
+    try {
+        const { department, year, section, rollNumbersString } = req.body;
+        if (!department || !year || !section || !rollNumbersString) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const rollNumbers = rollNumbersString.split(',').map(r => r.trim()).filter(r => r);
+        const addedUsers = [];
+        const failedUsers = [];
+
+        for (let roll of rollNumbers) {
+            try {
+                // Check if user exists
+                let user = await User.findOne({ username: roll });
+                if (user) {
+                    failedUsers.push({ roll, reason: "Username already exists" });
+                    continue;
+                }
+                
+                // Password is the roll number itself
+                const hashedPassword = await bcrypt.hash(roll, 10);
+                
+                user = new User({
+                    username: roll,
+                    password: hashedPassword,
+                    rollNumber: roll,
+                    role: 'student',
+                    department,
+                    year,
+                    section,
+                    collegeId: req.user.collegeId || undefined,
+                    collegeCode: 'ACEEN-A5EC',
+                    isActiveStudent: true
+                });
+                
+                await user.save();
+                addedUsers.push(roll);
+            } catch (err) {
+                failedUsers.push({ roll, reason: err.message });
+            }
+        }
+
+        res.json({ success: true, added: addedUsers.length, failed: failedUsers.length, failedUsers });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Deactivate Student
+router.patch('/students/:id/toggle-active', authenticate, checkManagement, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        
+        user.isActiveStudent = !user.isActiveStudent;
+        await user.save();
+        
+        res.json({ success: true, isActiveStudent: user.isActiveStudent });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ------------------------------------------------------------------
+// 4. FACULTY & STUDENT DASHBOARD TIMETABLE
+// ------------------------------------------------------------------
+
+// Faculty: Get my schedule
+router.get('/my-schedule/faculty', authenticate, async (req, res) => {
+    try {
+        if (req.user.role !== 'faculty') return res.status(403).json({ error: "Faculty only" });
+        
+        const schedule = await Timetable.find({ facultyId: req.user.userId }).sort({ dayOfWeek: 1, startTime: 1 });
+        res.json(schedule);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Student: Get my schedule
+router.get('/my-schedule/student', authenticate, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user.department || !user.year || !user.section) {
+            return res.json([]); // Student not linked to a section
+        }
+
+        const schedule = await Timetable.find({ 
+            department: user.department, 
+            year: user.year, 
+            section: user.section 
+        }).populate('facultyId', 'username').sort({ dayOfWeek: 1, startTime: 1 });
+        
+        res.json(schedule);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Faculty: Auto-start Lab from Timetable Entry
+router.post('/start-lab/:timetableId', authenticate, async (req, res) => {
+    try {
+        if (req.user.role !== 'faculty') return res.status(403).json({ error: "Faculty only" });
+
+        const timetable = await Timetable.findById(req.params.timetableId);
+        if (!timetable) return res.status(404).json({ error: "Timetable entry not found" });
+
+        // Ensure this faculty owns this timetable entry
+        if (timetable.facultyId.toString() !== req.user.userId) {
+            return res.status(403).json({ error: "Not authorized for this session" });
+        }
+
+        // Gather all active students in this Dept/Year/Section
+        const students = await User.find({
+            department: timetable.department,
+            year: timetable.year,
+            section: timetable.section,
+            isActiveStudent: true,
+            role: 'student'
+        });
+
+        const allowedStudents = students.map(s => s.username);
+
+        // Auto-create LabSessionModel
+        const sessionName = `${timetable.subjectName} (${timetable.department}-${timetable.year}-${timetable.section})`;
+        
+        // Calculate duration based on start/endTime (assuming HH:mm format)
+        let duration = 120; // fallback
+        try {
+            const [sh, sm] = timetable.startTime.split(':').map(Number);
+            const [eh, em] = timetable.endTime.split(':').map(Number);
+            const startMins = sh * 60 + sm;
+            const endMins = eh * 60 + em;
+            duration = endMins - startMins;
+            if (duration <= 0) duration = 120; // Handle overnight/errors
+        } catch(e) {}
+
+        const session = new LabSession({
+            facultyId: req.user.userId,
+            collegeId: timetable.collegeId || undefined,
+            sessionName: sessionName,
+            subject: timetable.subjectName,
+            semester: `Year ${timetable.year}`,
+            duration: duration,
+            allowedStudents: allowedStudents
+        });
+
+        await session.save();
+        
+        // Notify all clients
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('session-started', session);
+        }
+        
+        res.json({ success: true, session });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+module.exports = router;
