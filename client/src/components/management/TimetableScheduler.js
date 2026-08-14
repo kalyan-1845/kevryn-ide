@@ -6,18 +6,20 @@ import { FaCalendarAlt, FaTrashAlt, FaPlus, FaChalkboardTeacher } from 'react-ic
 const TimetableScheduler = ({ token }) => {
     const [structures, setStructures] = useState([]);
     const [facultyList, setFacultyList] = useState([]);
+    const [courses, setCourses] = useState([]);
+    const [labRooms, setLabRooms] = useState([]);
     const [timetable, setTimetable] = useState([]);
 
     const [department, setDepartment] = useState('');
     const [year, setYear] = useState('');
     const [section, setSection] = useState('');
     
-    const [dayOfWeek, setDayOfWeek] = useState('Monday');
-    const [startTime, setStartTime] = useState('09:00');
-    const [endTime, setEndTime] = useState('11:00');
+    const [dayOfWeek, setDayOfWeek] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
     const [subjectName, setSubjectName] = useState('');
     const [facultyId, setFacultyId] = useState('');
-    const [labRoom, setLabRoom] = useState('Lab 1');
+    const [labRoom, setLabRoom] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -30,6 +32,8 @@ const TimetableScheduler = ({ token }) => {
     useEffect(() => {
         fetchStructures();
         fetchFaculty();
+        fetchCourses();
+        fetchLabRooms();
     }, []);
 
     useEffect(() => {
@@ -51,6 +55,20 @@ const TimetableScheduler = ({ token }) => {
         try {
             const res = await api.get('/admin/users?role=faculty');
             if (Array.isArray(res.data)) setFacultyList(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchCourses = async () => {
+        try {
+            const res = await api.get('/admin/courses');
+            if (Array.isArray(res.data)) setCourses(res.data);
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchLabRooms = async () => {
+        try {
+            const res = await api.get('/admin/labrooms');
+            if (Array.isArray(res.data)) setLabRooms(res.data);
         } catch (err) { console.error(err); }
     };
 
@@ -93,7 +111,10 @@ const TimetableScheduler = ({ token }) => {
     const availableSections = structureForSec ? structureForSec.sections : [];
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const labs = ['Lab 1', 'Lab 2', 'Lab 3', 'Computer Center'];
+    const timeSlots = [
+        '08:00', '09:00', '10:00', '11:00', '12:00', 
+        '13:00', '14:00', '15:00', '16:00', '17:00'
+    ];
 
     const containerStyle = { padding: '40px', maxWidth: '1200px', margin: '0 auto' };
     const cardStyle = {
@@ -160,22 +181,32 @@ const TimetableScheduler = ({ token }) => {
                             <div>
                                 <label style={labelStyle}>Day</label>
                                 <select required value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)} style={inputStyle}>
+                                    <option value="">--</option>
                                     {days.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label style={labelStyle}>Start</label>
-                                <input type="time" required value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
+                                <label style={labelStyle}>Start Time</label>
+                                <select required value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle}>
+                                    <option value="">--</option>
+                                    {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
                             </div>
                             <div>
-                                <label style={labelStyle}>End</label>
-                                <input type="time" required value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
+                                <label style={labelStyle}>End Time</label>
+                                <select required value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle}>
+                                    <option value="">--</option>
+                                    {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
                             </div>
                         </div>
 
                         <div>
-                            <label style={labelStyle}>Subject / Lab Name</label>
-                            <input type="text" required value={subjectName} onChange={(e) => setSubjectName(e.target.value)} style={inputStyle} placeholder="E.g. Data Structures Lab" />
+                            <label style={labelStyle}>Subject / Course</label>
+                            <select required value={subjectName} onChange={(e) => setSubjectName(e.target.value)} style={inputStyle}>
+                                <option value="">-- Select Course --</option>
+                                {courses.map(c => <option key={c._id} value={c.name}>{c.name} ({c.code})</option>)}
+                            </select>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -189,7 +220,8 @@ const TimetableScheduler = ({ token }) => {
                             <div>
                                 <label style={labelStyle}>Lab Room</label>
                                 <select required value={labRoom} onChange={(e) => setLabRoom(e.target.value)} style={inputStyle}>
-                                    {labs.map(l => <option key={l} value={l}>{l}</option>)}
+                                    <option value="">-- Room --</option>
+                                    {labRooms.map(l => <option key={l._id} value={l.name}>{l.name}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -257,7 +289,7 @@ const TimetableScheduler = ({ token }) => {
                                                 </div>
                                                 <div style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a', marginBottom: '2px' }}>{t.subjectName}</div>
                                                 <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                                    Faculty: <span style={{fontWeight: '600', color: '#1e293b'}}>{t.facultyId?.username || 'Unknown'}</span> &bull; Room: <span style={{fontWeight: '600', color: '#1e293b'}}>{t.labRoom || 'Lab 1'}</span>
+                                                    Faculty: <span style={{fontWeight: '600', color: '#1e293b'}}>{t.facultyId?.username || 'Unknown'}</span> &bull; Room: <span style={{fontWeight: '600', color: '#1e293b'}}>{t.labRoom || 'Unknown'}</span>
                                                 </div>
                                             </div>
                                             <button 

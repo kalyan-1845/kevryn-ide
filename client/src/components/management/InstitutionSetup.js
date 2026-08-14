@@ -26,6 +26,12 @@ const InstitutionSetup = ({ token }) => {
     const [stuLoading, setStuLoading] = useState(false);
     const [stuMsg, setStuMsg] = useState('');
 
+    // --- Faculty State ---
+    const [facultyUser, setFacultyUser] = useState('');
+    const [facultyList, setFacultyList] = useState([]);
+    const [facLoading, setFacLoading] = useState(false);
+    const [facMsg, setFacMsg] = useState('');
+
     const api = axios.create({
         baseURL: '/api',
         headers: { Authorization: `Bearer ${token}` }
@@ -33,6 +39,7 @@ const InstitutionSetup = ({ token }) => {
 
     useEffect(() => {
         fetchStructures();
+        fetchFaculty();
     }, []);
 
     useEffect(() => {
@@ -49,6 +56,13 @@ const InstitutionSetup = ({ token }) => {
             if (Array.isArray(res.data)) {
                 setStructures(res.data);
             }
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchFaculty = async () => {
+        try {
+            const res = await api.get('/admin/users?role=faculty');
+            if (Array.isArray(res.data)) setFacultyList(res.data);
         } catch (err) { console.error(err); }
     };
 
@@ -83,6 +97,7 @@ const InstitutionSetup = ({ token }) => {
             setStuMsg('success: Students onboarded successfully');
             setRollNumbers('');
             fetchStudents();
+            fetchStructures(); // Update counts in topologies
         } catch (err) {
             setStuMsg('error: ' + (err.response?.data?.error || 'Failed to onboard'));
         }
@@ -91,9 +106,24 @@ const InstitutionSetup = ({ token }) => {
 
     const handleToggleStudent = async (studentId, currentStatus) => {
         try {
-            await api.put(`/timetable/students/${studentId}/status`, { isActiveStudent: !currentStatus });
+            await api.patch(`/timetable/students/${studentId}/toggle-active`);
             fetchStudents();
+            fetchStructures();
         } catch (err) { console.error(err); }
+    };
+
+    const handleCreateFaculty = async (e) => {
+        e.preventDefault();
+        setFacLoading(true); setFacMsg('');
+        try {
+            await api.post('/admin/create-faculty', { username: facultyUser });
+            setFacMsg('success: Faculty created with password matching username');
+            setFacultyUser('');
+            fetchFaculty();
+        } catch (err) {
+            setFacMsg('error: ' + (err.response?.data?.error || 'Failed to create faculty'));
+        }
+        setFacLoading(false);
     };
 
     const safeStructures = Array.isArray(structures) ? structures : [];
@@ -194,7 +224,11 @@ const InstitutionSetup = ({ token }) => {
                                                     <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: '#475569', fontWeight: '600' }}>Year {s.year}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                                    {s.sections.map(sec => <span key={sec} style={{ background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: '700' }}>{sec}</span>)}
+                                                    {s.sections.map(sec => (
+                                                        <span key={sec} style={{ background: '#e2e8f0', color: '#475569', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '700' }}>
+                                                            {sec} {s.sectionCounts && s.sectionCounts[sec] !== undefined ? `(${s.sectionCounts[sec]})` : ''}
+                                                        </span>
+                                                    ))}
                                                 </div>
                                             </div>
                                         ))
@@ -230,10 +264,16 @@ const InstitutionSetup = ({ token }) => {
                                     </div>
                                     <div>
                                         <label style={labelStyle}>Section</label>
-                                        <select style={inputStyle} required value={stuSec} onChange={e => setStuSec(e.target.value)}>
-                                            <option value="">--</option>
-                                            {availableSections.map(s => <option key={s}>{s}</option>)}
-                                        </select>
+                                        {availableSections.length === 0 && stuDept && stuYear ? (
+                                            <div style={{ padding: '12px', background: '#fef2f2', color: '#991b1b', borderRadius: '8px', fontSize: '14px', fontWeight: '500' }}>
+                                                No sections exist. Create a topology first.
+                                            </div>
+                                        ) : (
+                                            <select style={inputStyle} required value={stuSec} onChange={e => setStuSec(e.target.value)}>
+                                                <option value="">--</option>
+                                                {availableSections.map(s => <option key={s}>{s}</option>)}
+                                            </select>
+                                        )}
                                     </div>
                                     <div>
                                         <label style={labelStyle}>Roll Numbers (Comma Separated)</label>
@@ -300,9 +340,58 @@ const InstitutionSetup = ({ token }) => {
 
                     {/* --- FACULTY TAB --- */}
                     {innerTab === 'faculty' && (
-                        <div style={cardStyle}>
-                            <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '16px' }}>Faculty Directory</h3>
-                            <p style={{ color: '#64748b' }}>Future module: Global registry of all faculty members across the institution will appear here.</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '32px' }}>
+                            <div style={cardStyle}>
+                                <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ padding: '8px', background: '#f3e8ff', color: '#9333ea', borderRadius: '8px' }}><FaChalkboardTeacher size={14}/></span> Onboard Faculty
+                                </h3>
+                                <form onSubmit={handleCreateFaculty} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div>
+                                        <label style={labelStyle}>Faculty Username</label>
+                                        <input style={inputStyle} value={facultyUser} onChange={e => setFacultyUser(e.target.value)} placeholder="e.g., swaroopa" required />
+                                        <p style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>* Password will automatically be set to the username.</p>
+                                    </div>
+                                    {facMsg && (
+                                        <div style={{ padding: '12px', borderRadius: '8px', background: facMsg.startsWith('success') ? '#dcfce7' : '#fee2e2', color: facMsg.startsWith('success') ? '#166534' : '#991b1b', fontSize: '13px', fontWeight: '600' }}>
+                                            {facMsg.split(': ')[1]}
+                                        </div>
+                                    )}
+                                    <button type="submit" style={buttonStyle} disabled={facLoading || !facultyUser}>
+                                        {facLoading ? 'Processing...' : 'Create Faculty Account'}
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <div style={cardStyle}>
+                                <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', marginBottom: '24px' }}>Faculty Directory</h3>
+                                <div style={{ maxHeight: '450px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                    {facultyList.length === 0 ? (
+                                        <div style={{ padding: '40px 0', textAlign: 'center', color: '#94a3b8' }}>No faculty onboarded yet.</div>
+                                    ) : (
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                                <tr>
+                                                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: '#64748b' }}>Username</th>
+                                                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: '700', color: '#64748b' }}>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {facultyList.map(f => (
+                                                    <tr key={f._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>{f.username}</td>
+                                                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                                            {f.isFacultyActive ? 
+                                                                <span style={{ color: '#16a34a', background: '#dcfce7', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>ACTIVE</span> :
+                                                                <span style={{ color: '#dc2626', background: '#fee2e2', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>REVOKED</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     )}
 

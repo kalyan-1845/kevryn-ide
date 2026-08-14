@@ -237,4 +237,87 @@ router.post('/create-user', authenticate, checkAdmin, async (req, res) => {
     }
 });
 
+// 6. Create Faculty (Auto-Password)
+router.post('/create-faculty', authenticate, checkAdmin, async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username) return res.status(400).json({ error: "Username required" });
+        
+        const existing = await User.findOne({ username });
+        if (existing) return res.status(400).json({ error: "Username taken" });
+
+        const hashedPassword = await bcrypt.hash(username, 10); // Password same as username
+        const user = new User({
+            username,
+            password: hashedPassword,
+            role: 'faculty',
+            isFacultyActive: true,
+            collegeId: req.user.collegeId || undefined
+        });
+        await user.save();
+
+        res.json({ success: true, user: { _id: user._id, username: user.username, role: user.role } });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+const LabRoom = require('../models/LabRoom');
+
+// 7. Academic Config: Courses
+router.get('/courses', authenticate, checkAdmin, async (req, res) => {
+    try {
+        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const courses = await Course.find(query);
+        res.json(courses);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/courses', authenticate, checkAdmin, async (req, res) => {
+    try {
+        const { department, year, name, code } = req.body;
+        if (!department || !year || !name || !code) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+        const course = new Course({
+            collegeId: req.user.collegeId || undefined,
+            department, year, name, code
+        });
+        await course.save();
+        res.json({ success: true, course });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 8. Academic Config: Lab Rooms
+router.get('/labrooms', authenticate, checkAdmin, async (req, res) => {
+    try {
+        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const rooms = await LabRoom.find(query);
+        res.json(rooms);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/labrooms', authenticate, checkAdmin, async (req, res) => {
+    try {
+        const { name, capacity } = req.body;
+        if (!name) return res.status(400).json({ error: "Room name required" });
+        
+        const room = new LabRoom({
+            collegeId: req.user.collegeId || undefined,
+            name,
+            capacity: capacity || 60
+        });
+        await room.save();
+        res.json({ success: true, room });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
