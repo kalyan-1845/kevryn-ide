@@ -60,7 +60,7 @@ router.get('/analytics', authenticate, checkManagement, async (req, res) => {
         const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
         const query = cId ? { collegeId: cId } : {};
         
-        const totalStudents = await User.countDocuments({ ...query, role: 'student', isActiveStudent: { $ne: false } });
+        const totalStudents = await User.countDocuments({ ...query, role: 'student' });
         const totalFaculty = await User.countDocuments({ ...query, role: 'faculty' });
         
         // Get today's day of week (e.g., 'Monday')

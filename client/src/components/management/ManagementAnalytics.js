@@ -39,7 +39,7 @@ const ManagementAnalytics = ({ token }) => {
     };
 
     const statCards = [
-        { title: 'Total Active Students', value: stats.totalStudents, icon: <FaUsers size={24} color="#3b82f6" />, bg: '#eff6ff' },
+        { title: 'Total Students', value: stats.totalStudents, icon: <FaUsers size={24} color="#3b82f6" />, bg: '#eff6ff' },
         { title: 'Faculty Members', value: stats.totalFaculty, icon: <FaChalkboardTeacher size={24} color="#8b5cf6" />, bg: '#f5f3ff' },
         { title: 'Lab Sessions Today', value: stats.sessionsToday, icon: <FaDesktop size={24} color="#10b981" />, bg: '#ecfdf5' },
         { title: 'Platform Utilization (Today)', value: stats.platformUtilization, icon: <FaChartLine size={24} color="#f59e0b" />, bg: '#fffbeb' }
