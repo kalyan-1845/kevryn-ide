@@ -18,8 +18,9 @@ const AcademicConfig = ({ token }) => {
     const [labName, setLabName] = useState('');
     const [labCapacity, setLabCapacity] = useState('60');
 
+    const API_BASE = process.env.REACT_APP_SERVER_URL || '';
     const api = axios.create({
-        baseURL: '/api/admin',
+        baseURL: `${API_BASE}/api/admin`,
         headers: { Authorization: `Bearer ${token}` }
     });
 

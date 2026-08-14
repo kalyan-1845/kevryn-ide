@@ -24,8 +24,9 @@ const TimetableScheduler = ({ token }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
 
+    const API_BASE = process.env.REACT_APP_SERVER_URL || '';
     const api = axios.create({
-        baseURL: '/api',
+        baseURL: `${API_BASE}/api`,
         headers: { Authorization: `Bearer ${token}` }
     });
 

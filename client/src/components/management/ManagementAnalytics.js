@@ -14,7 +14,8 @@ const ManagementAnalytics = ({ token }) => {
     useEffect(() => {
         const fetchAnalytics = async () => {
             try {
-                const res = await axios.get('/api/timetable/analytics', {
+                const API_BASE = process.env.REACT_APP_SERVER_URL || '';
+                const res = await axios.get(`${API_BASE}/api/timetable/analytics`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setStats({

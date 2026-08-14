@@ -32,8 +32,9 @@ const InstitutionSetup = ({ token }) => {
     const [facLoading, setFacLoading] = useState(false);
     const [facMsg, setFacMsg] = useState('');
 
+    const API_BASE = process.env.REACT_APP_SERVER_URL || '';
     const api = axios.create({
-        baseURL: '/api',
+        baseURL: `${API_BASE}/api`,
         headers: { Authorization: `Bearer ${token}` }
     });
 
