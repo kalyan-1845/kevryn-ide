@@ -74,9 +74,10 @@ const StudentOnboarding = ({ token }) => {
     };
 
     // Derived dropdown options
-    const uniqueDepartments = [...new Set(structures.map(s => s.department))];
-    const availableYears = [...new Set(structures.filter(s => s.department === department).map(s => s.year))];
-    const structureForSec = structures.find(s => s.department === department && s.year === year);
+    const safeStructures = Array.isArray(structures) ? structures : [];
+    const uniqueDepartments = [...new Set(safeStructures.map(s => s.department))];
+    const availableYears = [...new Set(safeStructures.filter(s => s.department === department).map(s => s.year))];
+    const structureForSec = safeStructures.find(s => s.department === department && s.year === year);
     const availableSections = structureForSec ? structureForSec.sections : [];
 
     return (
@@ -138,7 +139,7 @@ const StudentOnboarding = ({ token }) => {
                             <span className="text-sm bg-gray-700 px-3 py-1 rounded">{department} - Yr {year} - Sec {section}</span>
                         </div>
                         
-                        {students.length === 0 ? (
+                        {(!Array.isArray(students) || students.length === 0) ? (
                             <div className="text-center text-gray-500 py-10">No students found in this section.</div>
                         ) : (
                             <div className="overflow-x-auto">

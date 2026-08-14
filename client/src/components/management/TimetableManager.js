@@ -74,9 +74,10 @@ const TimetableManager = ({ token }) => {
     };
 
     // Derived dropdown options
-    const uniqueDepartments = [...new Set(structures.map(s => s.department))];
-    const availableYears = [...new Set(structures.filter(s => s.department === department).map(s => s.year))];
-    const structureForSec = structures.find(s => s.department === department && s.year === year);
+    const safeStructures = Array.isArray(structures) ? structures : [];
+    const uniqueDepartments = [...new Set(safeStructures.map(s => s.department))];
+    const availableYears = [...new Set(safeStructures.filter(s => s.department === department).map(s => s.year))];
+    const structureForSec = safeStructures.find(s => s.department === department && s.year === year);
     const availableSections = structureForSec ? structureForSec.sections : [];
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -165,7 +166,7 @@ const TimetableManager = ({ token }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {timetable.map(t => (
+                                {(Array.isArray(timetable) ? timetable : []).map(t => (
                                     <tr key={t._id} className="border-b border-gray-750 hover:bg-gray-750">
                                         <td className="p-2 font-bold text-blue-300">{t.department}-{t.year}-{t.section}</td>
                                         <td className="p-2">{t.subjectName}</td>

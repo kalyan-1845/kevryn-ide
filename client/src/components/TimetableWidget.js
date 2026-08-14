@@ -42,7 +42,8 @@ const TimetableWidget = ({ token, onLabStarted }) => {
     };
 
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todaysClasses = schedule.filter(s => s.dayOfWeek === today);
+    const safeSchedule = Array.isArray(schedule) ? schedule : [];
+    const todaysClasses = safeSchedule.filter(s => s.dayOfWeek === today);
 
     return (
         <div className="bg-gray-800 rounded-lg p-6 shadow-lg mb-6 border border-gray-700">

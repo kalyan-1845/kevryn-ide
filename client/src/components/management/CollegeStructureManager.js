@@ -90,7 +90,7 @@ const CollegeStructureManager = ({ token }) => {
                 {/* List */}
                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
                     <h3 className="text-xl mb-4 text-gray-300">Current Structure</h3>
-                    {structures.length === 0 ? <p className="text-gray-400">No structures defined yet.</p> : (
+                    {(!Array.isArray(structures) || structures.length === 0) ? <p className="text-gray-400">No structures defined yet.</p> : (
                         <div className="space-y-4">
                             {structures.map((s) => (
                                 <div key={s._id} className="bg-gray-700 p-4 rounded flex justify-between items-center">
