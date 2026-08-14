@@ -28,7 +28,8 @@ const checkManagement = async (req, res, next) => {
 // Get College Structure with Student Counts
 router.get('/structure', authenticate, checkManagement, async (req, res) => {
     try {
-        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
         const structures = await CollegeStructure.find(query).lean();
         
         // Fetch student counts per section
@@ -41,7 +42,7 @@ router.get('/structure', authenticate, checkManagement, async (req, res) => {
                     year: struct.year,
                     section: sec,
                     isActiveStudent: true,
-                    collegeId: req.user.collegeId || undefined
+                    collegeId: cId || undefined
                 });
                 struct.sectionCounts[sec] = count;
             }
@@ -56,7 +57,8 @@ router.get('/structure', authenticate, checkManagement, async (req, res) => {
 // Get Global Analytics
 router.get('/analytics', authenticate, checkManagement, async (req, res) => {
     try {
-        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
         
         const totalStudents = await User.countDocuments({ ...query, role: 'student', isActiveStudent: true });
         const totalFaculty = await User.countDocuments({ ...query, role: 'faculty' });
@@ -78,7 +80,7 @@ router.get('/analytics', authenticate, checkManagement, async (req, res) => {
                 const count = await User.countDocuments({
                     role: 'student', isActiveStudent: true,
                     department: lab.department, year: lab.year, section: lab.section,
-                    collegeId: req.user.collegeId || undefined
+                    collegeId: cId || undefined
                 });
                 scheduledStudents += count;
             }
@@ -104,7 +106,8 @@ router.post('/structure', authenticate, checkManagement, async (req, res) => {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        const collegeId = req.user.collegeId || undefined;
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const collegeId = cId || undefined;
         
         let structure = await CollegeStructure.findOne({ collegeId, department, year });
         if (structure) {
@@ -126,7 +129,8 @@ router.post('/structure', authenticate, checkManagement, async (req, res) => {
 
 router.get('/schedule', authenticate, checkManagement, async (req, res) => {
     try {
-        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
         const schedule = await Timetable.find(query).populate('facultyId', 'username');
         res.json(schedule);
     } catch (e) {
@@ -138,8 +142,9 @@ router.post('/schedule', authenticate, checkManagement, async (req, res) => {
     try {
         const { department, year, section, subjectName, subjectCode, facultyId, dayOfWeek, startTime, endTime } = req.body;
         
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
         const newEntry = new Timetable({
-            collegeId: req.user.collegeId || undefined,
+            collegeId: cId || undefined,
             department, year, section, subjectName, subjectCode, facultyId, dayOfWeek, startTime, endTime
         });
         await newEntry.save();
@@ -170,8 +175,9 @@ router.get('/students', authenticate, checkManagement, async (req, res) => {
             return res.status(400).json({ error: "department, year, and section required" });
         }
 
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
         const query = { role: 'student', department, year, section };
-        if (req.user.collegeId) query.collegeId = req.user.collegeId;
+        if (cId) query.collegeId = cId;
         
         const students = await User.find(query).select('-password');
         res.json(students);
@@ -212,7 +218,7 @@ router.post('/students/bulk-add', authenticate, checkManagement, async (req, res
                     department,
                     year,
                     section,
-                    collegeId: req.user.collegeId || undefined,
+                    collegeId: (req.user.collegeId === 'undefined' || req.user.collegeId === 'null') ? undefined : req.user.collegeId,
                     collegeCode: 'ACEEN-A5EC',
                     isActiveStudent: true
                 });

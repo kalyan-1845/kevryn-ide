@@ -227,7 +227,7 @@ router.post('/create-user', authenticate, checkAdmin, async (req, res) => {
             username,
             password: hashedPassword,
             role: role || 'user',
-            collegeId: collegeId || undefined
+            collegeId: (collegeId === 'undefined' || collegeId === 'null') ? undefined : collegeId
         });
         await user.save();
 
@@ -252,7 +252,7 @@ router.post('/create-faculty', authenticate, checkAdmin, async (req, res) => {
             password: hashedPassword,
             role: 'faculty',
             isFacultyActive: true,
-            collegeId: req.user.collegeId || undefined
+            collegeId: (req.user.collegeId === 'undefined' || req.user.collegeId === 'null') ? undefined : req.user.collegeId
         });
         await user.save();
 
@@ -267,7 +267,8 @@ const LabRoom = require('../models/LabRoom');
 // 7. Academic Config: Courses
 router.get('/courses', authenticate, checkAdmin, async (req, res) => {
     try {
-        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
         const courses = await Course.find(query);
         res.json(courses);
     } catch (e) {
@@ -281,8 +282,9 @@ router.post('/courses', authenticate, checkAdmin, async (req, res) => {
         if (!department || !year || !name || !code) {
             return res.status(400).json({ error: "Missing required fields" });
         }
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
         const course = new Course({
-            collegeId: req.user.collegeId || undefined,
+            collegeId: cId || undefined,
             department, year, name, code
         });
         await course.save();
@@ -295,7 +297,8 @@ router.post('/courses', authenticate, checkAdmin, async (req, res) => {
 // 8. Academic Config: Lab Rooms
 router.get('/labrooms', authenticate, checkAdmin, async (req, res) => {
     try {
-        const query = req.user.collegeId ? { collegeId: req.user.collegeId } : {};
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
         const rooms = await LabRoom.find(query);
         res.json(rooms);
     } catch (e) {
@@ -308,8 +311,9 @@ router.post('/labrooms', authenticate, checkAdmin, async (req, res) => {
         const { name, capacity } = req.body;
         if (!name) return res.status(400).json({ error: "Room name required" });
         
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
         const room = new LabRoom({
-            collegeId: req.user.collegeId || undefined,
+            collegeId: cId || undefined,
             name,
             capacity: capacity || 60
         });
