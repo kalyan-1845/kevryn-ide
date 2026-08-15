@@ -3,13 +3,14 @@ import axios from 'axios';
 import { FaPlayCircle, FaCalendarAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
-const TimetableWidget = ({ token, onLabStarted }) => {
+const TimetableWidget = ({ token, serverUrl, onLabStarted }) => {
     const [schedule, setSchedule] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [viewMode, setViewMode] = useState('today'); // 'today' or 'week'
 
     const api = axios.create({
-        baseURL: '/api',
-        headers: { Authorization: `Bearer ${token}` }
+        baseURL: serverUrl,
+        headers: { Authorization: token } // ensure no duplicate Bearer
     });
 
     useEffect(() => {
@@ -43,35 +44,55 @@ const TimetableWidget = ({ token, onLabStarted }) => {
 
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
     const safeSchedule = Array.isArray(schedule) ? schedule : [];
-    const todaysClasses = safeSchedule.filter(s => s.dayOfWeek === today);
+    const displayClasses = viewMode === 'today' 
+        ? safeSchedule.filter(s => s.dayOfWeek === today)
+        : safeSchedule;
 
     return (
         <div className="bg-gray-800 rounded-lg p-6 shadow-lg mb-6 border border-gray-700">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <FaCalendarAlt className="text-blue-400" /> Today's Schedule ({today})
+                    <FaCalendarAlt className="text-blue-400" /> 
+                    {viewMode === 'today' ? `Today's Schedule (${today})` : 'Full Week Schedule'}
                 </h3>
+                <div className="flex bg-gray-700 rounded-lg p-1">
+                    <button 
+                        onClick={() => setViewMode('today')}
+                        className={`px-4 py-1 text-sm font-bold rounded-md transition ${viewMode === 'today' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        Today
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('week')}
+                        className={`px-4 py-1 text-sm font-bold rounded-md transition ${viewMode === 'week' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        Week
+                    </button>
+                </div>
             </div>
 
             {isLoading ? (
                 <div className="text-gray-400">Loading schedule...</div>
-            ) : todaysClasses.length === 0 ? (
-                <div className="text-gray-500 italic">No scheduled labs for today.</div>
+            ) : displayClasses.length === 0 ? (
+                <div className="text-gray-500 italic">No scheduled labs.</div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {todaysClasses.map(cls => (
+                    {displayClasses.map(cls => (
                         <motion.div key={cls._id} whileHover={{ scale: 1.02 }} className="bg-gray-700 p-4 rounded-lg border border-gray-600 relative overflow-hidden group">
                             <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                            {viewMode === 'week' && <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">{cls.dayOfWeek}</div>}
                             <div className="font-bold text-lg text-white mb-1">{cls.subjectName}</div>
                             <div className="text-sm text-gray-400 mb-2">{cls.department} - Year {cls.year} - Sec {cls.section}</div>
                             <div className="text-sm text-blue-300 font-mono mb-4">{cls.startTime} - {cls.endTime}</div>
                             
-                            <button 
-                                onClick={() => handleStartLab(cls._id)}
-                                className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold flex items-center justify-center gap-2 transition"
-                            >
-                                <FaPlayCircle /> Start Lab
-                            </button>
+                            {viewMode === 'today' && (
+                                <button 
+                                    onClick={() => handleStartLab(cls._id)}
+                                    className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold flex items-center justify-center gap-2 transition"
+                                >
+                                    <FaPlayCircle /> Start Lab
+                                </button>
+                            )}
                         </motion.div>
                     ))}
                 </div>

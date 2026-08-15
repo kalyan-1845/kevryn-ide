@@ -5,6 +5,31 @@ const Batch = require('../models/Batch');
 const User = require('../User');
 const { authenticate } = require('../utils/authMiddleware'); // Assume auth middleware exists or will be moved
 
+// --- GLOBAL CATALOG FOR FACULTY MANUAL CREATION ---
+router.get('/catalog/structure', authenticate, async (req, res) => {
+    try {
+        const CollegeStructure = require('../models/CollegeStructure');
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
+        const structures = await CollegeStructure.find(query);
+        res.json(structures);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch structure" });
+    }
+});
+
+router.get('/catalog/courses', authenticate, async (req, res) => {
+    try {
+        const cId = req.user.collegeId === 'undefined' || req.user.collegeId === 'null' ? null : req.user.collegeId;
+        const query = cId ? { collegeId: cId } : {};
+        // Only fetch global admin courses (where facultyId doesn't exist)
+        const courses = await Course.find({ ...query, facultyId: { $exists: false } }).sort({ department: 1, year: 1, name: 1 });
+        res.json(courses);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch global courses" });
+    }
+});
+
 // --- COURSE MANAGEMENT ---
 
 // 1. Create a New Course

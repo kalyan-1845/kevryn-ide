@@ -57,6 +57,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
     const [sessionStartTime, setSessionStartTime] = useState(null); // NEW: Global start
     const [sessionDuration, setSessionDuration] = useState(60); // NEW: Active session duration
     const [isCreatingSession, setIsCreatingSession] = useState(false);
+    const [timetableSlots, setTimetableSlots] = useState([]); // NEW: Timetable slots
 
 
 
@@ -116,31 +117,45 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
             }
         };
 
-        const fetchCourses = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get('/api/courses');
-                setCourses(res.data);
-            } catch (e) { console.error("Failed to fetch courses", e); }
+                const [courseRes, timetableRes] = await Promise.all([
+                    api.get('/api/courses').catch(() => ({ data: [] })),
+                    api.get('/api/timetable/my-schedule/faculty').catch(() => ({ data: [] }))
+                ]);
+                setCourses(courseRes.data);
+                setTimetableSlots(timetableRes.data);
+            } catch (e) { console.error("Failed to fetch data", e); }
         };
 
         if (token) {
             restoreSession();
-            fetchCourses();
+            fetchData();
         }
     }, [token]);
 
-    const handleCreateSession = async () => {
-        if (!sessionName.trim()) return alert("Session Name is required");
+    const handleCreateSession = async (customTimetableId = null) => {
+        // If a string (customTimetableId) is passed, or selectedCourseId matches timetable, use Timetable Flow
+        const isTimetableStart = typeof customTimetableId === 'string' || selectedCourseId.startsWith('timetable_');
+        const finalTimetableId = typeof customTimetableId === 'string' ? customTimetableId : (selectedCourseId.startsWith('timetable_') ? selectedCourseId.replace('timetable_', '') : null);
+
+        if (!isTimetableStart && !sessionName.trim()) return alert("Session Name is required");
         try {
-            const res = await api.post('/lab/create-session', {
-                facultyId: userId || "unknown",
-                sessionName,
-                subject: subject || "General",
-                semester: semester || "Sem 1",
-                courseId: selectedCourseId, // NEW: Link to persistent roster
-                batchId: selectedBatchId, // NEW: Link to specific batch
-                duration: parseInt(duration) || 60 // NEW: Duration
-            });
+            let res;
+            if (isTimetableStart) {
+                res = await api.post(`/api/timetable/start-lab/${finalTimetableId}`);
+            } else {
+                const finalCourseId = selectedCourseId.startsWith('course_') ? selectedCourseId.replace('course_', '') : selectedCourseId;
+                res = await api.post('/lab/create-session', {
+                    facultyId: userId || "unknown",
+                    sessionName,
+                    subject: subject || "General",
+                    semester: semester || "Sem 1",
+                    courseId: finalCourseId, // NEW: Link to persistent roster
+                    batchId: selectedBatchId, // NEW: Link to specific batch
+                    duration: parseInt(duration) || 60 // NEW: Duration
+                });
+            }
 
             if (res.data?.session) {
                 setSessionId(res.data.session._id);
@@ -429,6 +444,36 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
         return (
             <div style={{ width: '100vw', height: '100vh', background: '#0f172a', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>
                 <div style={{ width: '400px', padding: '30px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
+                    {(() => {
+                        const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+                        const todaysLab = timetableSlots.find(t => t.dayOfWeek === todayStr);
+                        if (!todaysLab) return null;
+                        return (
+                            <div style={{
+                                marginBottom: '25px', padding: '16px', background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))',
+                                border: '1px solid rgba(168,85,247,0.3)', borderRadius: '10px', animation: 'neonPulse 2s infinite alternate',
+                                display: 'flex', flexDirection: 'column', gap: '10px'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#a855f7', fontWeight: 'bold', fontSize: '13px' }}>
+                                    <span>⚡ Smart Alert: You have a scheduled lab now!</span>
+                                </div>
+                                <div style={{ color: '#e2e8f0', fontSize: '14px', fontWeight: '600' }}>
+                                    {todaysLab.subjectName} ({todaysLab.department} {todaysLab.year}-{todaysLab.section})
+                                </div>
+                                <div style={{ color: '#94a3b8', fontSize: '12px' }}>
+                                    Time: {todaysLab.startTime} - {todaysLab.endTime}
+                                </div>
+                                <button onClick={() => handleCreateSession(todaysLab._id)} style={{
+                                    marginTop: '5px', padding: '10px', background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                                    color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold',
+                                    transition: 'transform 0.2s', ':hover': { transform: 'scale(1.02)' }
+                                }}>
+                                    Start Scheduled Lab
+                                </button>
+                            </div>
+                        );
+                    })()}
+
                     <h2 style={{ color: '#fff', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <FaChalkboardTeacher /> Start New Lab Session
                     </h2>
@@ -444,25 +489,48 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                         <select
                             value={selectedCourseId}
                             onChange={e => {
-                                const cId = e.target.value;
-                                setSelectedCourseId(cId);
-                                const c = courses.find(c => c._id === cId);
-                                if (c) {
-                                    setSubject(c.name);
-                                    setSemester(c.semester);
-                                    setSessionName(`${c.name} - Lab Session`); // Auto-fill name
+                                const val = e.target.value;
+                                setSelectedCourseId(val);
+                                
+                                if (val.startsWith('timetable_')) {
+                                    const tId = val.replace('timetable_', '');
+                                    const t = timetableSlots.find(slot => slot._id === tId);
+                                    if (t) {
+                                        setSubject(t.subjectName);
+                                        setSemester(`Year ${t.year} Sec ${t.section}`);
+                                        setSessionName(`${t.subjectName} - Lab Session`);
+                                    }
+                                } else if (val.startsWith('course_') || val) {
+                                    const cId = val.startsWith('course_') ? val.replace('course_', '') : val;
+                                    const c = courses.find(course => course._id === cId);
+                                    if (c) {
+                                        setSubject(c.name);
+                                        setSemester(c.semester);
+                                        setSessionName(`${c.name} - Lab Session`); // Auto-fill name
+                                    }
+                                } else {
+                                    setSubject("");
+                                    setSemester("");
+                                    setSessionName("");
                                 }
                             }}
                             style={{ width: '100%', padding: '10px', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff' }}
                         >
-                            <option value="">-- Select a Course --</option>
-                            {courses.map(c => (
-                                <option key={c._id} value={c._id}>{c.name} ({c.code}) - {c.semester}</option>
-                            ))}
+                            <option value="">-- Select a Course or Timetable Slot --</option>
+                            {timetableSlots.length > 0 && <optgroup label="Scheduled Timetable">
+                                {timetableSlots.map(t => (
+                                    <option key={t._id} value={`timetable_${t._id}`}>SCHEDULED: {t.subjectName} - {t.department} Y{t.year} Sec {t.section} ({t.dayOfWeek} {t.startTime})</option>
+                                ))}
+                            </optgroup>}
+                            <optgroup label="Manual Custom Courses">
+                                {courses.map(c => (
+                                    <option key={c._id} value={`course_${c._id}`}>{c.name} ({c.code}) - {c.semester}</option>
+                                ))}
+                            </optgroup>
                         </select>
                     </div>
 
-                    {selectedCourseId && (
+                    {selectedCourseId && !selectedCourseId.startsWith('timetable_') && (
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '5px' }}>Select Batch (Optional)</label>
                             <select
@@ -471,7 +539,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                                 style={{ width: '100%', padding: '10px', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff' }}
                             >
                                 <option value="">-- All Enrolled Students --</option>
-                                {courses.find(c => c._id === selectedCourseId)?.batches?.map(b => (
+                                {courses.find(c => c._id === (selectedCourseId.startsWith('course_') ? selectedCourseId.replace('course_', '') : selectedCourseId))?.batches?.map(b => (
                                     <option key={b._id} value={b._id}>{b.name} ({b.students?.length || 0} students)</option>
                                 ))}
                             </select>

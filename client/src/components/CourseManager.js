@@ -1,38 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaPlus, FaBook, FaUsers, FaArrowLeft, FaTrash, FaCog, FaGraduationCap, FaLayerGroup } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import { FaPlus, FaBook, FaUsers, FaArrowLeft, FaTrash, FaCog, FaGraduationCap, FaLayerGroup, FaCalendarAlt } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CourseManager = ({ token, serverUrl }) => {
     const [courses, setCourses] = useState([]);
+    const [timetableCourses, setTimetableCourses] = useState([]);
+    const [catalogCourses, setCatalogCourses] = useState([]);
+    const [catalogStructure, setCatalogStructure] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     
     // View state
+    const [activeTab, setActiveTab] = useState('timetable'); // 'timetable' or 'custom'
     const [activeCourse, setActiveCourse] = useState(null);
     const [activeBatch, setActiveBatch] = useState(null);
 
     // Form States
     const [newCourse, setNewCourse] = useState({ name: '', code: '', semester: 'Sem 1', description: '' });
-    const [newBatch, setNewBatch] = useState({ name: '', year: '', section: '', schedule: { day: '', time: '' } });
+    const [newBatch, setNewBatch] = useState({ name: '', department: '', year: '', section: '', schedule: { day: '', time: '' } });
     const [studentInput, setStudentInput] = useState("");
     const [showAddBatch, setShowAddBatch] = useState(false);
 
     const api = axios.create({ baseURL: serverUrl, headers: { Authorization: token } });
 
     useEffect(() => {
-        fetchCourses();
+        fetchData();
     }, []);
 
-    const fetchCourses = async () => {
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const res = await api.get('/api/courses');
-            setCourses(res.data);
-            setLoading(false);
+            const [coursesRes, timetableRes, catCoursesRes, catStructRes] = await Promise.all([
+                api.get('/api/courses'),
+                api.get('/api/timetable/my-schedule/faculty').catch(() => ({ data: [] })),
+                api.get('/api/catalog/courses').catch(() => ({ data: [] })),
+                api.get('/api/catalog/structure').catch(() => ({ data: [] }))
+            ]);
+            setCourses(coursesRes.data || []);
+            setTimetableCourses(timetableRes.data || []);
+            setCatalogCourses(catCoursesRes.data || []);
+            setCatalogStructure(catStructRes.data || []);
         } catch (e) {
             console.error(e);
-            setLoading(false);
         }
+        setLoading(false);
     };
 
     const handleCreateCourse = async () => {
@@ -68,6 +80,7 @@ const CourseManager = ({ token, serverUrl }) => {
         try {
             const res = await api.post(`/api/courses/${activeCourse._id}/batches`, {
                 name: newBatch.name,
+                department: newBatch.department,
                 year: newBatch.year,
                 section: newBatch.section,
                 schedule: newBatch.schedule
@@ -84,7 +97,7 @@ const CourseManager = ({ token, serverUrl }) => {
             }));
             
             setShowAddBatch(false);
-            setNewBatch({ name: '', year: '', section: '', schedule: { day: '', time: '' } });
+            setNewBatch({ name: '', department: '', year: '', section: '', schedule: { day: '', time: '' } });
             setActiveBatch(updatedBatch);
         } catch (e) {
             alert("Failed to create batch: " + (e.response?.data?.error || e.message));
@@ -139,89 +152,239 @@ const CourseManager = ({ token, serverUrl }) => {
         }
     };
 
+    // Derived properties for dropdowns
+    const getDepartments = () => {
+        if (!catalogStructure || catalogStructure.length === 0) return [];
+        // Handle array of departments or college object containing departments
+        const depts = catalogStructure[0]?.departments || catalogStructure;
+        return Array.isArray(depts) ? depts : [];
+    };
+
+    const getYearsForDept = (deptName) => {
+        const depts = getDepartments();
+        const dept = depts.find(d => (d.name || d.department) === deptName);
+        if (!dept || !dept.years) return [];
+        return dept.years;
+    };
+
+    const getSectionsForYear = (deptName, yearName) => {
+        const years = getYearsForDept(deptName);
+        const year = years.find(y => (y.year || y.name) === yearName);
+        if (!year || !year.sections) return [];
+        return year.sections;
+    };
+
+    const deptsList = getDepartments();
+    const yearsList = newBatch.department ? getYearsForDept(newBatch.department) : [];
+    const sectionsList = newBatch.year ? getSectionsForYear(newBatch.department, newBatch.year) : [];
+
     // --- SUB-COMPONENTS ---
+    const renderTimetableCourses = () => (
+        <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -10 }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '30px' }}
+        >
+            {timetableCourses.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                    <FaCalendarAlt size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
+                    <p>No timetable assigned courses found.</p>
+                </div>
+            ) : timetableCourses.map((t, idx) => (
+                <motion.div 
+                    key={idx}
+                    whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
+                    style={{
+                        background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.9))',
+                        backdropFilter: 'blur(16px)',
+                        borderRadius: '24px',
+                        padding: '30px',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}
+                >
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #10b981, #3b82f6)' }}></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <FaCalendarAlt size={20} />
+                        </div>
+                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', letterSpacing: '1px' }}>
+                            {t.type || 'CLASS'}
+                        </span>
+                    </div>
+
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#f8fafc', margin: '0 0 10px 0' }}>{t.subject || "Subject Name"}</h3>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', textTransform: 'uppercase' }}>Dept</div>
+                            <div style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: '600' }}>{t.department || 'N/A'}</div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', textTransform: 'uppercase' }}>Cohort</div>
+                            <div style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: '600' }}>Yr {t.year || '-'} • Sec {t.section || '-'}</div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', textTransform: 'uppercase' }}>Schedule</div>
+                            <div style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: '600' }}>{t.day || 'N/A'}</div>
+                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>{t.timeSlot || `${t.startTime || ''} - ${t.endTime || ''}`}</div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '800', textTransform: 'uppercase' }}>Room</div>
+                            <div style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: '600' }}>{t.room || t.labRoom || 'TBA'}</div>
+                        </div>
+                    </div>
+                </motion.div>
+            ))}
+        </motion.div>
+    );
+
+    const renderCustomCourses = () => (
+        <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -10 }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '30px' }}
+        >
+            {courses.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                    <FaBook size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
+                    <p>No custom courses created yet.</p>
+                </div>
+            ) : courses.map(course => {
+                const totalStudents = course.batches?.reduce((sum, b) => sum + (b.students?.length || 0), 0) || 0;
+                return (
+                    <motion.div 
+                        key={course._id} 
+                        whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
+                        onClick={() => { setActiveCourse(course); setActiveBatch(null); setShowAddBatch(false); }}
+                        style={{
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            backdropFilter: 'blur(16px)',
+                            borderRadius: '24px',
+                            padding: '30px',
+                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}></div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FaBook size={20} />
+                            </div>
+                            <span style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', letterSpacing: '1px' }}>
+                                {course.code} • {course.semester}
+                            </span>
+                        </div>
+
+                        <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#f8fafc', margin: '0 0 10px 0' }}>{course.name}</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 24px 0', lineHeight: '1.5', flex: 1 }}>{course.description || "No description provided."}</p>
+
+                        <div style={{ display: 'flex', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px' }}>Batches</div>
+                                <div style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}><FaLayerGroup color="#6366f1" size={14}/> {course.batches?.length || 0}</div>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px' }}>Students</div>
+                                <div style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}><FaGraduationCap color="#10b981" size={16}/> {totalStudents}</div>
+                            </div>
+                        </div>
+                    </motion.div>
+                );
+            })}
+        </motion.div>
+    );
+
     const renderCourseGrid = () => (
         <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto', fontFamily: "'Outfit', sans-serif" }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }}>
                 <div>
                     <h1 style={{ fontSize: '32px', fontWeight: '900', color: '#fff', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
                         Course <span style={{ background: 'linear-gradient(135deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Command Center</span>
                     </h1>
                     <p style={{ color: '#94a3b8', fontSize: '15px', margin: 0 }}>Deploy and manage your subjects, sections, and student rosters.</p>
                 </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    style={{
-                        background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                        color: '#fff',
+                {activeTab === 'custom' && (
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        style={{
+                            background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '14px 28px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontWeight: '800',
+                            fontSize: '14px',
+                            boxShadow: '0 10px 25px rgba(99, 102, 241, 0.4)',
+                            transition: 'transform 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <FaPlus size={14} /> NEW COURSE
+                    </button>
+                )}
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '40px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
+                <button 
+                    onClick={() => setActiveTab('timetable')}
+                    style={{ 
+                        padding: '12px 24px', 
+                        background: activeTab === 'timetable' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                        color: activeTab === 'timetable' ? '#818cf8' : '#64748b',
                         border: 'none',
-                        padding: '14px 28px',
                         borderRadius: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
                         fontWeight: '800',
                         fontSize: '14px',
-                        boxShadow: '0 10px 25px rgba(99, 102, 241, 0.4)',
-                        transition: 'transform 0.2s'
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                    <FaPlus size={14} /> NEW COURSE
+                    TIMETABLE-ASSIGNED COURSES
+                </button>
+                <button 
+                    onClick={() => setActiveTab('custom')}
+                    style={{ 
+                        padding: '12px 24px', 
+                        background: activeTab === 'custom' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                        color: activeTab === 'custom' ? '#818cf8' : '#64748b',
+                        border: 'none',
+                        borderRadius: '12px',
+                        fontWeight: '800',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    CUSTOM COURSES
                 </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '30px' }}>
-                {courses.map(course => {
-                    const totalStudents = course.batches?.reduce((sum, b) => sum + (b.students?.length || 0), 0) || 0;
-                    return (
-                        <motion.div 
-                            key={course._id} 
-                            whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}
-                            onClick={() => { setActiveCourse(course); setActiveBatch(null); setShowAddBatch(false); }}
-                            style={{
-                                background: 'rgba(15, 23, 42, 0.6)',
-                                backdropFilter: 'blur(16px)',
-                                borderRadius: '24px',
-                                padding: '30px',
-                                border: '1px solid rgba(255, 255, 255, 0.05)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                position: 'relative',
-                                overflow: 'hidden'
-                            }}
-                        >
-                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}></div>
-                            
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <FaBook size={20} />
-                                </div>
-                                <span style={{ background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', color: '#94a3b8', letterSpacing: '1px' }}>
-                                    {course.code} • {course.semester}
-                                </span>
-                            </div>
-
-                            <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#f8fafc', margin: '0 0 10px 0' }}>{course.name}</h3>
-                            <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 24px 0', lineHeight: '1.5', flex: 1 }}>{course.description || "No description provided."}</p>
-
-                            <div style={{ display: 'flex', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px' }}>Batches</div>
-                                    <div style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}><FaLayerGroup color="#6366f1" size={14}/> {course.batches?.length || 0}</div>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ color: '#64748b', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '4px' }}>Students</div>
-                                    <div style={{ color: '#f1f5f9', fontSize: '18px', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px' }}><FaGraduationCap color="#10b981" size={16}/> {totalStudents}</div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
+            <AnimatePresence mode="wait">
+                {activeTab === 'timetable' ? (
+                    <motion.div key="timetable" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
+                        {renderTimetableCourses()}
+                    </motion.div>
+                ) : (
+                    <motion.div key="custom" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
+                        {renderCustomCourses()}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 
@@ -295,6 +458,7 @@ const CourseManager = ({ token, serverUrl }) => {
                                         <span style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '800', color: '#94a3b8' }}>{b.students?.length || 0} STS</span>
                                     </div>
                                     <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+                                        {b.department && <span>{b.department}</span>}
                                         {b.year && <span>{b.year}</span>}
                                         {b.section && <span>Sec {b.section}</span>}
                                     </div>
@@ -307,31 +471,54 @@ const CourseManager = ({ token, serverUrl }) => {
                 {/* RIGHT MAIN AREA */}
                 <div style={{ flex: 1, position: 'relative', background: 'rgba(2, 6, 23, 0.3)' }}>
                     {showAddBatch ? (
-                        <div style={{ padding: '60px', maxWidth: '600px' }}>
+                        <div style={{ padding: '60px', maxWidth: '700px' }}>
                             <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>Deploy New Batch</h2>
-                            <p style={{ color: '#94a3b8', marginBottom: '32px' }}>Define the year, section, and schedule for this batch.</p>
+                            <p style={{ color: '#94a3b8', marginBottom: '32px' }}>Define the department, year, section, and schedule for this batch.</p>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 <div>
                                     <label style={{ display: 'block', color: '#94a3b8', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Batch Name / Identifier</label>
                                     <input placeholder="e.g. Morning Shift, Group A" value={newBatch.name} onChange={e => setNewBatch({ ...newBatch, name: e.target.value })} style={{ width: '100%', padding: '16px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px', fontSize: '15px' }} />
                                 </div>
+                                
                                 <div style={{ display: 'flex', gap: '20px' }}>
                                     <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Department</label>
+                                        <select 
+                                            value={newBatch.department} 
+                                            onChange={e => setNewBatch({ ...newBatch, department: e.target.value, year: '', section: '' })} 
+                                            style={{ width: '100%', padding: '16px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px', fontSize: '15px', outline: 'none' }}
+                                        >
+                                            <option value="">- Select Dept -</option>
+                                            {deptsList.map((d, i) => <option key={i} value={d.name || d.department}>{d.name || d.department}</option>)}
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
                                         <label style={{ display: 'block', color: '#94a3b8', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Academic Year</label>
-                                        <select value={newBatch.year} onChange={e => setNewBatch({ ...newBatch, year: e.target.value })} style={{ width: '100%', padding: '16px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px', fontSize: '15px', outline: 'none' }}>
+                                        <select 
+                                            value={newBatch.year} 
+                                            onChange={e => setNewBatch({ ...newBatch, year: e.target.value, section: '' })} 
+                                            style={{ width: '100%', padding: '16px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px', fontSize: '15px', outline: 'none' }}
+                                            disabled={!newBatch.department}
+                                        >
                                             <option value="">- Select Year -</option>
-                                            <option value="1st Year">1st Year</option>
-                                            <option value="2nd Year">2nd Year</option>
-                                            <option value="3rd Year">3rd Year</option>
-                                            <option value="4th Year">4th Year</option>
+                                            {yearsList.map((y, i) => <option key={i} value={y.year || y.name}>{y.year || y.name}</option>)}
                                         </select>
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <label style={{ display: 'block', color: '#94a3b8', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Section</label>
-                                        <input placeholder="e.g. A, B, CSE-1" value={newBatch.section} onChange={e => setNewBatch({ ...newBatch, section: e.target.value })} style={{ width: '100%', padding: '16px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px', fontSize: '15px' }} />
+                                        <select 
+                                            value={newBatch.section} 
+                                            onChange={e => setNewBatch({ ...newBatch, section: e.target.value })} 
+                                            style={{ width: '100%', padding: '16px', background: '#0f172a', border: '1px solid #334155', color: '#fff', borderRadius: '12px', fontSize: '15px', outline: 'none' }}
+                                            disabled={!newBatch.year}
+                                        >
+                                            <option value="">- Select Section -</option>
+                                            {sectionsList.map((s, i) => <option key={i} value={s.name || s}>{s.name || s}</option>)}
+                                        </select>
                                     </div>
                                 </div>
+                                
                                 <div style={{ display: 'flex', gap: '20px' }}>
                                     <div style={{ flex: 1 }}>
                                         <label style={{ display: 'block', color: '#94a3b8', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Schedule Day</label>
@@ -354,6 +541,7 @@ const CourseManager = ({ token, serverUrl }) => {
                                     <div>
                                         <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '0 0 8px 0' }}>{activeBatch.name} <span style={{ fontWeight: '400', color: '#64748b' }}>Roster</span></h2>
                                         <div style={{ display: 'flex', gap: '16px', color: '#94a3b8', fontSize: '14px', fontWeight: '600' }}>
+                                            {activeBatch.department && <span>{activeBatch.department}</span>}
                                             {activeBatch.year && <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FaUsers size={12}/> {activeBatch.year}</span>}
                                             {activeBatch.section && <span>Sec {activeBatch.section}</span>}
                                             {activeBatch.schedule?.day && <span>• {activeBatch.schedule.day} {activeBatch.schedule.time}</span>}
@@ -437,33 +625,53 @@ const CourseManager = ({ token, serverUrl }) => {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
                     <div style={{ background: '#0f172a', padding: '40px', borderRadius: '24px', width: '500px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
                         <h2 style={{ color: '#fff', margin: '0 0 8px 0', fontSize: '24px', fontWeight: '900' }}>Initialize Course</h2>
-                        <p style={{ color: '#94a3b8', margin: '0 0 24px 0', fontSize: '14px' }}>Define the core subject parameters.</p>
+                        <p style={{ color: '#94a3b8', margin: '0 0 24px 0', fontSize: '14px' }}>Select a course from the global catalog.</p>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Course Title</label>
-                                <input placeholder="e.g. Data Structures & Algorithms" value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid #334155', color: '#fff', borderRadius: '10px' }} />
+                                <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Course Selection</label>
+                                <select 
+                                    value={newCourse.code}
+                                    onChange={e => {
+                                        const cCode = e.target.value;
+                                        const selected = catalogCourses.find(c => c.code === cCode);
+                                        if (selected) {
+                                            setNewCourse({ ...newCourse, code: selected.code, name: selected.name, description: selected.description || '', semester: selected.semester || 'Sem 1' });
+                                        } else {
+                                            setNewCourse({ ...newCourse, code: '' });
+                                        }
+                                    }}
+                                    style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid #334155', color: '#fff', borderRadius: '10px', outline: 'none' }}
+                                >
+                                    <option value="">- Select a Course -</option>
+                                    {catalogCourses.map(c => (
+                                        <option key={c._id || c.code} value={c.code}>{c.code} - {c.name}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <div style={{ display: 'flex', gap: '16px' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Course Code</label>
-                                    <input placeholder="e.g. CS201" value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid #334155', color: '#fff', borderRadius: '10px' }} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Semester</label>
-                                    <select value={newCourse.semester} onChange={e => setNewCourse({ ...newCourse, semester: e.target.value })} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid #334155', color: '#fff', borderRadius: '10px', outline: 'none' }}>
-                                        {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={`Sem ${s}`}>Sem {s}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Description (Optional)</label>
-                                <textarea placeholder="Brief overview of the course content..." value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid #334155', color: '#fff', borderRadius: '10px', height: '80px', resize: 'none' }} />
-                            </div>
+                            
+                            {newCourse.code && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                                    <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Course Title</label>
+                                            <input disabled value={newCourse.name} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.1)', border: '1px solid #1e293b', color: '#94a3b8', borderRadius: '10px', cursor: 'not-allowed' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Semester</label>
+                                            <input disabled value={newCourse.semester} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.1)', border: '1px solid #1e293b', color: '#94a3b8', borderRadius: '10px', cursor: 'not-allowed' }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '16px' }}>
+                                        <label style={{ display: 'block', color: '#94a3b8', fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', marginBottom: '8px' }}>Description</label>
+                                        <textarea disabled value={newCourse.description} style={{ width: '100%', padding: '14px', background: 'rgba(0,0,0,0.1)', border: '1px solid #1e293b', color: '#94a3b8', borderRadius: '10px', height: '80px', resize: 'none', cursor: 'not-allowed' }} />
+                                    </div>
+                                </motion.div>
+                            )}
                         </div>
                         
                         <div style={{ display: 'flex', gap: '12px', marginTop: '30px' }}>
-                            <button onClick={handleCreateCourse} style={{ flex: 1, padding: '14px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>DEPLOY COURSE</button>
+                            <button onClick={handleCreateCourse} disabled={!newCourse.code} style={{ flex: 1, padding: '14px', background: newCourse.code ? '#6366f1' : '#334155', color: newCourse.code ? '#fff' : '#94a3b8', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: newCourse.code ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}>DEPLOY COURSE</button>
                             <button onClick={() => setShowCreateModal(false)} style={{ padding: '14px 24px', background: 'transparent', color: '#94a3b8', border: '1px solid #475569', borderRadius: '12px', fontWeight: '700', cursor: 'pointer' }}>CANCEL</button>
                         </div>
                     </div>
@@ -474,3 +682,4 @@ const CourseManager = ({ token, serverUrl }) => {
 };
 
 export default CourseManager;
+

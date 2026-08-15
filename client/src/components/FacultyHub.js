@@ -39,7 +39,7 @@ const Skeleton = ({ width = '100%', height = '20px', borderRadius = '4px', margi
 
 const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
     const [activeView, setActiveView] = useState(localStorage.getItem('facultyActiveView') || 'dashboard');
-    const [stats, setStats] = useState({ courses: 0, students: 0, activeSessions: 0 });
+    const [stats, setStats] = useState({ courses: 0, students: 0, activeSessions: 0, scheduledLabs: 0 });
     const [facultyName, setFacultyName] = useState('Faculty');
     const [collegeName, setCollegeName] = useState(localStorage.getItem('collegeName') || null);
     const [isLoading, setIsLoading] = useState(true);
@@ -58,14 +58,18 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
         setIsLoading(true);
         const api = axios.create({ baseURL: serverUrl || SERVER_FALLBACK, headers: { Authorization: token } });
         try {
-            const [courseRes, sessionRes] = await Promise.all([
+            const [courseRes, sessionRes, timetableRes] = await Promise.all([
                 api.get('/api/courses'),
-                api.get('/lab/active-session')
+                api.get('/lab/active-session'),
+                api.get('/api/timetable/my-schedule/faculty')
             ]);
+            const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+            const todaysLabs = (timetableRes.data || []).filter(s => s.dayOfWeek === today).length;
             setStats({
                 courses: courseRes.data.length,
                 students: 0, // Mock student count for now or fetch if available
-                activeSessions: sessionRes.data.session ? 1 : 0
+                activeSessions: sessionRes.data.session ? 1 : 0,
+                scheduledLabs: todaysLabs
             });
         } catch (e) {
             console.error("Stats Fetch Error:", e);
@@ -275,7 +279,7 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate }
     ];
 
     const statCards = [
-        { label: 'Courses', value: stats.courses, icon: <FaBookOpen />, color: '#3b82f6' },
+        { label: 'Scheduled Labs Today', value: stats.scheduledLabs || 0, icon: <FaCalendarAlt />, color: '#10b981' },
         { label: 'Live Sessions', value: stats.activeSessions, icon: <FaDesktop />, color: stats.activeSessions > 0 ? '#ef4444' : '#64748b', pulse: stats.activeSessions > 0 },
         { label: 'Today', value: time.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }), icon: <FaChartLine />, color: '#10b981' },
     ];
@@ -303,7 +307,7 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate }
 
             {/* NEW: Today's Schedule Widget */}
             <div style={{ animation: 'fadeUp 0.5s ease 0.1s both' }}>
-                <TimetableWidget token={localStorage.getItem('token')} onLabStarted={() => onNavigate('active-labs')} />
+                <TimetableWidget token={localStorage.getItem('token')} serverUrl={serverUrl} onLabStarted={() => onNavigate('active-labs')} />
             </div>
 
             {/* Stat Cards */}
