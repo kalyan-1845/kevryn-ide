@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     FaChalkboardTeacher, FaCode, FaChartLine, FaSignOutAlt, FaBookOpen,
     FaUserGraduate, FaClipboardList, FaDesktop, FaTachometerAlt,
-    FaBell, FaShieldAlt, FaEye, FaTasks, FaTrophy
+    FaBell, FaShieldAlt, FaEye, FaTasks, FaTrophy, FaCalendarAlt
 } from 'react-icons/fa';
 import MonitorDashboard from './MonitorDashboard';
 import CourseManager from './CourseManager';
@@ -219,6 +219,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                             stats={stats}
                             time={time}
                             onNavigate={setActiveView}
+                            serverUrl={serverUrl}
                         />
                     )
                 )}
@@ -270,7 +271,7 @@ const NavItem = ({ icon, label, isActive, onClick, badge }) => (
     </div>
 );
 
-const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate }) => {
+const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, serverUrl }) => {
     const quickActions = [
         { label: 'Start Live Lab', icon: <FaDesktop />, view: 'active-labs', color: '#6366f1', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)', desc: 'Monitor students in real-time' },
         { label: 'My Courses', icon: <FaBookOpen />, view: 'courses', color: '#3b82f6', gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)', desc: 'Manage your course roster' },
