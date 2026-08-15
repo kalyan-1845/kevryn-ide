@@ -112,10 +112,11 @@ const TimetableScheduler = ({ token }) => {
     const availableSections = structureForSec ? structureForSec.sections : [];
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const timeSlots = [
-        '08:00', '09:00', '10:00', '11:00', '12:00', 
-        '13:00', '14:00', '15:00', '16:00', '17:00'
-    ];
+    const timeSlots = Array.from({ length: 121 }, (_, i) => {
+        const h = Math.floor(i / 12) + 8;
+        const m = (i % 12) * 5;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    });
 
     const containerStyle = { padding: '40px', maxWidth: '1200px', margin: '0 auto' };
     const cardStyle = {
