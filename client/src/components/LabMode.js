@@ -435,7 +435,9 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         const ext = filename.split('.').pop().toLowerCase();
         
         // Cross-platform compatibility for Windows PowerShell vs Linux Bash
-        const isWin = navigator.userAgent.toLowerCase().includes('windows');
+        const isDesktop = !!window.electronAPI;
+        const isWin = isDesktop && navigator.userAgent.toLowerCase().includes('windows');
+        
         const exeExt = isWin ? '.exe' : '';
         const runPrefix = isWin ? '.\\' : './';
         const sep = isWin ? ';' : '&&';
