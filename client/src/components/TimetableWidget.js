@@ -20,10 +20,10 @@ const TimetableWidget = ({ token, serverUrl, onLabStarted }) => {
     const fetchSchedule = async () => {
         setIsLoading(true);
         try {
-            const res = await api.get('/timetable/my-schedule/faculty');
+            const res = await api.get('/api/timetable/my-schedule/faculty');
             setSchedule(res.data);
         } catch (err) {
-            console.error("Failed to fetch schedule");
+            console.error("Failed to fetch schedule", err);
         }
         setIsLoading(false);
     };
@@ -48,23 +48,135 @@ const TimetableWidget = ({ token, serverUrl, onLabStarted }) => {
         ? safeSchedule.filter(s => s.dayOfWeek === today)
         : safeSchedule;
 
+    const styles = {
+        container: {
+            background: 'rgba(30, 41, 59, 0.7)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '16px',
+            padding: '24px',
+            marginBottom: '30px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+        },
+        header: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px'
+        },
+        title: {
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            margin: 0
+        },
+        toggleGroup: {
+            display: 'flex',
+            background: 'rgba(15, 23, 42, 0.6)',
+            borderRadius: '8px',
+            padding: '4px'
+        },
+        toggleBtn: (active) => ({
+            padding: '6px 16px',
+            fontSize: '0.875rem',
+            fontWeight: 'bold',
+            borderRadius: '6px',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            background: active ? '#3b82f6' : 'transparent',
+            color: active ? '#fff' : '#94a3b8'
+        }),
+        grid: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '20px'
+        },
+        card: {
+            background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+            padding: '20px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.05)',
+            position: 'relative',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+        },
+        cardAccent: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '4px',
+            height: '100%',
+            background: '#3b82f6'
+        },
+        dayLabel: {
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            color: '#60a5fa',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            marginBottom: '8px'
+        },
+        subject: {
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            color: '#fff',
+            marginBottom: '4px'
+        },
+        cohort: {
+            fontSize: '0.875rem',
+            color: '#94a3b8',
+            marginBottom: '12px'
+        },
+        timeInfo: {
+            fontSize: '0.875rem',
+            color: '#93c5fd',
+            fontFamily: 'monospace',
+            marginBottom: '16px',
+            background: 'rgba(59, 130, 246, 0.1)',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            display: 'inline-block'
+        },
+        startBtn: {
+            width: '100%',
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            color: 'white',
+            border: 'none',
+            padding: '10px',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: 'auto',
+            transition: 'transform 0.2s, box-shadow 0.2s'
+        }
+    };
+
     return (
-        <div className="bg-gray-800 rounded-lg p-6 shadow-lg mb-6 border border-gray-700">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <FaCalendarAlt className="text-blue-400" /> 
+        <div style={styles.container}>
+            <div style={styles.header}>
+                <h3 style={styles.title}>
+                    <FaCalendarAlt style={{ color: '#60a5fa' }} /> 
                     {viewMode === 'today' ? `Today's Schedule (${today})` : 'Full Week Schedule'}
                 </h3>
-                <div className="flex bg-gray-700 rounded-lg p-1">
+                <div style={styles.toggleGroup}>
                     <button 
                         onClick={() => setViewMode('today')}
-                        className={`px-4 py-1 text-sm font-bold rounded-md transition ${viewMode === 'today' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                        style={styles.toggleBtn(viewMode === 'today')}
                     >
                         Today
                     </button>
                     <button 
                         onClick={() => setViewMode('week')}
-                        className={`px-4 py-1 text-sm font-bold rounded-md transition ${viewMode === 'week' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                        style={styles.toggleBtn(viewMode === 'week')}
                     >
                         Week
                     </button>
@@ -72,23 +184,27 @@ const TimetableWidget = ({ token, serverUrl, onLabStarted }) => {
             </div>
 
             {isLoading ? (
-                <div className="text-gray-400">Loading schedule...</div>
+                <div style={{ color: '#94a3b8' }}>Loading schedule...</div>
             ) : displayClasses.length === 0 ? (
-                <div className="text-gray-500 italic">No scheduled labs.</div>
+                <div style={{ color: '#64748b', fontStyle: 'italic' }}>No scheduled labs {viewMode === 'today' ? 'today' : 'this week'}.</div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div style={styles.grid}>
                     {displayClasses.map(cls => (
-                        <motion.div key={cls._id} whileHover={{ scale: 1.02 }} className="bg-gray-700 p-4 rounded-lg border border-gray-600 relative overflow-hidden group">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                            {viewMode === 'week' && <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">{cls.dayOfWeek}</div>}
-                            <div className="font-bold text-lg text-white mb-1">{cls.subjectName}</div>
-                            <div className="text-sm text-gray-400 mb-2">{cls.department} - Year {cls.year} - Sec {cls.section}</div>
-                            <div className="text-sm text-blue-300 font-mono mb-4">{cls.startTime} - {cls.endTime}</div>
+                        <motion.div key={cls._id} whileHover={{ scale: 1.03, y: -5 }} style={styles.card}>
+                            <div style={styles.cardAccent}></div>
+                            {viewMode === 'week' && <div style={styles.dayLabel}>{cls.dayOfWeek}</div>}
+                            <div style={styles.subject}>{cls.subjectName}</div>
+                            <div style={styles.cohort}>{cls.department} - Year {cls.year} - Sec {cls.section}</div>
+                            <div>
+                                <span style={styles.timeInfo}>{cls.startTime} - {cls.endTime}</span>
+                            </div>
                             
                             {viewMode === 'today' && (
                                 <button 
                                     onClick={() => handleStartLab(cls._id)}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold flex items-center justify-center gap-2 transition"
+                                    style={styles.startBtn}
+                                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'; }}
+                                    onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
                                 >
                                     <FaPlayCircle /> Start Lab
                                 </button>
