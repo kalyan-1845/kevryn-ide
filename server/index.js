@@ -1010,6 +1010,60 @@ app.post('/lab/update-report', authenticate, async (req, res) => {
     }
 });
 
+// NEW: Get Cohort Reports (Faculty View for Global Timetable)
+app.get('/lab/reports/cohort', authenticate, async (req, res) => {
+    try {
+        const { department, year, section, subjectName } = req.query;
+
+        // Find all students in this exact cohort
+        const enrolledStudents = await User.find({ department, year, section, role: 'student' }).select('username picture email').lean();
+        const studentUsernames = enrolledStudents.map(s => s.username);
+        const studentIds = enrolledStudents.map(s => s._id);
+
+        // Find lab reports for these specific students and subject
+        const reports = await LabReport.find({ courseName: subjectName, studentId: { $in: studentIds } })
+            .populate('studentId', 'username picture email')
+            .lean();
+
+        const matchedUsernames = new Set(reports.map(r => r.studentId?.username).filter(Boolean));
+        const unmatchedUsernames = enrolledStudents
+            .filter(s => !matchedUsernames.has(s.username))
+            .map(s => s.username);
+
+        const missingUsersMap = Object.fromEntries(enrolledStudents.map(u => [u.username, u]));
+
+        // Fetch all files created by these students for this subject
+        const courseFiles = await File.find({ owner: { $in: studentIds } }).lean();
+        const filesByStudent = {};
+        for (const file of courseFiles) {
+             const ownerId = file.owner.toString();
+             if (!filesByStudent[ownerId]) filesByStudent[ownerId] = [];
+             filesByStudent[ownerId].push({
+                  fileName: file.name,
+                  code: file.content,
+                  lastUpdated: file.updatedAt || file.createdAt,
+                  timeSpent: file.timeSpent || 0
+             });
+        }
+
+        const mergedReports = [
+            ...reports.map(r => ({ ...r, files: filesByStudent[r.studentId?._id?.toString()] || [] })),
+            ...unmatchedUsernames.map(username => ({
+                _id: 'temp_' + username,
+                studentId: missingUsersMap[username] || { username, picture: null },
+                courseName: subjectName,
+                totalTimeSpent: 0,
+                lastActive: null,
+                files: filesByStudent[missingUsersMap[username]?._id?.toString()] || []
+            }))
+        ];
+
+        res.json(mergedReports);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 1.8 Get Course Reports (Faculty View) — PERFORMANCE OPTIMIZED
 app.get('/lab/reports/:courseId', authenticate, async (req, res) => {
     try {
@@ -1078,64 +1132,6 @@ app.get('/lab/reports/:courseId', authenticate, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-
-// NEW: Get Cohort Reports (Faculty View for Global Timetable)
-app.get('/lab/reports/cohort', authenticate, async (req, res) => {
-    try {
-        const { department, year, section, subjectName } = req.query;
-
-        // Find all students in this exact cohort
-        const enrolledStudents = await User.find({ department, year, section, role: 'student' }).select('username picture email').lean();
-        const studentUsernames = enrolledStudents.map(s => s.username);
-        const studentIds = enrolledStudents.map(s => s._id);
-
-        // Find lab reports for these specific students and subject
-        const reports = await LabReport.find({ courseName: subjectName, studentId: { $in: studentIds } })
-            .populate('studentId', 'username picture email')
-            .lean();
-
-        const matchedUsernames = new Set(reports.map(r => r.studentId?.username).filter(Boolean));
-        const unmatchedUsernames = enrolledStudents
-            .filter(s => !matchedUsernames.has(s.username))
-            .map(s => s.username);
-
-        const missingUsersMap = Object.fromEntries(enrolledStudents.map(u => [u.username, u]));
-
-        // Fetch all files created by these students for this subject
-        const courseFiles = await File.find({ owner: { $in: studentIds } }).lean();
-        // Since File doesn't reliably store subjectName without courseId, we approximate by time or just return all their files 
-        // For accurate general reports, we just grab all files since `courseId` isn't available anymore.
-        // Actually, we can filter files if we updated the File schema, but for now just group by owner
-        const filesByStudent = {};
-        for (const file of courseFiles) {
-             const ownerId = file.owner.toString();
-             if (!filesByStudent[ownerId]) filesByStudent[ownerId] = [];
-             filesByStudent[ownerId].push({
-                  fileName: file.name,
-                  code: file.content,
-                  lastUpdated: file.updatedAt || file.createdAt,
-                  timeSpent: file.timeSpent || 0
-             });
-        }
-
-        const mergedReports = [
-            ...reports.map(r => ({ ...r, files: filesByStudent[r.studentId?._id?.toString()] || [] })),
-            ...unmatchedUsernames.map(username => ({
-                _id: 'temp_' + username,
-                studentId: missingUsersMap[username] || { username, picture: null },
-                courseName: subjectName,
-                totalTimeSpent: 0,
-                lastActive: null,
-                files: filesByStudent[missingUsersMap[username]?._id?.toString()] || []
-            }))
-        ];
-
-        res.json(mergedReports);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 // 1.9 Get Specific Student Report
 app.get('/lab/report/:studentId/:courseName', authenticate, async (req, res) => {
     try {

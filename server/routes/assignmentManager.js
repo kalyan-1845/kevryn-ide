@@ -75,6 +75,42 @@ router.get('/course/:courseId', authenticate, async (req, res) => {
     }
 });
 
+// 9. Get Cohort Submissions
+router.get('/cohort', authenticate, async (req, res) => {
+    try {
+        const { department, year, section, subjectName } = req.query;
+
+        // 1. Find assignments matching cohort targeting
+        const assignments = await Assignment.find({
+            targetDepartment: department,
+            targetYear: year,
+            targetSection: section,
+            subjectName: subjectName
+        });
+        const assignmentIds = assignments.map(a => a._id);
+
+        // 2. Find all users matching this cohort
+        const users = await User.find({
+            department,
+            year,
+            section
+        });
+        const usernames = users.map(u => u.username);
+
+        // 3. Get submissions and filter by users in this cohort
+        const submissions = await Submission.find({
+            assignmentId: { $in: assignmentIds },
+            studentUsername: { $in: usernames }
+        })
+            .populate('assignmentId', 'title maxPoints')
+            .sort({ submittedAt: -1 });
+
+        res.json(submissions);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 3. Get Specific Assignment
 router.get('/:id', authenticate, async (req, res) => {
     try {
@@ -275,41 +311,4 @@ router.get('/student/active', authenticate, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-
-// 9. Get Cohort Submissions
-router.get('/cohort', authenticate, async (req, res) => {
-    try {
-        const { department, year, section, subjectName } = req.query;
-
-        // 1. Find assignments matching cohort targeting
-        const assignments = await Assignment.find({
-            targetDepartment: department,
-            targetYear: year,
-            targetSection: section,
-            subjectName: subjectName
-        });
-        const assignmentIds = assignments.map(a => a._id);
-
-        // 2. Find all users matching this cohort
-        const users = await User.find({
-            department,
-            year,
-            section
-        });
-        const usernames = users.map(u => u.username);
-
-        // 3. Get submissions and filter by users in this cohort
-        const submissions = await Submission.find({
-            assignmentId: { $in: assignmentIds },
-            studentUsername: { $in: usernames }
-        })
-            .populate('assignmentId', 'title maxPoints')
-            .sort({ submittedAt: -1 });
-
-        res.json(submissions);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
 module.exports = router;
