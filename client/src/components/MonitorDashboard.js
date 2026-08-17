@@ -661,10 +661,21 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
 
                     {/* Student List */}
                     <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>SMART ROSTER ({Object.keys(students).length})</span>
-                            <span style={{ fontSize: '10px', color: '#4ade80', background: 'rgba(74,222,128,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                                {Object.values(students).filter(s => s.status === 'active').length} LIVE
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                            SMART ROSTER ({Object.keys(students).length})
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(148,163,184,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
+                                {Object.values(students).filter(s => s.status !== 'offline').length} TOTAL
+                            </span>
+                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#4ade80', background: 'rgba(74,222,128,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
+                                {Object.values(students).filter(s => s.status === 'active').length} ACTIVE
+                            </span>
+                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
+                                {Object.values(students).filter(s => s.status === 'idle').length} IDLE
+                            </span>
+                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#f87171', background: 'rgba(248,113,113,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
+                                {Object.values(students).filter(s => s.status === 'distracted').length} DISTRACTED
                             </span>
                         </div>
                         {Object.entries(students).map(([username, s]) => {

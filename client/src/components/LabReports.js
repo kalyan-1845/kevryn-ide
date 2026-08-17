@@ -8,6 +8,8 @@ const LabReports = ({ token, serverUrl, onClose }) => {
     const [selectedReport, setSelectedReport] = useState(null);
     const [reportLoading, setReportLoading] = useState(false);
     const [downloadingId, setDownloadingId] = useState(null);
+    const [viewFilesModal, setViewFilesModal] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
 
     useEffect(() => {
         const fetchSessions = async () => {
@@ -46,9 +48,9 @@ const LabReports = ({ token, serverUrl, onClose }) => {
     // --- CSV EXPORT FUNCTION ---
     const exportCSV = (reportData) => {
         const { session, attendedStudents, offlineStudents } = reportData;
-        const sessionDate = new Date(session.startTime).toLocaleDateString();
-        const startTime = new Date(session.startTime).toLocaleTimeString();
-        const endTime = new Date(session.endTime || new Date()).toLocaleTimeString();
+        const sessionDate = new Date(session.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const startTime = new Date(session.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const endTime = new Date(session.endTime || new Date()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
         let csv = `ACE ENGINEERING COLLEGE - DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING\n`;
         csv += `LAB SESSION PERFORMANCE & INTEGRITY AUDIT REPORT\n`;
@@ -105,9 +107,9 @@ const LabReports = ({ token, serverUrl, onClose }) => {
     const handlePrintPDF = (reportData) => {
         const { session, attendedStudents, offlineStudents } = reportData;
         const printWindow = window.open('', '_blank');
-        const sessionDate = new Date(session.startTime).toLocaleDateString();
-        const startTime = new Date(session.startTime).toLocaleTimeString();
-        const endTime = new Date(session.endTime || new Date()).toLocaleTimeString();
+        const sessionDate = new Date(session.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const startTime = new Date(session.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        const endTime = new Date(session.endTime || new Date()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
         const html = `
             <!DOCTYPE html>
@@ -255,8 +257,8 @@ const LabReports = ({ token, serverUrl, onClose }) => {
                             <div>
                                 <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#f8fafc' }}>{selectedReport.session.sessionName}</h3>
                                 <div style={{ fontSize: '13px', color: '#94a3b8', display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                                    <span><FaCalendarAlt color="#3b82f6" /> {new Date(selectedReport.session.startTime).toLocaleDateString()}</span>
-                                    <span><FaClock color="#06b6d4" /> {new Date(selectedReport.session.startTime).toLocaleTimeString()} - {new Date(selectedReport.session.endTime || new Date()).toLocaleTimeString()}</span>
+                                    <span><FaCalendarAlt color="#3b82f6" /> {new Date(selectedReport.session.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
+                                    <span><FaClock color="#06b6d4" /> {new Date(selectedReport.session.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} - {new Date(selectedReport.session.endTime || new Date()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
                                     <span><FaShieldAlt color="#10b981" /> Course: {selectedReport.session.courseId?.name || 'General Computer Science'}</span>
                                 </div>
                             </div>
@@ -338,7 +340,12 @@ const LabReports = ({ token, serverUrl, onClose }) => {
                                                 <td style={{ padding: '12px 16px', color: st.tabSwitches > 5 ? '#ef4444' : st.tabSwitches > 2 ? '#f59e0b' : '#94a3b8' }}>
                                                     {st.violations || 'Clean Session'}
                                                 </td>
-                                                <td style={{ padding: '12px 16px', color: '#3b82f6', fontWeight: 'bold' }}>{st.files?.length || 0}</td>
+                                                <td style={{ padding: '12px 16px', color: '#3b82f6', fontWeight: 'bold' }}>
+                                                    {st.files?.length || 0}
+                                                    {st.files?.length > 0 && (
+                                                        <button onClick={() => setViewFilesModal(st)} style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '11px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>View</button>
+                                                    )}
+                                                </td>
                                                 <td style={{ padding: '12px 16px' }}>
                                                     <span style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', background: st.tabSwitches > 5 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)', color: st.tabSwitches > 5 ? '#ef4444' : '#10b981' }}>
                                                         {st.status || 'Attended'}
@@ -374,8 +381,8 @@ const LabReports = ({ token, serverUrl, onClose }) => {
                                 <div>
                                     <h3 style={{ margin: '0 0 10px 0', color: '#f8fafc', fontSize: '18px' }}>{s.sessionName}</h3>
                                     <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <div><FaCalendarAlt color="#3b82f6" /> {new Date(s.startTime).toLocaleDateString()}</div>
-                                        <div><FaClock color="#06b6d4" /> {new Date(s.startTime).toLocaleTimeString()} - {new Date(s.endTime || new Date()).toLocaleTimeString()}</div>
+                                        <div><FaCalendarAlt color="#3b82f6" /> {new Date(s.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+                                        <div><FaClock color="#06b6d4" /> {new Date(s.startTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} - {new Date(s.endTime || new Date()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
                                     </div>
                                 </div>
 
@@ -401,6 +408,43 @@ const LabReports = ({ token, serverUrl, onClose }) => {
                     </div>
                 )}
             </div>
+
+            {/* View Files Modal */}
+            {viewFilesModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>
+                    <div style={{ background: '#0f172a', width: '90%', maxWidth: '1000px', height: '80vh', borderRadius: '12px', border: '1px solid #1e293b', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+                        <div style={{ padding: '16px 24px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#090d16' }}>
+                            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px' }}>Files - {viewFilesModal.fullName || viewFilesModal.username}</h3>
+                            <button onClick={() => { setViewFilesModal(null); setSelectedFile(null); }} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                                <FaTimes size={20} />
+                            </button>
+                        </div>
+                        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                            <div style={{ width: '250px', borderRight: '1px solid #1e293b', background: '#090d16', overflowY: 'auto', padding: '10px' }}>
+                                {viewFilesModal.files?.map((f, i) => (
+                                    <div key={i} onClick={() => setSelectedFile(f)} style={{ padding: '10px', cursor: 'pointer', borderRadius: '6px', background: selectedFile?.name === f.name ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: selectedFile?.name === f.name ? '#3b82f6' : '#cbd5e1', marginBottom: '4px', wordBreak: 'break-all', fontSize: '14px' }}>
+                                        {f.name || `file_${i + 1}`}
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', background: '#1e293b' }}>
+                                {selectedFile ? (
+                                    <div>
+                                        <h4 style={{ margin: '0 0 10px 0', color: '#f8fafc' }}>{selectedFile.name}</h4>
+                                        <pre style={{ background: '#0f172a', padding: '16px', borderRadius: '8px', overflowX: 'auto', border: '1px solid #334155', margin: 0 }}>
+                                            <code style={{ color: '#e2e8f0', fontFamily: 'monospace', fontSize: '13px' }}>
+                                                {selectedFile.content || 'No content available.'}
+                                            </code>
+                                        </pre>
+                                    </div>
+                                ) : (
+                                    <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Select a file to view its content</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

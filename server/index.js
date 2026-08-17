@@ -837,7 +837,7 @@ app.get('/lab/sessions/:id/report', authenticate, async (req, res) => {
         sessionFiles.forEach(f => {
             if (f.owner && f.owner.username) {
                 if (!filesByStudent[f.owner.username]) filesByStudent[f.owner.username] = [];
-                filesByStudent[f.owner.username].push({ name: f.name, type: f.type, lastRunTime: f.lastRunTime });
+                filesByStudent[f.owner.username].push({ name: f.name, type: f.type, lastRunTime: f.lastRunTime, content: f.content });
             }
         });
 
@@ -852,7 +852,35 @@ app.get('/lab/sessions/:id/report', authenticate, async (req, res) => {
         // Compute active vs idle time & focus metrics per student
         const attendedStudentsData = session.activeStudents.map(student => {
             const profile = userMap[student.username] || {};
-            const activeMs = new Date(student.lastHeartbeat || session.endTime || new Date()).getTime() - new Date(student.loginTime || session.startTime).getTime();
+            
+            let activeMs = 0;
+            if (session.activityLog && session.activityLog.length > 0) {
+                const logs = session.activityLog
+                    .filter(log => log.username === student.username)
+                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+                let lastActiveStartTime = null;
+                const sessionEnd = new Date(session.endTime || new Date()).getTime();
+
+                logs.forEach(log => {
+                    const time = new Date(log.timestamp).getTime();
+                    if (log.action === 'login' || log.action === 'focus-gained') {
+                        if (!lastActiveStartTime) lastActiveStartTime = time;
+                    } else if (log.action === 'logout' || log.action === 'focus-lost') {
+                        if (lastActiveStartTime) {
+                            activeMs += (time - lastActiveStartTime);
+                            lastActiveStartTime = null;
+                        }
+                    }
+                });
+
+                if (lastActiveStartTime) {
+                    activeMs += (sessionEnd - lastActiveStartTime);
+                }
+            } else {
+                activeMs = new Date(student.lastHeartbeat || session.endTime || new Date()).getTime() - new Date(student.loginTime || session.startTime).getTime();
+            }
+
             const activeMinutes = Math.max(0, Math.floor(activeMs / 60000));
             const idleMinutes = Math.max(0, totalSessionMinutes - activeMinutes);
             const tabSwitches = student.tabSwitchCount || 0;
