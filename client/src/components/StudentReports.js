@@ -29,22 +29,26 @@ const StudentReports = ({ token, serverUrl }) => {
         const fetchCohorts = async () => {
             try {
                 const res = await api.get('/api/timetable/my-schedule/faculty');
-                const schedule = res.data.schedule || [];
+                const schedule = res.data.schedule || res.data || [];
                 
                 // Extract unique cohorts (Department, Year, Section, Subject)
                 const uniqueMap = new Map();
-                schedule.forEach(slot => {
-                    const key = `${slot.department}-${slot.year}-${slot.section}-${slot.subjectName}`;
-                    if (!uniqueMap.has(key)) {
-                        uniqueMap.set(key, {
-                            department: slot.department,
-                            year: slot.year,
-                            section: slot.section,
-                            subjectName: slot.subjectName,
-                            label: `${slot.department} - Yr ${slot.year} - Sec ${slot.section} (${slot.subjectName})`
-                        });
-                    }
-                });
+                if (Array.isArray(schedule)) {
+                    schedule.forEach(slot => {
+                        if (slot.department && slot.year && slot.section && slot.subjectName) {
+                            const key = `${slot.department}-${slot.year}-${slot.section}-${slot.subjectName}`;
+                            if (!uniqueMap.has(key)) {
+                                uniqueMap.set(key, {
+                                    department: slot.department,
+                                    year: slot.year,
+                                    section: slot.section,
+                                    subjectName: slot.subjectName,
+                                    label: `${slot.department} - Yr ${slot.year} - Sec ${slot.section} (${slot.subjectName})`
+                                });
+                            }
+                        }
+                    });
+                }
                 setCohorts(Array.from(uniqueMap.values()));
             } catch (e) { console.error("Failed to fetch timetable cohorts", e); }
         };
@@ -156,20 +160,36 @@ const StudentReports = ({ token, serverUrl }) => {
 
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>Target Cohort</label>
-                        <select
-                            onChange={(e) => setSelectedCohortStr(e.target.value)}
-                            value={selectedCohortStr}
-                            style={{
-                                width: '100%', padding: '12px', background: 'rgba(30, 41, 59, 0.5)',
-                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
-                                color: '#fff', fontSize: '14px', outline: 'none'
-                            }}
-                        >
-                            <option value="">-- Choose Cohort --</option>
-                            {cohorts.map(c => (
-                                <option key={c.label} value={JSON.stringify(c)}>{c.label}</option>
-                            ))}
-                        </select>
+                        <div style={{ position: 'relative' }}>
+                            <select
+                                onChange={(e) => setSelectedCohortStr(e.target.value)}
+                                value={selectedCohortStr}
+                                style={{
+                                    width: '100%', 
+                                    padding: '12px 35px 12px 16px', 
+                                    background: 'rgba(15, 23, 42, 0.8)',
+                                    border: '1px solid rgba(99, 102, 241, 0.3)', 
+                                    borderRadius: '8px',
+                                    color: '#e2e8f0', 
+                                    fontSize: '14px', 
+                                    outline: 'none',
+                                    appearance: 'none',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                }}
+                                onFocus={(e) => e.target.style.border = '1px solid #6366f1'}
+                                onBlur={(e) => e.target.style.border = '1px solid rgba(99, 102, 241, 0.3)'}
+                            >
+                                <option value="" style={{ background: '#0f172a' }}>-- Choose Cohort --</option>
+                                {cohorts.map(c => (
+                                    <option key={c.label} value={JSON.stringify(c)} style={{ background: '#0f172a' }}>{c.label}</option>
+                                ))}
+                            </select>
+                            <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#6366f1' }}>
+                                ▼
+                            </div>
+                        </div>
                     </div>
 
                     <div style={{ position: 'relative' }}>
