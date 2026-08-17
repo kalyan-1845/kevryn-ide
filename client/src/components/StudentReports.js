@@ -11,8 +11,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const StudentReports = ({ token, serverUrl }) => {
     const reportRef = useRef(null);
-    const [courses, setCourses] = useState([]);
-    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [cohorts, setCohorts] = useState([]);
+    const [selectedCohortStr, setSelectedCohortStr] = useState("");
+    const selectedCohort = useMemo(() => selectedCohortStr ? JSON.parse(selectedCohortStr) : null, [selectedCohortStr]);
     const [searchTerm, setSearchTerm] = useState("");
     const [reports, setReports] = useState([]);
     const [selectedReport, setSelectedReport] = useState(null);
@@ -25,20 +26,37 @@ const StudentReports = ({ token, serverUrl }) => {
     }, [serverUrl, token]);
 
     useEffect(() => {
-        const fetchCourses = async () => {
+        const fetchCohorts = async () => {
             try {
-                const res = await api.get('/api/courses');
-                setCourses(res.data);
-            } catch (e) { console.error("Failed to fetch courses", e); }
+                const res = await api.get('/api/timetable/my-schedule/faculty');
+                const schedule = res.data.schedule || [];
+                
+                // Extract unique cohorts (Department, Year, Section, Subject)
+                const uniqueMap = new Map();
+                schedule.forEach(slot => {
+                    const key = `${slot.department}-${slot.year}-${slot.section}-${slot.subjectName}`;
+                    if (!uniqueMap.has(key)) {
+                        uniqueMap.set(key, {
+                            department: slot.department,
+                            year: slot.year,
+                            section: slot.section,
+                            subjectName: slot.subjectName,
+                            label: `${slot.department} - Yr ${slot.year} - Sec ${slot.section} (${slot.subjectName})`
+                        });
+                    }
+                });
+                setCohorts(Array.from(uniqueMap.values()));
+            } catch (e) { console.error("Failed to fetch timetable cohorts", e); }
         };
-        fetchCourses();
+        fetchCohorts();
     }, [api]);
 
     useEffect(() => {
-        if (!selectedCourse) return;
+        if (!selectedCohort) return;
         const fetchReports = async () => {
             try {
-                const res = await api.get(`/lab/reports/${selectedCourse._id}`);
+                const query = `?department=${encodeURIComponent(selectedCohort.department)}&year=${selectedCohort.year}&section=${encodeURIComponent(selectedCohort.section)}&subjectName=${encodeURIComponent(selectedCohort.subjectName)}`;
+                const res = await api.get(`/lab/reports/cohort${query}`);
                 setReports(res.data);
                 setSelectedReport(null);
             } catch (e) {
@@ -47,17 +65,27 @@ const StudentReports = ({ token, serverUrl }) => {
             }
         };
         fetchReports();
-    }, [selectedCourse, api]);
+    }, [selectedCohortStr, api]);
 
     useEffect(() => {
-        if (!selectedReport || !selectedCourse) return;
+        if (!selectedReport || !selectedCohort) return;
         const fetchStudentSubmissions = async () => {
             setIsLoadingSubmissions(true);
             try {
                 const username = selectedReport.studentId?.username;
                 if (!username) return;
-                const res = await api.get(`/api/assignments/course/${selectedCourse._id}/student/${username}`);
-                setStudentSubmissions(res.data);
+                const query = `?department=${encodeURIComponent(selectedCohort.department)}&year=${selectedCohort.year}&section=${encodeURIComponent(selectedCohort.section)}&subjectName=${encodeURIComponent(selectedCohort.subjectName)}`;
+                const res = await api.get(`/api/assignments/cohort${query}`);
+                
+                // res.data is an array of assignments with .submissions array
+                // We only want the submissions for the selected student
+                const studentSpecificAssignments = res.data.map(assignment => {
+                    return {
+                        ...assignment,
+                        submissions: assignment.submissions ? assignment.submissions.filter(s => s.studentUsername === username) : []
+                    };
+                });
+                setStudentSubmissions(studentSpecificAssignments);
             } catch (e) {
                 console.error("Failed to fetch submissions", e);
                 setStudentSubmissions([]);
@@ -66,7 +94,7 @@ const StudentReports = ({ token, serverUrl }) => {
             }
         };
         fetchStudentSubmissions();
-    }, [selectedReport, selectedCourse, api]);
+    }, [selectedReport, selectedCohortStr, api]);
 
     const handleDownload = async (report) => {
         if (!report || !reportRef.current) return;
@@ -88,7 +116,7 @@ const StudentReports = ({ token, serverUrl }) => {
 
             pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
             const studentName = report.studentId?.username || "Student";
-            pdf.save(`KEVRYN_DOSSIER_${studentName}_${selectedCourse.code}.pdf`);
+            pdf.save(`KEVRYN_DOSSIER_${studentName}_${selectedCohort.subjectName}.pdf`);
         } catch (error) {
             console.error("PDF Export failed:", error);
             alert("Export failed. Please try again.");
@@ -127,22 +155,19 @@ const StudentReports = ({ token, serverUrl }) => {
                     </div>
 
                     <div style={{ marginBottom: '20px' }}>
-                        <label style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>Course Select</label>
+                        <label style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>Target Cohort</label>
                         <select
-                            onChange={(e) => {
-                                const c = courses.find(course => course._id === e.target.value);
-                                setSelectedCourse(c);
-                            }}
-                            value={selectedCourse?._id || ""}
+                            onChange={(e) => setSelectedCohortStr(e.target.value)}
+                            value={selectedCohortStr}
                             style={{
                                 width: '100%', padding: '12px', background: 'rgba(30, 41, 59, 0.5)',
                                 border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px',
                                 color: '#fff', fontSize: '14px', outline: 'none'
                             }}
                         >
-                            <option value="">-- Choose Course --</option>
-                            {courses.map(c => (
-                                <option key={c._id} value={c._id}>{c.name} ({c.code})</option>
+                            <option value="">-- Choose Cohort --</option>
+                            {cohorts.map(c => (
+                                <option key={c.label} value={JSON.stringify(c)}>{c.label}</option>
                             ))}
                         </select>
                     </div>
@@ -164,7 +189,7 @@ const StudentReports = ({ token, serverUrl }) => {
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                    {!selectedCourse ? (
+                    {!selectedCohort ? (
                         <div style={{ padding: '40px 20px', textAlign: 'center', color: '#475569' }}>
                             <FaBook size={32} style={{ opacity: 0.1, marginBottom: '16px' }} />
                             <div style={{ fontSize: '13px' }}>Select a course to view roster analytics.</div>
@@ -254,13 +279,14 @@ const StudentReports = ({ token, serverUrl }) => {
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                                         <span style={{ padding: '4px 12px', background: 'rgba(99,102,241,0.1)', color: '#818cf8', borderRadius: '20px', fontSize: '11px', fontWeight: '800', letterSpacing: '1px' }}>KEVRYN IDE | KEVRYN ANALYTICS</span>
-                                        <span style={{ fontSize: '11px', color: '#475569' }}>SESSION: {selectedCourse?.code} - {selectedCourse?.name}</span>
+                                        <span style={{ fontSize: '11px', color: '#475569' }}>SESSION: {selectedCohort?.subjectName}</span>
                                     </div>
-                                    <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0, color: '#fff', letterSpacing: '-1.5px', lineHeight: 1 }}>
-                                        {selectedReport.studentId?.username}
+                                    <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#fff', margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>
+                                        {selectedReport.studentId?.username?.toUpperCase()}
                                     </h1>
-                                    <div style={{ display: 'flex', gap: '24px', marginTop: '16px', color: '#94a3b8' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FaBook color="#6366f1" /> SUBJECT: {selectedCourse?.name}</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FaUser color="#6366f1" /> UID: {selectedReport.studentId?._id?.slice(-6).toUpperCase()}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FaBook color="#6366f1" /> SUBJECT: {selectedCohort?.subjectName}</div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <FaCalendar /> TIMELINE: {
                                                 selectedReport.files.length > 0
