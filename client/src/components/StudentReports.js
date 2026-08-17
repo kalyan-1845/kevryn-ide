@@ -174,6 +174,10 @@ const StudentReports = ({ token, serverUrl }) => {
                                     fontSize: '14px', 
                                     outline: 'none',
                                     appearance: 'none',
+                                    boxSizing: 'border-box',
+                                    textOverflow: 'ellipsis',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
                                     boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
