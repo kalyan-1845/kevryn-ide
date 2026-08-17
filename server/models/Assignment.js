@@ -2,11 +2,18 @@ const mongoose = require('mongoose');
 
 const AssignmentSchema = new mongoose.Schema({
     collegeId: { type: mongoose.Schema.Types.ObjectId, ref: 'College' },
-    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
-    batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }, // Targeted batch (optional)
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' }, // Optional now
+    batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }, // Optional
+
+    // NEW: Global Timetable Targeting
+    targetDepartment: { type: String }, // e.g. 'CSE'
+    targetYear: { type: String },       // e.g. '3'
+    targetSection: { type: String },    // e.g. 'D'
+    subjectName: { type: String },      // e.g. 'C LAB'
+
     title: { type: String, required: true }, // "Lab 1: Hello World"
     description: { type: String }, // Markdown supported
-    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard'], default: 'Medium' }, // NEW: Added difficulty level
+    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard'], default: 'Medium' },
 
     // Code Execution Config
     language: { type: String, default: 'python' }, // python, javascript, c, cpp

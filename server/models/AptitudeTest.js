@@ -17,7 +17,14 @@ const AptitudeTestSchema = new mongoose.Schema({
     duration: { type: Number, default: 60 }, // Duration in minutes
     endTime: Date,
     isActive: { type: Boolean, default: false }, // Will be set to true when Faculty explicitly Starts the exam
-    batches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }], // Associated batches to dictate who gets the Live Exam banner
+    batches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }], // Legacy batches
+    
+    // NEW: Global Timetable Targeting
+    targetDepartment: { type: String }, // e.g. 'CSE'
+    targetYear: { type: String },       // e.g. '3'
+    targetSection: { type: String },    // e.g. 'D'
+    subjectName: { type: String },      // e.g. 'APTITUDE'
+
     questions: [AptitudeQuestionSchema], // Embedded questions
     totalMarks: { type: Number, default: 0 },
     

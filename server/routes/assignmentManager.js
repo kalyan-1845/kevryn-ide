@@ -10,7 +10,7 @@ const { runAutoGrader } = require('../utils/autoGrader');
 // 1. Create Assignment (Faculty Only)
 router.post('/', authenticate, async (req, res) => {
     try {
-        const { courseId, batchId, title, description, language, starterCode, testCases, points, startTime, endTime } = req.body;
+        const { courseId, batchId, title, description, language, starterCode, testCases, points, startTime, endTime, targetDepartment, targetYear, targetSection, subjectName } = req.body;
 
         // Verify Faculty Role
         if (req.user.role !== 'faculty') return res.status(403).json({ error: "Only faculty can create assignments" });
@@ -25,6 +25,10 @@ router.post('/', authenticate, async (req, res) => {
             collegeId: req.user.collegeId || undefined,
             courseId,
             batchId: batchId || undefined,
+            targetDepartment,
+            targetYear,
+            targetSection,
+            subjectName,
             title,
             description,
             language,
@@ -233,14 +237,26 @@ router.get('/student/active', authenticate, async (req, res) => {
         const courseIds = courses.map(c => c._id);
 
         // Find assignments for those courses, restricted by batch if applicable
-        const assignments = await Assignment.find({ 
-            courseId: { $in: courseIds },
-            $or: [
-                { batchId: null },
-                { batchId: { $exists: false } },
-                { batchId: { $in: enrolledBatches } }
-            ]
-        })
+        const conditions = [
+            {
+                courseId: { $in: courseIds },
+                $or: [
+                    { batchId: null },
+                    { batchId: { $exists: false } },
+                    { batchId: { $in: enrolledBatches } }
+                ]
+            }
+        ];
+
+        if (user.department && user.year && user.section) {
+            conditions.push({
+                targetDepartment: user.department,
+                targetYear: user.year,
+                targetSection: user.section
+            });
+        }
+
+        const assignments = await Assignment.find({ $or: conditions })
             .populate('courseId', 'name')
             .sort({ endTime: 1 }); // Sort by end time (closest first)
 
@@ -255,6 +271,42 @@ router.get('/student/active', authenticate, async (req, res) => {
         const unsubmittedAssignments = assignments.filter(a => !submittedAssignmentIds.includes(a._id.toString()));
 
         res.json(unsubmittedAssignments);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 9. Get Cohort Submissions
+router.get('/cohort', authenticate, async (req, res) => {
+    try {
+        const { department, year, section, subjectName } = req.query;
+
+        // 1. Find assignments matching cohort targeting
+        const assignments = await Assignment.find({
+            targetDepartment: department,
+            targetYear: year,
+            targetSection: section,
+            subjectName: subjectName
+        });
+        const assignmentIds = assignments.map(a => a._id);
+
+        // 2. Find all users matching this cohort
+        const users = await User.find({
+            department,
+            year,
+            section
+        });
+        const usernames = users.map(u => u.username);
+
+        // 3. Get submissions and filter by users in this cohort
+        const submissions = await Submission.find({
+            assignmentId: { $in: assignmentIds },
+            studentUsername: { $in: usernames }
+        })
+            .populate('assignmentId', 'title maxPoints')
+            .sort({ submittedAt: -1 });
+
+        res.json(submissions);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

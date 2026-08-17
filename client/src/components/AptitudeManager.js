@@ -4,7 +4,7 @@ import { FaPlus, FaTasks, FaMagic, FaTrash, FaPlay, FaStop, FaSave, FaCheck, FaE
 
 const AptitudeManager = ({ token, serverUrl }) => {
     const [tests, setTests] = useState([]);
-    const [courses, setCourses] = useState([]);
+    const [cohorts, setCohorts] = useState([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     
@@ -14,7 +14,7 @@ const AptitudeManager = ({ token, serverUrl }) => {
         description: '',
         duration: 60,
         totalMarks: 0,
-        batches: [],
+        selectedCohort: '',
         questions: [],
         startTime: '',
         endTime: ''
@@ -31,7 +31,7 @@ const AptitudeManager = ({ token, serverUrl }) => {
 
     useEffect(() => {
         fetchTests();
-        fetchCourses();
+        fetchCohorts();
     }, []);
 
     const fetchTests = async () => {
@@ -43,12 +43,30 @@ const AptitudeManager = ({ token, serverUrl }) => {
         }
     };
 
-    const fetchCourses = async () => {
+    const fetchCohorts = async () => {
         try {
-            const res = await api.get('/api/courses');
-            setCourses(res.data);
+            const res = await api.get('/api/timetable/my-schedule/faculty');
+            const schedule = res.data.schedule || res.data || [];
+            const uniqueMap = new Map();
+            if (Array.isArray(schedule)) {
+                schedule.forEach(item => {
+                    if (item.department && item.year && item.section && item.subjectName) {
+                        const key = `${item.department}-${item.year}-${item.section}-${item.subjectName}`;
+                        if (!uniqueMap.has(key)) {
+                            uniqueMap.set(key, {
+                                targetDepartment: item.department,
+                                targetYear: item.year,
+                                targetSection: item.section,
+                                subjectName: item.subjectName
+                            });
+                        }
+                    }
+                });
+            }
+            const uniqueCohorts = Array.from(uniqueMap.values());
+            setCohorts(uniqueCohorts);
         } catch (e) {
-            console.error("Failed to fetch courses", e);
+            console.error("Failed to fetch cohorts", e);
         }
     };
 
@@ -73,12 +91,7 @@ const AptitudeManager = ({ token, serverUrl }) => {
         }
     };
 
-    const toggleBatchSelection = (batchId) => {
-        const newBatches = formData.batches.includes(batchId)
-            ? formData.batches.filter(id => id !== batchId)
-            : [...formData.batches, batchId];
-        setFormData({ ...formData, batches: newBatches });
-    };
+
 
     const removeQuestion = (index) => {
         const newQ = formData.questions.filter((_, i) => i !== index);
@@ -106,14 +119,18 @@ const AptitudeManager = ({ token, serverUrl }) => {
 
     const handleSaveTest = async () => {
         if (!formData.title) return alert("Title required.");
-        if (formData.batches.length === 0) return alert("Select at least one target batch.");
+        if (!formData.selectedCohort) return alert("Select a target cohort.");
         if (formData.questions.length === 0) return alert("Add at least one question.");
 
         setIsLoading(true);
         try {
-            await api.post('/api/aptitude/create', formData);
+            const parsedCohort = JSON.parse(formData.selectedCohort);
+            const payload = { ...formData, ...parsedCohort };
+            delete payload.selectedCohort;
+
+            await api.post('/api/aptitude/create', payload);
             setShowCreateModal(false);
-            setFormData({ title: '', description: '', duration: 60, totalMarks: 0, batches: [], questions: [], startTime: '', endTime: '' });
+            setFormData({ title: '', description: '', duration: 60, totalMarks: 0, selectedCohort: '', questions: [], startTime: '', endTime: '' });
             fetchTests();
         } catch (e) {
             alert(e.response?.data?.error || e.message);
@@ -320,31 +337,20 @@ const AptitudeManager = ({ token, serverUrl }) => {
                                 </section>
 
                                 <section>
-                                    <h3 style={{ fontSize: '13px', fontWeight: '800', color: '#6366f1', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Target Squads</h3>
-                                    <div style={{ 
-                                        background: 'rgba(15, 23, 42, 0.4)', borderRadius: '16px', 
-                                        border: '1px solid rgba(255,255,255,0.05)', padding: '15px', 
-                                        maxHeight: '400px', overflowY: 'auto' 
-                                    }}>
-                                        {courses.map(course => (
-                                            <div key={course._id} style={{ marginBottom: '15px' }}>
-                                                <div style={{ fontSize: '12px', color: '#818cf8', fontWeight: '900', marginBottom: '10px' }}>{course.name}</div>
-                                                {course.batches && course.batches.map(b => (
-                                                    <label key={b._id} style={{ 
-                                                        display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', 
-                                                        fontSize: '14px', cursor: 'pointer', borderRadius: '8px',
-                                                        background: formData.batches.includes(b._id) ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                                                        color: formData.batches.includes(b._id) ? '#818cf8' : '#94a3b8',
-                                                        marginBottom: '4px', border: '1px solid',
-                                                        borderColor: formData.batches.includes(b._id) ? 'rgba(99,102,241,0.2)' : 'transparent',
-                                                        transition: 'all 0.2s'
-                                                    }}>
-                                                        <input type="checkbox" checked={formData.batches.includes(b._id)} onChange={() => toggleBatchSelection(b._id)} style={{ accentColor: '#6366f1' }} />
-                                                        {b.name}
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        ))}
+                                    <h3 style={{ fontSize: '13px', fontWeight: '800', color: '#6366f1', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Target Cohort</h3>
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <select 
+                                            value={formData.selectedCohort || ''} 
+                                            onChange={e => setFormData({ ...formData, selectedCohort: e.target.value })}
+                                            style={inputStyle}
+                                        >
+                                            <option value="">- Select a Cohort -</option>
+                                            {cohorts.map((c, i) => (
+                                                <option key={i} value={JSON.stringify(c)}>
+                                                    {c.targetDepartment} - Yr {c.targetYear} - Sec {c.targetSection} ({c.subjectName})
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </section>
                             </div>

@@ -16,7 +16,7 @@ const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_
 
 router.post('/create', authenticate, async (req, res) => {
     try {
-        const { title, description, duration, batches, questions, totalMarks, startTime, endTime } = req.body;
+        const { title, description, duration, batches, questions, totalMarks, startTime, endTime, targetDepartment, targetYear, targetSection, subjectName } = req.body;
         
         const test = new AptitudeTest({
             facultyId: req.user.userId,
@@ -25,6 +25,10 @@ router.post('/create', authenticate, async (req, res) => {
             description,
             duration,
             batches,
+            targetDepartment,
+            targetYear,
+            targetSection,
+            subjectName,
             questions,
             totalMarks,
             startTime,
@@ -167,11 +171,25 @@ router.get('/student/active', authenticate, async (req, res) => {
         // Find which batches the student is enrolled in
         const batches = await Batch.find({ 'students.username': username }).select('_id');
         const batchIds = batches.map(b => b._id);
+        const user = await User.findById(userId);
 
-        if (batchIds.length === 0) return res.json({ session: null });
+        const conditions = [];
+        if (batchIds.length > 0) {
+            conditions.push({ batches: { $in: batchIds } });
+        }
+        
+        if (user && user.department && user.year && user.section) {
+            conditions.push({
+                targetDepartment: user.department,
+                targetYear: user.year,
+                targetSection: user.section
+            });
+        }
+
+        if (conditions.length === 0) return res.json({ session: null });
 
         // Build query
-        const query = { isActive: true, batches: { $in: batchIds } };
+        const query = { isActive: true, $or: conditions };
         if (req.user.collegeId) query.collegeId = req.user.collegeId;
 
         const session = await AptitudeTest.findOne(query).sort({ startTime: -1 }).populate('questions'); // Need questions for the exam (without answers)
@@ -373,6 +391,55 @@ router.get('/course/:courseId/submissions', authenticate, async (req, res) => {
 
         // 3. Find submissions for these tests
         const submissions = await AptitudeSubmission.find({ testId: { $in: testIds } })
+            .select('testId username studentId totalScore submittedAt answers tabSwitches fullScreenExits pasteViolations')
+            .sort({ submittedAt: -1 });
+
+        // Enrich with test title and maxScore
+        const enrichedSubmissions = submissions.map(sub => {
+            const test = tests.find(t => t._id.toString() === sub.testId.toString());
+            return {
+                ...sub.toObject(),
+                testTitle: test?.title || 'Unknown Test',
+                maxScore: test?.totalMarks || 0,
+                questions: test?.questions || []
+            };
+        });
+
+        res.json({ success: true, submissions: enrichedSubmissions });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get all submissions for a cohort
+router.get('/cohort', authenticate, async (req, res) => {
+    try {
+        const { department, year, section, subjectName } = req.query;
+
+        // 1. Find tests matching cohort targeting
+        const tests = await AptitudeTest.find({
+            targetDepartment: department,
+            targetYear: year,
+            targetSection: section,
+            subjectName: subjectName,
+            facultyId: req.user.userId
+        }).select('_id title totalMarks questions');
+        
+        const testIds = tests.map(t => t._id);
+
+        // 2. Find users in cohort
+        const users = await User.find({
+            department,
+            year,
+            section
+        });
+        const studentIds = users.map(u => u._id);
+
+        // 3. Find submissions for these tests by these users
+        const submissions = await AptitudeSubmission.find({ 
+            testId: { $in: testIds },
+            studentId: { $in: studentIds }
+        })
             .select('testId username studentId totalScore submittedAt answers tabSwitches fullScreenExits pasteViolations')
             .sort({ submittedAt: -1 });
 

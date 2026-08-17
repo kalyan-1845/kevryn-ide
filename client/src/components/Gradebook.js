@@ -4,10 +4,8 @@ import Editor from '@monaco-editor/react';
 import { FaEye, FaTimes, FaCheckCircle, FaTimesCircle, FaSearch, FaChevronLeft, FaChevronRight, FaFilter, FaChartBar, FaFileAlt, FaExclamationTriangle, FaCheck, FaChartLine, FaClock } from 'react-icons/fa';
 
 const Gradebook = ({ token, serverUrl }) => {
-    const [courses, setCourses] = useState([]);
-    const [selectedCourseId, setSelectedCourseId] = useState('');
-    const [batches, setBatches] = useState([]);
-    const [selectedBatchId, setSelectedBatchId] = useState('all');
+    const [cohorts, setCohorts] = useState([]);
+    const [selectedCohortStr, setSelectedCohortStr] = useState('');
     const [viewType, setViewType] = useState('assignments'); // 'assignments' | 'aptitude'
     
     const [submissions, setSubmissions] = useState([]);
@@ -21,22 +19,16 @@ const Gradebook = ({ token, serverUrl }) => {
     const api = axios.create({ baseURL: serverUrl, headers: { Authorization: token } });
 
     useEffect(() => {
-        fetchCourses();
+        fetchCohorts();
     }, []);
 
     useEffect(() => {
-        if (selectedCourseId) {
-            const course = courses.find(c => c._id === selectedCourseId);
-            if (course) {
-                setBatches(course.batches || []);
-                setSelectedBatchId('all');
-            }
+        if (selectedCohortStr) {
             fetchSubmissions();
         } else {
             setSubmissions([]);
-            setBatches([]);
         }
-    }, [selectedCourseId, viewType, selectedBatchId]);
+    }, [selectedCohortStr, viewType]);
 
     useEffect(() => {
         let result = [...submissions];
@@ -70,11 +62,29 @@ const Gradebook = ({ token, serverUrl }) => {
         setFilteredSubmissions(result);
     }, [submissions, filterText, filterDate]);
 
-    const fetchCourses = async () => {
+    const fetchCohorts = async () => {
         try {
-            const res = await api.get('/api/courses');
-            setCourses(res.data);
-            if (res.data.length > 0) setSelectedCourseId(res.data[0]._id);
+            const res = await api.get('/api/timetable/my-schedule/faculty');
+            const uniqueCohortsMap = new Map();
+            res.data.forEach(item => {
+                if (!item.department || !item.year || !item.section || !item.subjectName) return;
+                const key = `${item.department}|${item.year}|${item.section}|${item.subjectName}`;
+                if (!uniqueCohortsMap.has(key)) {
+                    uniqueCohortsMap.set(key, {
+                        department: item.department,
+                        year: item.year,
+                        section: item.section,
+                        subjectName: item.subjectName,
+                        str: key,
+                        label: `${item.department} - Yr ${item.year} - Sec ${item.section} - ${item.subjectName}`
+                    });
+                }
+            });
+            const uniqueCohorts = Array.from(uniqueCohortsMap.values());
+            setCohorts(uniqueCohorts);
+            if (uniqueCohorts.length > 0) {
+                setSelectedCohortStr(uniqueCohorts[0].str);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -83,11 +93,18 @@ const Gradebook = ({ token, serverUrl }) => {
     const fetchSubmissions = async () => {
         setIsLoading(true);
         try {
+            if (!selectedCohortStr) {
+                setIsLoading(false);
+                return;
+            }
+            const [department, year, section, subjectName] = selectedCohortStr.split('|');
+            const queryParams = `?department=${encodeURIComponent(department)}&year=${encodeURIComponent(year)}&section=${encodeURIComponent(section)}&subjectName=${encodeURIComponent(subjectName)}`;
+
             if (viewType === 'assignments') {
-                const res = await api.get(`/api/assignments/course/${selectedCourseId}/submissions${selectedBatchId !== 'all' ? `?batchId=${selectedBatchId}` : ''}`);
+                const res = await api.get(`/api/assignments/cohort${queryParams}`);
                 setSubmissions(res.data);
             } else {
-                const res = await api.get(`/api/aptitude/course/${selectedCourseId}/submissions${selectedBatchId !== 'all' ? `?batchId=${selectedBatchId}` : ''}`);
+                const res = await api.get(`/api/aptitude/cohort${queryParams}`);
                 setSubmissions(res.data.submissions || []);
             }
         } catch (e) {
@@ -156,19 +173,11 @@ const Gradebook = ({ token, serverUrl }) => {
                             style={{ padding: '10px 12px', borderRadius: '10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', outline: 'none' }}
                         />
                         <select
-                            value={selectedCourseId}
-                            onChange={e => setSelectedCourseId(e.target.value)}
-                            style={{ padding: '10px', borderRadius: '10px', background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', outline: 'none' }}
+                            value={selectedCohortStr}
+                            onChange={e => setSelectedCohortStr(e.target.value)}
+                            style={{ padding: '10px', borderRadius: '10px', background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', outline: 'none', maxWidth: '350px' }}
                         >
-                            {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.code})</option>)}
-                        </select>
-                        <select
-                            value={selectedBatchId}
-                            onChange={e => setSelectedBatchId(e.target.value)}
-                            style={{ padding: '10px', borderRadius: '10px', background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', outline: 'none', minWidth: '120px' }}
-                        >
-                            <option value="all">All Batches</option>
-                            {batches.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+                            {cohorts.map(c => <option key={c.str} value={c.str}>{c.label}</option>)}
                         </select>
                     </div>
 
@@ -189,7 +198,7 @@ const Gradebook = ({ token, serverUrl }) => {
 
             <div className="print-hide" style={{ display: 'none' }}>
                 <h2 style={{color: '#000'}}>Kevryn Gradebook Report</h2>
-                <p style={{color: '#000'}}>Date: {filterDate || 'All Time'} | Course: {courses.find(c => c._id === selectedCourseId)?.name} | Batch: {selectedBatchId === 'all' ? 'All' : batches.find(b=>b._id === selectedBatchId)?.name}</p>
+                <p style={{color: '#000'}}>Date: {filterDate || 'All Time'} | Cohort: {cohorts.find(c => c.str === selectedCohortStr)?.label}</p>
             </div>
 
             <div style={{ flex: 1, overflow: 'hidden', ...glassStyle, borderRadius: '20px', display: 'flex', flexDirection: 'column' }}>

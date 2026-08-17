@@ -4,8 +4,8 @@ import Editor from '@monaco-editor/react';
 import { FaPlus, FaTrash, FaSave, FaCode, FaPython, FaJs, FaJava, FaCalendarAlt, FaFlask, FaStar, FaFire } from 'react-icons/fa';
 
 const AssignmentManager = ({ token, serverUrl, userId }) => {
-    const [courses, setCourses] = useState([]);
-    const [selectedCourseId, setSelectedCourseId] = useState('');
+    const [cohorts, setCohorts] = useState([]);
+    const [selectedCohort, setSelectedCohort] = useState('');
     const [assignments, setAssignments] = useState([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -16,7 +16,6 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
         title: '',
         description: '',
         language: 'python',
-        batchId: '', // Added for targeted assignments
         starterCode: '# Write your code here\n',
         points: 100,
         startTime: '',
@@ -28,26 +27,48 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
     const api = axios.create({ baseURL: serverUrl, headers: { Authorization: token } });
 
     useEffect(() => {
-        fetchCourses();
+        fetchCohorts();
     }, []);
 
     useEffect(() => {
-        if (selectedCourseId) fetchAssignments();
-    }, [selectedCourseId]);
+        if (selectedCohort) fetchAssignments();
+    }, [selectedCohort]);
 
-    const fetchCourses = async () => {
+    const fetchCohorts = async () => {
         try {
-            const res = await api.get('/api/courses');
-            setCourses(res.data);
-            if (res.data.length > 0) setSelectedCourseId(res.data[0]._id);
+            const res = await api.get('/api/timetable/my-schedule/faculty');
+            const schedule = res.data.schedule || res.data || [];
+            const uniqueMap = new Map();
+            if (Array.isArray(schedule)) {
+                schedule.forEach(item => {
+                    if (item.department && item.year && item.section && item.subjectName) {
+                        const key = `${item.department}-${item.year}-${item.section}-${item.subjectName}`;
+                        if (!uniqueMap.has(key)) {
+                            uniqueMap.set(key, {
+                                targetDepartment: item.department,
+                                targetYear: item.year,
+                                targetSection: item.section,
+                                subjectName: item.subjectName
+                            });
+                        }
+                    }
+                });
+            }
+            const uniqueCohorts = Array.from(uniqueMap.values());
+            setCohorts(uniqueCohorts);
+            if (uniqueCohorts.length > 0) {
+                setSelectedCohort(JSON.stringify(uniqueCohorts[0]));
+            }
         } catch (e) {
-            console.error(e);
+            console.error("Failed to fetch cohorts:", e);
         }
     };
 
     const fetchAssignments = async () => {
         try {
-            const res = await api.get(`/api/assignments/course/${selectedCourseId}`);
+            if (!selectedCohort) return;
+            const parsed = JSON.parse(selectedCohort);
+            const res = await api.get(`/api/assignments/cohort`, { params: parsed });
             setAssignments(res.data);
         } catch (e) {
             console.error(e);
@@ -74,12 +95,16 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
 
     const handleSubmit = async () => {
         if (!formData.title) return alert("Title is required");
+        if (!selectedCohort) return alert("Please select a cohort");
         try {
+            const parsedCohort = JSON.parse(selectedCohort);
+            const payload = { ...formData, ...parsedCohort };
+            
             if (isEditing && editingAssignmentId) {
-                await api.put(`/api/assignments/${editingAssignmentId}`, { ...formData, courseId: selectedCourseId });
+                await api.put(`/api/assignments/${editingAssignmentId}`, payload);
                 alert("Assignment Updated!");
             } else {
-                await api.post('/api/assignments', { ...formData, courseId: selectedCourseId });
+                await api.post('/api/assignments', payload);
                 alert("Assignment Created!");
             }
             setShowCreateModal(false);
@@ -101,7 +126,6 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
             points: assignment.maxPoints || 100,
             startTime: assignment.startTime ? new Date(assignment.startTime).toISOString().slice(0, 16) : '',
             endTime: assignment.endTime ? new Date(assignment.endTime).toISOString().slice(0, 16) : '',
-            batchId: assignment.batchId || '',
             difficulty: assignment.difficulty || 'Medium'
         });
         setEditingAssignmentId(assignment._id);
@@ -112,7 +136,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
     const handleCreateClick = () => {
         setFormData({
             title: '', description: '', language: 'python', starterCode: '',
-            testCases: [], points: 100, startTime: '', endTime: '', batchId: '', difficulty: 'Medium'
+            testCases: [], points: 100, startTime: '', endTime: '', difficulty: 'Medium'
         });
         setIsEditing(false);
         setEditingAssignmentId(null);
@@ -124,11 +148,15 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2>Assignment Manager</h2>
                 <select
-                    value={selectedCourseId}
-                    onChange={e => setSelectedCourseId(e.target.value)}
+                    value={selectedCohort}
+                    onChange={e => setSelectedCohort(e.target.value)}
                     style={{ padding: '8px', borderRadius: '4px', background: '#334155', color: '#fff', border: 'none' }}
                 >
-                    {courses.map(c => <option key={c._id} value={c._id}>{c.name} ({c.code})</option>)}
+                    {cohorts.map((c, i) => (
+                        <option key={i} value={JSON.stringify(c)}>
+                            {c.targetDepartment} - Yr {c.targetYear} - Sec {c.targetSection} ({c.subjectName})
+                        </option>
+                    ))}
                 </select>
             </div>
 
@@ -193,20 +221,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
                             {isEditing ? 'Configure Assignment' : 'Create New Assignment'}
                         </h2>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Target Audience</label>
-                                <select 
-                                    value={formData.batchId} 
-                                    onChange={e => setFormData({ ...formData, batchId: e.target.value })}
-                                    style={{ padding: '12px', background: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '8px', outline: 'none' }}
-                                >
-                                    <option value="">- Entire Course -</option>
-                                    {courses.find(c => c._id === selectedCourseId)?.batches?.map(b => (
-                                        <option key={b._id} value={b._id}>{b.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Language Restriction</label>
                                 <select 
