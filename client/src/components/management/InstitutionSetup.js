@@ -406,7 +406,6 @@ const InstitutionSetup = ({ token }) => {
 
                 </motion.div>
             </AnimatePresence>
-            </div>
 
             {selectedDevProfile && (
                 <DeveloperProfileModal 

@@ -123,8 +123,6 @@ const DeployManager = require('./deploy/DeployManager');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const courseManager = require('./routes/courseManager');
 const assignmentManager = require('./routes/assignmentManager');
-const aptitudeManager = require('./routes/aptitudeManager');
-const catalogRouter = require('./routes/catalog');
 const developerTrackingRouter = require('./routes/developerTracking');
 const goldWorkspace = require('./utils/GoldWorkspace');
 const {
@@ -470,8 +468,6 @@ const broadcastRouter = require('./routes/broadcast');
 app.use('/api', broadcastRouter);
 app.use('/api', courseManager);
 app.use('/api/assignments', assignmentManager);
-app.use('/api/aptitude', aptitudeManager);
-app.use('/api/catalog', catalogRouter);
 app.use('/api/tracking', developerTrackingRouter);
 app.use('/api/admin', adminRouter); // NEW: Admin API
 app.use('/api/principal', require('./routes/principal'));
