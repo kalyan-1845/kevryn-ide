@@ -45,7 +45,7 @@ router.post('/create', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
     try {
         const testId = req.params.id;
-        const { title, description, duration, batches, questions, totalMarks, startTime, endTime } = req.body;
+        const { title, description, duration, batches, questions, totalMarks, startTime, endTime, targetDepartment, targetYear, targetSection, subjectName } = req.body;
         
         const test = await AptitudeTest.findOne({ _id: testId, facultyId: req.user.userId });
         if (!test) return res.status(404).json({ error: 'Test not found' });
@@ -58,6 +58,10 @@ router.put('/:id', authenticate, async (req, res) => {
         if (totalMarks !== undefined) test.totalMarks = totalMarks;
         if (startTime !== undefined) test.startTime = startTime;
         if (endTime !== undefined) test.endTime = endTime;
+        if (targetDepartment !== undefined) test.targetDepartment = targetDepartment;
+        if (targetYear !== undefined) test.targetYear = targetYear;
+        if (targetSection !== undefined) test.targetSection = targetSection;
+        if (subjectName !== undefined) test.subjectName = subjectName;
         
         await test.save();
         res.json({ success: true, test });

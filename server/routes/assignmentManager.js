@@ -15,11 +15,15 @@ router.post('/', authenticate, async (req, res) => {
         // Verify Faculty Role
         if (req.user.role !== 'faculty') return res.status(403).json({ error: "Only faculty can create assignments" });
 
-        // Verify Course Ownership & College
-        const course = await Course.findById(courseId);
-        if (!course) return res.status(404).json({ error: "Course not found" });
-        if (course.facultyId.toString() !== req.user.userId) return res.status(403).json({ error: "Unauthorized for this course" });
-        if (req.user.collegeId && course.collegeId && course.collegeId.toString() !== req.user.collegeId.toString()) return res.status(403).json({ error: "Course belongs to another college" });
+        // Verify Course Ownership & College (If courseId is provided)
+        if (courseId) {
+            const course = await Course.findById(courseId);
+            if (!course) return res.status(404).json({ error: "Course not found" });
+            if (course.facultyId.toString() !== req.user.userId) return res.status(403).json({ error: "Unauthorized for this course" });
+            if (req.user.collegeId && course.collegeId && course.collegeId.toString() !== req.user.collegeId.toString()) return res.status(403).json({ error: "Course belongs to another college" });
+        } else if (!targetDepartment) {
+            return res.status(400).json({ error: "Must provide either courseId or Timetable Target (targetDepartment)" });
+        }
 
         const newAssignment = new Assignment({
             collegeId: req.user.collegeId || undefined,
@@ -118,8 +122,15 @@ router.get('/:id', authenticate, async (req, res) => {
         if (!assignment) return res.status(404).json({ error: "Assignment not found" });
 
         // Scoping
-        if (req.user.collegeId && assignment.courseId.collegeId && assignment.courseId.collegeId.toString() !== req.user.collegeId.toString()) {
-            return res.status(403).json({ error: "Unauthorized access to this college's data" });
+        if (req.user.collegeId) {
+            // If it's tied to a course, check the course's college
+            if (assignment.courseId && assignment.courseId.collegeId && assignment.courseId.collegeId.toString() !== req.user.collegeId.toString()) {
+                return res.status(403).json({ error: "Unauthorized access to this college's data" });
+            }
+            // If it's a cohort assignment, check the assignment's own collegeId
+            if (!assignment.courseId && assignment.collegeId && assignment.collegeId.toString() !== req.user.collegeId.toString()) {
+                return res.status(403).json({ error: "Unauthorized access to this college's data" });
+            }
         }
 
         res.json(assignment);
@@ -222,7 +233,7 @@ router.put('/:id', authenticate, async (req, res) => {
     try {
         if (req.user.role !== 'faculty') return res.status(403).json({ error: "Unauthorized" });
         
-        const { title, description, language, starterCode, testCases, points, startTime, endTime, batchId } = req.body;
+        const { title, description, language, starterCode, testCases, points, startTime, endTime, batchId, targetDepartment, targetYear, targetSection, subjectName } = req.body;
         
         const updated = await Assignment.findByIdAndUpdate(req.params.id, {
             title,
@@ -233,7 +244,11 @@ router.put('/:id', authenticate, async (req, res) => {
             maxPoints: points,
             startTime,
             endTime,
-            batchId: batchId || null
+            batchId: batchId || null,
+            targetDepartment,
+            targetYear,
+            targetSection,
+            subjectName
         }, { new: true });
         
         if (!updated) return res.status(404).json({ error: "Assignment not found" });
