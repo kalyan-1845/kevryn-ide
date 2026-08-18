@@ -107,21 +107,21 @@ const DeveloperProfileModal = ({ identifier, onClose, token, serverUrl }) => {
                             <FaGithub size={24} color="#fff" />
                             <h3 style={{ margin: 0, fontSize: '20px' }}>GitHub</h3>
                         </div>
-                        {github ? (
+                        {github && github.username ? (
                             <>
                                 <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
                                     <div>
                                         <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase' }}>Public Repos</div>
-                                        <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{github.public_repos}</div>
+                                        <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{github.data?.public_repos || 'N/A'}</div>
                                     </div>
                                     <div>
                                         <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase' }}>Followers</div>
-                                        <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{github.followers}</div>
+                                        <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{github.data?.followers || 'N/A'}</div>
                                     </div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '12px' }}>Recent Repositories:</div>
-                                    {github.recent_repos?.map(repo => (
+                                    {github.data?.recent_repos?.map(repo => (
                                         <a key={repo.name} href={repo.url} target="_blank" rel="noreferrer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', textDecoration: 'none', color: '#e2e8f0', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                             <span style={{ fontWeight: '600' }}>{repo.name}</span>
                                             <FaExternalLinkAlt size={12} color="#64748b" />
@@ -138,18 +138,18 @@ const DeveloperProfileModal = ({ identifier, onClose, token, serverUrl }) => {
                             <SiLeetcode size={24} color="#f59e0b" />
                             <h3 style={{ margin: 0, fontSize: '20px' }}>LeetCode</h3>
                         </div>
-                        {leetcode ? (
+                        {leetcode && leetcode.username ? (
                             <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingTop: '10px' }}>
                                 <div style={circleStyle('#10b981')}>
-                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981' }}>{leetcode.easySolved}</span>
+                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981' }}>{leetcode.data?.solved?.easy || 0}</span>
                                     <span style={{ fontSize: '10px', color: '#94a3b8' }}>Easy</span>
                                 </div>
                                 <div style={circleStyle('#f59e0b')}>
-                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#f59e0b' }}>{leetcode.mediumSolved}</span>
+                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#f59e0b' }}>{leetcode.data?.solved?.medium || 0}</span>
                                     <span style={{ fontSize: '10px', color: '#94a3b8' }}>Medium</span>
                                 </div>
                                 <div style={circleStyle('#ef4444')}>
-                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444' }}>{leetcode.hardSolved}</span>
+                                    <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444' }}>{leetcode.data?.solved?.hard || 0}</span>
                                     <span style={{ fontSize: '10px', color: '#94a3b8' }}>Hard</span>
                                 </div>
                             </div>
@@ -162,19 +162,19 @@ const DeveloperProfileModal = ({ identifier, onClose, token, serverUrl }) => {
                             <FaHackerrank size={24} color="#10b981" />
                             <h3 style={{ margin: 0, fontSize: '20px' }}>HackerRank</h3>
                         </div>
-                        {hackerrank ? (
+                        {hackerrank && hackerrank.username ? (
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                                     <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase' }}>Badges Earned</div>
                                     <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 12px', borderRadius: '12px', fontWeight: 'bold' }}>
-                                        {hackerrank.badges?.length || 0}
+                                        {hackerrank.data?.badges?.length || 0}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                                    {hackerrank.badges?.map((badge, idx) => (
+                                    {hackerrank.data?.badges?.map((badge, idx) => (
                                         <div key={idx} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
                                             <FaMedal color="#fbbf24" />
-                                            {badge.badge_name} ({badge.stars} <FaStar size={10} color="#fbbf24" />)
+                                            {badge.title} ({badge.stars} <FaStar size={10} color="#fbbf24" />)
                                         </div>
                                     ))}
                                 </div>
@@ -188,25 +188,25 @@ const DeveloperProfileModal = ({ identifier, onClose, token, serverUrl }) => {
                             <FaCode size={24} color="#8b5cf6" />
                             <h3 style={{ margin: 0, fontSize: '20px' }}>CodeChef</h3>
                         </div>
-                        {codechef ? (
+                        {codechef && codechef.username ? (
                             <div style={{ display: 'flex', gap: '32px' }}>
                                 <div>
                                     <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase' }}>Global Rank</div>
                                     <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <FaTrophy size={20} />
-                                        {codechef.globalRank || 'N/A'}
+                                        {codechef.data?.globalRank || 'N/A'}
                                     </div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase' }}>Country Rank</div>
                                     <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
-                                        {codechef.countryRank || 'N/A'}
+                                        {codechef.data?.countryRank || 'N/A'}
                                     </div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase' }}>Rating</div>
                                     <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
-                                        {codechef.rating || 'N/A'}
+                                        {codechef.data?.rating || 'N/A'}
                                     </div>
                                 </div>
                             </div>

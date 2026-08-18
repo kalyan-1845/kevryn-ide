@@ -51,6 +51,11 @@ router.get('/:identifier', authenticate, async (req, res) => {
 
         const profiles = user.externalProfiles || {};
         const responseData = {
+            user: {
+                username: user.username,
+                rollNumber: user.rollNumber,
+                role: user.role
+            },
             github: { username: profiles.github, data: null, error: null },
             leetcode: { username: profiles.leetcode, data: null, error: null },
             hackerrank: { username: profiles.hackerrank, data: null, error: null },
