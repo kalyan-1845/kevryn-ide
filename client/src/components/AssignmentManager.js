@@ -68,7 +68,7 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
         try {
             if (!selectedCohort) return;
             const parsed = JSON.parse(selectedCohort);
-            const res = await api.get(`/api/assignments/cohort`, { params: parsed });
+            const res = await api.get(`/api/assignments/cohort-assignments`, { params: parsed });
             setAssignments(res.data);
         } catch (e) {
             console.error(e);

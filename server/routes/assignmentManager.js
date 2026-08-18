@@ -79,6 +79,22 @@ router.get('/course/:courseId', authenticate, async (req, res) => {
     }
 });
 
+// 8.5 Get Cohort Assignments (For AssignmentManager UI)
+router.get('/cohort-assignments', authenticate, async (req, res) => {
+    try {
+        const { department, year, section, subjectName } = req.query;
+        const assignments = await Assignment.find({
+            targetDepartment: department,
+            targetYear: year,
+            targetSection: section,
+            subjectName: subjectName
+        }).sort({ createdAt: -1 });
+        res.json(assignments);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 9. Get Cohort Submissions
 router.get('/cohort', authenticate, async (req, res) => {
     try {
@@ -222,6 +238,19 @@ router.get('/course/:courseId/student/:username', authenticate, async (req, res)
             studentUsername: req.params.username
         }).populate('assignmentId', 'title maxPoints');
 
+        res.json(submissions);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 7.5 Get All Submissions for the logged-in student
+router.get('/student/my-submissions', authenticate, async (req, res) => {
+    try {
+        if (req.user.role !== 'student') return res.status(403).json({ error: "Only students can view their global submissions" });
+        const submissions = await Submission.find({
+            studentUsername: req.user.username
+        }).populate('assignmentId', 'title maxPoints');
         res.json(submissions);
     } catch (e) {
         res.status(500).json({ error: e.message });

@@ -111,9 +111,13 @@ const StudentAssignmentView = ({
 
     const fetchActiveAssignments = async () => {
         try {
-            const res = await api.get('/api/assignments');
-            setActiveAssignments(res.data);
-        } catch (e) { console.error("Failed to fetch all assignments", e); }
+            const [assignRes, subRes] = await Promise.all([
+                api.get('/api/assignments/student/active'),
+                api.get('/api/assignments/student/my-submissions')
+            ]);
+            setActiveAssignments(assignRes.data);
+            setSubmissions(subRes.data);
+        } catch (e) { console.error("Failed to fetch assignments and submissions", e); }
     };
 
     const fetchEnrolledCourses = async () => {
@@ -165,8 +169,9 @@ const StudentAssignmentView = ({
                 document.exitFullscreen().catch(e => console.error(e));
             }
             setViewMode('assignments');
+            setSelectedAssignment(null);
         }
-        else if (viewMode === 'assignments') { setViewMode('courses'); setSelectedCourse(null); }
+        else if (viewMode === 'assignments') { setViewMode('hub'); setSelectedCourse(null); }
         else if (viewMode === 'courses' || viewMode === 'aptitude-list') setViewMode('hub');
         else onBack();
     };
@@ -374,7 +379,7 @@ const StudentAssignmentView = ({
                         desc="Complete your coding missions, handle edge cases, and deploy your best solutions."
                         icon={<FaClipboardList size={24} />}
                         color="#3b82f6"
-                        onClick={() => setViewMode('courses')}
+                        onClick={() => setViewMode('assignments')}
                         count={activeAssignments.filter(a => new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
                     />
                     <HubCard 
@@ -607,9 +612,9 @@ const StudentAssignmentView = ({
     // RENDER ASSIGNMENTS LIST
     if (viewMode === 'assignments') {
         const now = new Date();
-        const activeNow = assignments.filter(a => now >= new Date(a.startTime) && now <= new Date(a.endTime));
-        const upcoming = assignments.filter(a => now < new Date(a.startTime));
-        const past = assignments.filter(a => now > new Date(a.endTime));
+        const activeNow = activeAssignments.filter(a => now >= new Date(a.startTime) && now <= new Date(a.endTime));
+        const upcoming = activeAssignments.filter(a => now < new Date(a.startTime));
+        const past = activeAssignments.filter(a => now > new Date(a.endTime));
 
         const renderAssignmentCards = (list) => (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px', marginBottom: '40px' }}>
@@ -635,7 +640,7 @@ const StudentAssignmentView = ({
                 <div style={containerStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
                         <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
-                        <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>{selectedCourse?.name} Missions</h2>
+                        <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Assigned Missions</h2>
                     </div>
                     
                     {activeNow.length > 0 && (
@@ -656,7 +661,7 @@ const StudentAssignmentView = ({
                             {renderAssignmentCards(past)}
                         </>
                     )}
-                    {assignments.length === 0 && <div style={{ color: '#94a3b8' }}>No assignments found for this course.</div>}
+                    {activeAssignments.length === 0 && <div style={{ color: '#94a3b8' }}>No assignments found for your cohort.</div>}
                 </div>
             </div>
         );
