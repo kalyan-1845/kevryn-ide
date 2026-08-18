@@ -188,6 +188,7 @@ const Gradebook = ({ token, serverUrl }) => {
                         </div>
                         <button
                             onClick={() => window.print()}
+                            className="no-print"
                             style={{ padding: '0 20px', borderRadius: '10px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
                         >
                             <FaFileAlt /> Export PDF

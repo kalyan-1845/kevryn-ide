@@ -375,6 +375,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
         printWindow.document.write('<html><head><title>Lab Report - ' + studentName + '</title>');
         printWindow.document.write('<style>body { font-family: monospace; padding: 30px; white-space: pre-wrap; }</style>');
         printWindow.document.write('</head><body>');
+        printWindow.document.write('<div style="text-align:center; border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px;"><img src="' + window.location.origin + '/ace_logo.png" alt="Logo" style="max-height: 100px;" /></div>');
         printWindow.document.write(reportText.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
         printWindow.document.write('</body></html>');
         printWindow.document.close();

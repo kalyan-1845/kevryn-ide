@@ -139,6 +139,9 @@ const LabReports = ({ token, serverUrl, onClose }) => {
                 </style>
             </head>
             <body>
+                <div style="text-align:center; border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px;">
+                    <img src="${window.location.origin}/ace_logo.png" alt="Logo" style="max-height: 100px;" />
+                </div>
                 <div class="header">
                     <h2>ACE ENGINEERING COLLEGE</h2>
                     <h3>DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING</h3>

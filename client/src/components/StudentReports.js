@@ -478,9 +478,12 @@ const StudentReports = ({ token, serverUrl }) => {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                             <FaFilePdf color="#3b82f6" /> {/* Just an icon */}
                                                             <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc' }}>{file.fileName}</span>
+                                                            <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>
+                                                                Created: {file.lastUpdated ? new Date(file.lastUpdated).toLocaleString() : 'Unknown'}
+                                                            </span>
                                                         </div>
                                                         <span style={{ fontSize: '11px', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '12px' }}>
-                                                            {file.status} | ⏱ {Math.ceil(file.timeSpent / 60)}m
+                                                            ⏱ {Math.ceil(file.timeSpent / 60)}m
                                                         </span>
                                                     </div>
                                                     <div style={{ padding: '16px', overflowX: 'auto' }}>

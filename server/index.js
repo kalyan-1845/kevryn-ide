@@ -123,6 +123,9 @@ const DeployManager = require('./deploy/DeployManager');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const courseManager = require('./routes/courseManager');
 const assignmentManager = require('./routes/assignmentManager');
+const aptitudeManager = require('./routes/aptitudeManager');
+const catalogRouter = require('./routes/catalog');
+const developerTrackingRouter = require('./routes/developerTracking');
 const goldWorkspace = require('./utils/GoldWorkspace');
 const {
     sanitizeInput,
@@ -467,6 +470,9 @@ const broadcastRouter = require('./routes/broadcast');
 app.use('/api', broadcastRouter);
 app.use('/api', courseManager);
 app.use('/api/assignments', assignmentManager);
+app.use('/api/aptitude', aptitudeManager);
+app.use('/api/catalog', catalogRouter);
+app.use('/api/tracking', developerTrackingRouter);
 app.use('/api/admin', adminRouter); // NEW: Admin API
 app.use('/api/principal', require('./routes/principal'));
 app.use('/api/issues', issuesRouter); // NEW: Issue Reporting
@@ -1033,7 +1039,7 @@ app.get('/lab/reports/cohort', authenticate, async (req, res) => {
         const missingUsersMap = Object.fromEntries(enrolledStudents.map(u => [u.username, u]));
 
         // Fetch all files created by these students for this subject
-        const courseFiles = await File.find({ owner: { $in: studentIds } }).lean();
+        const courseFiles = await File.find({ owner: { $in: studentIds }, subjectName: subjectName }).lean();
         const filesByStudent = {};
         for (const file of courseFiles) {
              const ownerId = file.owner.toString();
@@ -2419,7 +2425,7 @@ app.post('/auth/reset-password', loginLimiter, async (req, res) => {
 // --- CREATE FILE (REST) ---
 app.post('/files', authenticate, async (req, res) => {
     try {
-        const { name, content, courseId } = req.body;
+        const { name, content, courseId, subjectName } = req.body;
         if (!name) return res.status(400).json({ error: "File name required" });
 
         // Check if file already exists for this user in this context
@@ -2437,7 +2443,8 @@ app.post('/files', authenticate, async (req, res) => {
             content: content || '',
             owner: ownerId,
             sharedWith: [],
-            courseId: courseId || undefined
+            courseId: courseId || undefined,
+            subjectName: subjectName || undefined
         });
         await newFile.save();
 

@@ -509,7 +509,8 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
             const res = await api.post('/files', {
                 name,
                 content: '',
-                courseId: session?.courseId // Tag file with course context
+                courseId: session?.courseId, // Tag file with course context
+                subjectName: session?.subjectName || session?.subject // NEW: Tag file with subject
             });
             await loadFiles(); // Explicit refresh from server
             setActiveFile(res.data);

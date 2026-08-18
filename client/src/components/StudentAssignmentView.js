@@ -26,6 +26,10 @@ const StudentAssignmentView = ({
     const [aptitudeHistory, setAptitudeHistory] = useState([]);
     const [userStats, setUserStats] = useState({ completed: 0, points: 0, rank: 'Novice' });
 
+    // NEW: Developer Identity
+    const [devProfiles, setDevProfiles] = useState({ github: '', leetcode: '', hackerrank: '', codechef: '' });
+    const [isSavingProfiles, setIsSavingProfiles] = useState(false);
+
     // Solver & Test States
     const [code, setCode] = useState('');
     const [studentLanguage, setStudentLanguage] = useState('python'); // Default if 'any'
@@ -42,6 +46,7 @@ const StudentAssignmentView = ({
         fetchEnrolledCourses();
         fetchAptitudeHistory();
         fetchActiveAssignments();
+        fetchDeveloperProfiles();
         // Mock stats or fetch from backend if available
         setUserStats({ completed: 12, points: 450, rank: 'Pro Code-Warrior' });
 
@@ -59,6 +64,28 @@ const StudentAssignmentView = ({
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, [viewMode]);
+
+    const fetchDeveloperProfiles = async () => {
+        try {
+            const res = await api.get('/auth/user');
+            if (res.data.developerProfiles) {
+                setDevProfiles(res.data.developerProfiles);
+            }
+        } catch (e) { console.error("Failed to fetch dev profiles", e); }
+    };
+
+    const handleSaveProfiles = async () => {
+        setIsSavingProfiles(true);
+        try {
+            await api.put('/api/users/profiles', devProfiles);
+            alert("Developer profiles saved successfully!");
+        } catch (e) {
+            console.error(e);
+            alert("Failed to save profiles.");
+        } finally {
+            setIsSavingProfiles(false);
+        }
+    };
 
     const fetchActiveAssignments = async () => {
         try {
@@ -343,6 +370,40 @@ const StudentAssignmentView = ({
                         color="#10b981"
                         onClick={() => { alert("History module coming soon!"); }}
                     />
+                </div>
+
+                {/* NEW: Developer Identity Section */}
+                <div style={{ marginTop: '60px', marginBottom: '60px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                        <FaCode color="#8b5cf6" size={16} />
+                        <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Developer Identity Integration</h2>
+                    </div>
+                    <div style={{ ...cardStyle, background: 'rgba(255,255,255,0.02)' }}>
+                        <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '24px' }}>Link your external developer profiles to track your progress and showcase your global rankings.</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+                            {['github', 'leetcode', 'hackerrank', 'codechef'].map(platform => (
+                                <div key={platform}>
+                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px' }}>
+                                        {platform === 'github' ? 'GitHub' : platform === 'leetcode' ? 'LeetCode' : platform === 'hackerrank' ? 'HackerRank' : 'CodeChef'} Username
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={devProfiles[platform] || ''} 
+                                        onChange={(e) => setDevProfiles({ ...devProfiles, [platform]: e.target.value })}
+                                        placeholder={`Enter ${platform} handle`}
+                                        style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff', outline: 'none' }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={handleSaveProfiles}
+                            disabled={isSavingProfiles}
+                            style={{ padding: '12px 32px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: isSavingProfiles ? 'not-allowed' : 'pointer', opacity: isSavingProfiles ? 0.7 : 1, transition: 'all 0.3s' }}
+                        >
+                            {isSavingProfiles ? 'SYNCING...' : 'SYNC PROFILES'}
+                        </button>
+                    </div>
                 </div>
             </motion.div>
         </div>

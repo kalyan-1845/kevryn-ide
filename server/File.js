@@ -9,6 +9,7 @@ const FileSchema = new mongoose.Schema({
   // ADD THIS: List of usernames who can also see this file
   sharedWith: [{ type: String }],
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' }, // NEW: Link to specific lab/course
+  subjectName: { type: String }, // NEW: Link to specific subject/lab session
   // KevRyn Lab Monitor Tracking Fields
   keystrokes: { type: Number, default: 0 },
   pasteCount: { type: Number, default: 0 },

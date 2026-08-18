@@ -11,3 +11,26 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Global Print Styles for Reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Create a pseudo-element for the print logo on all printed pages */
+  body::before {
+    content: url('/ace_logo.png');
+    display: block;
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #ccc;
+  }
+
+  /* Hide screen-only elements */
+  .no-print {
+    display: none !important;
+  }
+}

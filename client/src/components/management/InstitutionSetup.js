@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaBuilding, FaUserGraduate, FaChalkboardTeacher, FaPlus, FaCheck, FaTimes, FaUsers } from 'react-icons/fa';
+import DeveloperProfileModal from './DeveloperProfileModal';
 
 const InstitutionSetup = ({ token }) => {
     const [innerTab, setInnerTab] = useState('structure');
@@ -25,6 +26,7 @@ const InstitutionSetup = ({ token }) => {
     const [students, setStudents] = useState([]);
     const [stuLoading, setStuLoading] = useState(false);
     const [stuMsg, setStuMsg] = useState('');
+    const [selectedDevProfile, setSelectedDevProfile] = useState(null);
 
     // --- Faculty State ---
     const [facultyUser, setFacultyUser] = useState('');
@@ -314,7 +316,13 @@ const InstitutionSetup = ({ token }) => {
                                             <tbody>
                                                 {students.map(s => (
                                                     <tr key={s._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#334155', fontSize: '14px' }}>{s.rollNumber || s.username}</td>
+                                                        <td 
+                                                            style={{ padding: '12px 16px', fontWeight: '600', color: '#3b82f6', fontSize: '14px', cursor: 'pointer', textDecoration: 'underline' }}
+                                                            onClick={() => setSelectedDevProfile(s.rollNumber || s.username)}
+                                                            title="View Developer Profile"
+                                                        >
+                                                            {s.rollNumber || s.username}
+                                                        </td>
                                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                                             {s.isActiveStudent !== false ? 
                                                                 <span style={{ color: '#16a34a', background: '#dcfce7', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>AUTHORIZED</span> :
@@ -398,6 +406,15 @@ const InstitutionSetup = ({ token }) => {
 
                 </motion.div>
             </AnimatePresence>
+            </div>
+
+            {selectedDevProfile && (
+                <DeveloperProfileModal 
+                    identifier={selectedDevProfile} 
+                    onClose={() => setSelectedDevProfile(null)} 
+                    token={token} 
+                />
+            )}
         </div>
     );
 };

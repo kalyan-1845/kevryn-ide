@@ -9,6 +9,14 @@ const UserSchema = new mongoose.Schema({
   githubId: { type: String, unique: true, sparse: true },
   githubToken: { type: String },
   githubUsername: { type: String },
+  
+  // Advanced Developer Tracking Usernames
+  externalProfiles: {
+    github: { type: String, default: '' },
+    leetcode: { type: String, default: '' },
+    hackerrank: { type: String, default: '' },
+    codechef: { type: String, default: '' }
+  },
   // New field to remember who you are working with
   collaborators: [{ type: String }],
   // Multi-College Tenancy: Permanent college binding (Default to ACEEN-A5EC for students)
