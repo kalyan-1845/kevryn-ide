@@ -62,8 +62,25 @@ const StudentAssignmentView = ({
             }
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, [viewMode]);
+
+        // Intercept browser back button to prevent leaving the platform
+        window.history.pushState({ page: "studentCommandCenter" }, "Student Command Center", window.location.href);
+        const handlePopState = (e) => {
+            e.preventDefault();
+            if (viewMode !== 'hub') {
+                setViewMode('hub');
+                window.history.pushState({ page: "studentCommandCenter" }, "Student Command Center", window.location.href);
+            } else {
+                onBack(); // Go to workspace instead of leaving site
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [viewMode, onBack]);
 
     const fetchDeveloperProfiles = async () => {
         try {
@@ -187,7 +204,7 @@ const StudentAssignmentView = ({
     };
 
     const containerStyle = {
-        padding: '60px 40px',
+        padding: '60px 40px 120px 40px', // Increased bottom padding to ensure Developer section isn't cut off
         color: '#f8fafc',
         maxWidth: '1400px',
         margin: '0 auto',
