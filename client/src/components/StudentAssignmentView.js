@@ -581,7 +581,7 @@ const StudentAssignmentView = ({
                             </div>
                         </div>
                     </div>
-                    {!(selectedAssignment && new Date() > new Date(selectedAssignment.endTime)) && (
+                    {!(selectedAssignment && selectedAssignment.endTime && new Date() > new Date(selectedAssignment.endTime)) && (
                         <div style={{ display: 'flex', gap: '16px' }}>
                             <motion.button onClick={runTests} style={{ padding: '10px 24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(30, 41, 59, 0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700' }}><FaPlay size={12} color="#60a5fa" /> EXECUTE LOGIC</motion.button>
                             <motion.button onClick={submitAssignment} style={{ padding: '10px 24px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800' }}><FaPaperPlane size={12} /> DEPLOY SOLUTION</motion.button>
