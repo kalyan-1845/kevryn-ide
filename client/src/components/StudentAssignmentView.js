@@ -85,8 +85,13 @@ const StudentAssignmentView = ({
     const fetchDeveloperProfiles = async () => {
         try {
             const res = await api.get('/auth/user');
-            if (res.data.developerProfiles) {
-                setDevProfiles(res.data.developerProfiles);
+            if (res.data.externalProfiles) {
+                setDevProfiles({
+                    github: res.data.externalProfiles.github || '',
+                    leetcode: res.data.externalProfiles.leetcode || '',
+                    hackerrank: res.data.externalProfiles.hackerrank || '',
+                    codechef: res.data.externalProfiles.codechef || ''
+                });
             }
         } catch (e) { console.error("Failed to fetch dev profiles", e); }
     };
@@ -94,7 +99,7 @@ const StudentAssignmentView = ({
     const handleSaveProfiles = async () => {
         setIsSavingProfiles(true);
         try {
-            await api.put('/api/users/profiles', devProfiles);
+            await api.put('/api/tracking/profiles', devProfiles);
             alert("Developer profiles saved successfully!");
         } catch (e) {
             console.error(e);

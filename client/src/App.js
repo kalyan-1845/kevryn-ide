@@ -2130,7 +2130,7 @@ function App() {
                 </motion.div>
             )}
 
-            <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
             <AnimatePresence mode="wait">
                 {!token ? (
                     <motion.div
