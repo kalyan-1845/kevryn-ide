@@ -27,6 +27,7 @@ router.put('/profiles', authenticate, async (req, res) => {
         if (hackerrank !== undefined) user.externalProfiles.hackerrank = hackerrank;
         if (codechef !== undefined) user.externalProfiles.codechef = codechef;
 
+        user.markModified('externalProfiles');
         await user.save();
         res.json({ success: true, externalProfiles: user.externalProfiles });
     } catch (e) {
