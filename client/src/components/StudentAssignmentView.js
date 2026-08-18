@@ -348,15 +348,15 @@ const StudentAssignmentView = ({
                             </div>
                         ) : (
                             activeAssignments.map(a => {
-                                const daysLeft = Math.ceil((new Date(a.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
-                                const urgencyLabel = daysLeft < 0 ? 'OVERDUE' : (daysLeft === 0 ? 'DUE TODAY' : `T-MINUS ${daysLeft} DAYS`);
-                                const urgencyColor = daysLeft < 0 ? '#ef4444' : (daysLeft <= 2 ? '#f59e0b' : '#64748b');
+                                const daysLeft = a.endTime ? Math.ceil((new Date(a.endTime) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+                                const urgencyLabel = daysLeft === null ? 'NO DEADLINE' : (daysLeft < 0 ? 'OVERDUE' : (daysLeft === 0 ? 'DUE TODAY' : `T-MINUS ${daysLeft} DAYS`));
+                                const urgencyColor = daysLeft === null ? '#10b981' : (daysLeft < 0 ? '#ef4444' : (daysLeft <= 2 ? '#f59e0b' : '#64748b'));
 
                                 return (
                                     <div key={a._id} style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: `1px dashed rgba(255,255,255,0.1)` }}>
                                         <div style={{ color: urgencyColor, fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>{urgencyLabel}</div>
                                         <h4 style={{ margin: 0, fontSize: '18px' }}>{a.title}</h4>
-                                        <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>{a.courseId?.name || 'Unknown Course'}</p>
+                                        <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>{a.subjectName || a.courseId?.name || 'Unknown Subject'}</p>
                                     </div>
                                 );
                             })
@@ -548,7 +548,7 @@ const StudentAssignmentView = ({
                     </div>
                 )}
 
-                {selectedAssignment && new Date() > new Date(selectedAssignment.endTime) && (
+                {selectedAssignment && selectedAssignment.endTime && new Date() > new Date(selectedAssignment.endTime) && (
                     <div style={{ padding: '12px 32px', background: '#ef4444', color: '#fff', textAlign: 'center', fontWeight: 'bold', fontSize: '14px', letterSpacing: '1px' }}>
                         TIME WINDOW ENDED - READ ONLY MODE
                     </div>
@@ -603,7 +603,7 @@ const StudentAssignmentView = ({
                             ))}
                         </div>
                     </div>
-                    <div style={{ flex: 1 }}><Editor height="100%" theme="vs-dark" defaultValue={code} onChange={v => setCode(v)} language={selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language} options={{ fontSize: 16, fontFamily: 'JetBrains Mono', minimap: { enabled: false }, readOnly: selectedAssignment && new Date() > new Date(selectedAssignment.endTime) }} /></div>
+                    <div style={{ flex: 1 }}><Editor height="100%" theme="vs-dark" defaultValue={code} onChange={v => setCode(v)} language={selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language} options={{ fontSize: 16, fontFamily: 'JetBrains Mono', minimap: { enabled: false }, readOnly: selectedAssignment && selectedAssignment.endTime && new Date() > new Date(selectedAssignment.endTime) }} /></div>
                 </div>
             </div>
         );
@@ -612,9 +612,9 @@ const StudentAssignmentView = ({
     // RENDER ASSIGNMENTS LIST
     if (viewMode === 'assignments') {
         const now = new Date();
-        const activeNow = activeAssignments.filter(a => now >= new Date(a.startTime) && now <= new Date(a.endTime));
-        const upcoming = activeAssignments.filter(a => now < new Date(a.startTime));
-        const past = activeAssignments.filter(a => now > new Date(a.endTime));
+        const activeNow = activeAssignments.filter(a => (!a.startTime || now >= new Date(a.startTime)) && (!a.endTime || now <= new Date(a.endTime)));
+        const upcoming = activeAssignments.filter(a => a.startTime && now < new Date(a.startTime));
+        const past = activeAssignments.filter(a => a.endTime && now > new Date(a.endTime));
 
         const renderAssignmentCards = (list) => (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px', marginBottom: '40px' }}>

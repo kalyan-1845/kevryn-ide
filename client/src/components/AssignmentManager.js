@@ -100,6 +100,9 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
             const parsedCohort = JSON.parse(selectedCohort);
             const payload = { ...formData, ...parsedCohort };
             
+            if (!payload.startTime) payload.startTime = null;
+            if (!payload.endTime) payload.endTime = null;
+
             if (isEditing && editingAssignmentId) {
                 await api.put(`/api/assignments/${editingAssignmentId}`, payload);
                 alert("Assignment Updated!");

@@ -82,12 +82,12 @@ router.get('/course/:courseId', authenticate, async (req, res) => {
 // 8.5 Get Cohort Assignments (For AssignmentManager UI)
 router.get('/cohort-assignments', authenticate, async (req, res) => {
     try {
-        const { department, year, section, subjectName } = req.query;
+        const { targetDepartment, targetYear, targetSection, subjectName } = req.query;
         const assignments = await Assignment.find({
-            targetDepartment: department,
-            targetYear: year,
-            targetSection: section,
-            subjectName: subjectName
+            targetDepartment,
+            targetYear,
+            targetSection,
+            subjectName
         }).sort({ createdAt: -1 });
         res.json(assignments);
     } catch (e) {
