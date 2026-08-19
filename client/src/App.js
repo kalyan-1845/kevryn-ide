@@ -2433,17 +2433,7 @@ function App() {
                                         className="menubar-select"
                                         title="Theme"
                                     >
-                                        <option value="midnight">🌌 Midnight</option>
-                                        <option value="cyberpunk">⚡ Cyberpunk 2077</option>
-                                        <option value="dracula">🧛 Dracula Synthwave</option>
-                                        <option value="tokyo">🌊 Tokyo Deep Ocean</option>
-                                        <option value="matrix">🍵 Matrix Emerald</option>
-                                        <option value="sunset">🌇 Sunset Ember</option>
-                                        <option value="forest">🌲 Forest Green</option>
-                                        <option value="dark">🌙 Dark Classic</option>
-                                        <option value="light">☀️ Clean Light</option>
-                                        <option value="high-contrast">🔳 High Contrast</option>
-                                    </select>
+                                        <option value="midnight">🌙 Midnight Deep</option><option value="light">☀️ Executive Snow</option><option value="cyberpunk">⚡ Neon Matrix</option></select>
                                     <button 
                                         onClick={async () => {
                                             if (dirtyFiles[activeFileId]) {
