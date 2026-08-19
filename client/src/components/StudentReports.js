@@ -570,6 +570,7 @@ const StudentReports = ({ token, serverUrl, onClose }) => {
                 </AnimatePresence>
             </div>
         </div>
+        </div>
     );
 };
 
@@ -615,6 +616,7 @@ const SecurityItem = ({ icon, label, value, desc }) => (
 );
 
 export default StudentReports;
+
 
 
 
