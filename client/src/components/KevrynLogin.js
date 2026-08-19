@@ -831,6 +831,7 @@ export default function KevrynLogin({
                 <div className="kl-oauth-wrap">
                   {/* Google */}
                   <div className="kl-google-wrap">
+                    {/*
                     <GoogleLogin
                       onSuccess={(res) => {
                         if (!agreedToTerms) {
@@ -845,6 +846,7 @@ export default function KevrynLogin({
                       width="100%"
                       text="signin_with"
                     />
+                    */}
                   </div>
 
                   {/* GitHub */}

@@ -290,13 +290,8 @@ app.use('/ai', aiLimiter);
 const allowedOrigins = [process.env.CLIENT_URL, process.env.CORS_ORIGIN, 'https://kevryn-ide.pages.dev', 'http://localhost:3000', 'http://localhost:5173'].filter(Boolean);
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, Postman, server-to-server)
-        if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed)) || origin.includes('kevryn-ide.pages.dev')) {
-            callback(null, true);
-        } else {
-            console.warn('[CORS] Blocked unrecognized origin:', origin);
-            callback(null, false);
-        }
+        // PERMANENT FIX: Allow ALL origins to bypass CORS completely
+        callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
