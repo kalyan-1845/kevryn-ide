@@ -5,7 +5,6 @@ import {
     FaBell, FaShieldAlt, FaEye, FaTasks, FaTrophy, FaCalendarAlt
 } from 'react-icons/fa';
 import MonitorDashboard from './MonitorDashboard';
-import CourseManager from './CourseManager';
 import AssignmentManager from './AssignmentManager';
 import AptitudeManager from './AptitudeManager';
 import Gradebook from './Gradebook';
@@ -163,7 +162,6 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                         <NavItem icon={<FaTachometerAlt />} label="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')} />
                     </NavSection>
                     <NavSection label="Management">
-                        <NavItem icon={<FaBookOpen />} label="My Courses" isActive={activeView === 'courses'} onClick={() => setActiveView('courses')} />
                         <NavItem icon={<FaClipboardList />} label="Assignments" isActive={activeView === 'assignments'} onClick={() => setActiveView('assignments')} />
                         <NavItem icon={<FaTasks />} label="Aptitude Tests" isActive={activeView === 'aptitude'} onClick={() => setActiveView('aptitude')} />
                         <NavItem icon={<FaUserGraduate />} label="Gradebook" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
@@ -218,7 +216,6 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                         />
                     )
                 )}
-                {activeView === 'courses' && <CourseManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'assignments' && <AssignmentManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'aptitude' && <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'active-labs' && <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} onLogout={onLogout} isEmbedded={true} onSessionChange={refreshStats} />}
@@ -268,7 +265,6 @@ const NavItem = ({ icon, label, isActive, onClick, badge }) => (
 const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, serverUrl }) => {
     const quickActions = [
         { label: 'Start Live Lab', icon: <FaDesktop />, view: 'active-labs', color: '#818cf8', gradient: 'linear-gradient(135deg, #4f46e5, #7c3aed)', desc: 'Monitor students in real-time', glow: 'rgba(99, 102, 241, 0.4)' },
-        { label: 'My Courses', icon: <FaBookOpen />, view: 'courses', color: '#60a5fa', gradient: 'linear-gradient(135deg, #2563eb, #3b82f6)', desc: 'Manage your course roster', glow: 'rgba(59, 130, 246, 0.4)' },
         { label: 'Assignments', icon: <FaClipboardList />, view: 'assignments', color: '#fbbf24', gradient: 'linear-gradient(135deg, #d97706, #f59e0b)', desc: 'Create & review assignments', glow: 'rgba(245, 158, 11, 0.4)' },
         { label: 'Student Reports', icon: <FaChartLine />, view: 'reports', color: '#34d399', gradient: 'linear-gradient(135deg, #059669, #10b981)', desc: 'View lab activity reports', glow: 'rgba(16, 185, 129, 0.4)' },
     ];
@@ -406,5 +402,6 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
 
 
 export default FacultyHub;
+
 
 

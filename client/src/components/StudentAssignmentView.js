@@ -352,11 +352,7 @@ const StudentAssignmentView = ({
                         color="#3b82f6"
                         onClick={() => setViewMode('assignments')}
                         count={activeAssignments.filter(a => new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
-                    />
-                    <HubCard 
-                        title="Academy Vault" 
-                        desc="Access your enrolled courses, lecture materials, and semester-wise documentation."
-                        icon={<FaGraduationCap size={24} />}
+                    />}
                         color="#8b5cf6"
                         onClick={() => setViewMode('courses')}
                         count={courses.length}
@@ -662,6 +658,9 @@ const StudentAssignmentView = ({
 };
 
 export default StudentAssignmentView;
+
+
+
 
 
 
