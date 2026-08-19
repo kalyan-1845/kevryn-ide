@@ -64,12 +64,12 @@ const StudentAssignmentView = ({
         document.addEventListener('fullscreenchange', handleFullscreenChange);
 
         // Intercept browser back button to prevent leaving the platform
-        window.history.pushState({ page: "studentCommandCenter" }, "Student Command Center", window.location.href);
+        window.history.pushState({ page: "studentCommandCenter" }, "ACE Student Command Center", window.location.href);
         const handlePopState = (e) => {
             e.preventDefault();
             if (viewMode !== 'hub') {
                 setViewMode('hub');
-                window.history.pushState({ page: "studentCommandCenter" }, "Student Command Center", window.location.href);
+                window.history.pushState({ page: "studentCommandCenter" }, "ACE Student Command Center", window.location.href);
             } else {
                 onBack(); // Go to workspace instead of leaving site
             }
@@ -216,7 +216,7 @@ const StudentAssignmentView = ({
     const containerStyle = {
         padding: '60px 40px 120px 40px', // Increased bottom padding to ensure Developer section isn't cut off
         color: '#f8fafc',
-        maxWidth: '1400px',
+        maxWidth: '1250px',
         margin: '0 auto',
         minHeight: '100%',
         position: 'relative',
@@ -258,10 +258,10 @@ const StudentAssignmentView = ({
                 {/* Header / Hero */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '60px' }}>
                     <div>
-                        <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0 0 12px 0', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1.5px' }}>
-                            Student Command Center
+                        <h1 style={{ fontSize: '56px', fontWeight: '900', margin: '0 0 12px 0', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1.5px' }}>
+                            ACE Student Command Center
                         </h1>
-                        <p style={{ fontSize: '18px', color: '#94a3b8', margin: 0 }}>Welcome back, Operator. Stay sharp, your missions await.</p>
+                        <p style={{ fontSize: '20px', color: '#94a3b8', margin: 0 }}>Welcome back, Operator. Stay sharp, your missions await.</p>
                     </div>
                     <button
                         onClick={onBack}
@@ -334,35 +334,6 @@ const StudentAssignmentView = ({
                         </div>
                     </div>
                 )}
-
-                {/* Upcoming Missions */}
-                <div style={{ marginBottom: '60px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <FaCalendarAlt color="#60a5fa" size={16} />
-                        <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Target Tracking: Upcoming Missions</h2>
-                    </div>
-                    <div style={{ display: 'flex', gap: '24px', overflowX: 'auto', paddingBottom: '20px' }}>
-                        {activeAssignments.length === 0 ? (
-                            <div style={{ minWidth: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'default' }}>
-                                No Upcoming Missions. Stay Tuned...
-                            </div>
-                        ) : (
-                            activeAssignments.map(a => {
-                                const daysLeft = a.endTime ? Math.ceil((new Date(a.endTime) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-                                const urgencyLabel = daysLeft === null ? 'NO DEADLINE' : (daysLeft < 0 ? 'OVERDUE' : (daysLeft === 0 ? 'DUE TODAY' : `T-MINUS ${daysLeft} DAYS`));
-                                const urgencyColor = daysLeft === null ? '#10b981' : (daysLeft < 0 ? '#ef4444' : (daysLeft <= 2 ? '#f59e0b' : '#64748b'));
-
-                                return (
-                                    <div key={a._id} style={{ minWidth: '300px', ...cardStyle, background: 'rgba(255,255,255,0.01)', border: `1px dashed rgba(255,255,255,0.1)` }}>
-                                        <div style={{ color: urgencyColor, fontSize: '12px', fontWeight: 'bold', marginBottom: '8px' }}>{urgencyLabel}</div>
-                                        <h4 style={{ margin: 0, fontSize: '18px' }}>{a.title}</h4>
-                                        <p style={{ color: '#475569', fontSize: '13px', marginTop: '4px' }}>{a.subjectName || a.courseId?.name || 'Unknown Subject'}</p>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
 
                 {/* Core Navigation Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
@@ -691,3 +662,4 @@ const StudentAssignmentView = ({
 };
 
 export default StudentAssignmentView;
+
