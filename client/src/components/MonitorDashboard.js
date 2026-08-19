@@ -58,6 +58,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
     const [sessionDuration, setSessionDuration] = useState(60); // NEW: Active session duration
     const [isCreatingSession, setIsCreatingSession] = useState(false);
     const [timetableSlots, setTimetableSlots] = useState([]); // NEW: Timetable slots
+    const [searchQuery, setSearchQuery] = useState("");
 
 
 
@@ -601,6 +602,20 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(148,163,184,0.1)', padding: '4px 8px', borderRadius: '4px' }}>
+                            {Object.values(students).filter(s => s.status !== 'offline').length} TOTAL
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#4ade80', background: 'rgba(74,222,128,0.1)', padding: '4px 8px', borderRadius: '4px' }}>
+                            {Object.values(students).filter(s => s.status === 'active').length} ACTIVE
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '4px 8px', borderRadius: '4px' }}>
+                            {Object.values(students).filter(s => s.status === 'idle').length} IDLE
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#f87171', background: 'rgba(248,113,113,0.1)', padding: '4px 8px', borderRadius: '4px' }}>
+                            {Object.values(students).filter(s => s.status === 'distracted').length} DISTRACTED
+                        </span>
+                    </div>
                     {sessionId && <GlobalSessionTimer startTime={sessionStartTime} duration={sessionDuration} />}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {sessionId && (
@@ -665,21 +680,16 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
                             SMART ROSTER ({Object.keys(students).length})
                         </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(148,163,184,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
-                                {Object.values(students).filter(s => s.status !== 'offline').length} TOTAL
-                            </span>
-                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#4ade80', background: 'rgba(74,222,128,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
-                                {Object.values(students).filter(s => s.status === 'active').length} ACTIVE
-                            </span>
-                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
-                                {Object.values(students).filter(s => s.status === 'idle').length} IDLE
-                            </span>
-                            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#f87171', background: 'rgba(248,113,113,0.1)', padding: '3px 6px', borderRadius: '4px' }}>
-                                {Object.values(students).filter(s => s.status === 'distracted').length} DISTRACTED
-                            </span>
+                        <div style={{ marginBottom: '16px' }}>
+                            <input 
+                                type="text" 
+                                placeholder="Search student..." 
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                style={{ width: '100%', padding: '8px 12px', background: '#020617', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px', outline: 'none' }}
+                            />
                         </div>
-                        {Object.entries(students).map(([username, s]) => {
+                        {Object.entries(students).filter(([username, s]) => username.toLowerCase().includes(searchQuery.toLowerCase())).map(([username, s]) => {
                             const isRaised = raisedHands.includes(username);
                             const isActive = s.status === 'active';
                             const isSelected = selectedStudent === username;

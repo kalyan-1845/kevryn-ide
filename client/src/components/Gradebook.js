@@ -115,6 +115,95 @@ const Gradebook = ({ token, serverUrl }) => {
         }
     };
 
+    const handleExportPDF = () => {
+        const printWindow = window.open('', '_blank');
+        const cohortLabel = cohorts.find(c => c.str === selectedCohortStr)?.label || 'All';
+        const dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Gradebook Report - ${cohortLabel}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; color: #0f172a; font-size: 13px; line-height: 1.4; }
+                    .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
+                    .header h2 { margin: 0; color: #1e3a8a; font-size: 20px; text-transform: uppercase; }
+                    .header h3 { margin: 4px 0 0 0; color: #0284c7; font-size: 14px; font-weight: 600; }
+                    .header p { margin: 4px 0 0 0; color: #64748b; font-size: 11px; }
+                    .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 20px; font-size: 12px; }
+                    .meta-item strong { display: block; color: #475569; font-size: 10px; text-transform: uppercase; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+                    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+                    th { background-color: #0f172a; color: #ffffff; font-weight: 600; text-transform: uppercase; font-size: 10px; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                    .badge-clean { color: #16a34a; font-weight: bold; }
+                    .badge-warn { color: #ca8a04; font-weight: bold; }
+                    .badge-danger { color: #dc2626; font-weight: bold; }
+                    @media print {
+                        body { padding: 0; }
+                        @page { margin: 15mm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div style="text-align:center; padding-bottom: 5px; margin-bottom: 10px;">
+                    <img src="${window.location.origin}/ace_logo.svg" alt="ACE Logo" style="height: 60px; object-fit: contain;" />
+                </div>
+                <div class="header">
+                    <h2>ACE ENGINEERING COLLEGE</h2>
+                    <h3>DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING</h3>
+                    <p>OFFICIAL GRADEBOOK & PERFORMANCE AUDIT REPORT</p>
+                </div>
+
+                <div class="meta-grid">
+                    <div class="meta-item"><strong>Report Type</strong>${viewType === 'assignments' ? 'Lab Assignments' : 'Aptitude Missions'}</div>
+                    <div class="meta-item"><strong>Cohort</strong>${cohortLabel}</div>
+                    <div class="meta-item"><strong>Generated Date</strong>${dateStr}</div>
+                    <div class="meta-item"><strong>Total Records</strong>${filteredSubmissions.length}</div>
+                </div>
+
+                <h4 style="margin: 20px 0 5px 0; color: #1e293b;">STUDENT PERFORMANCE & INTEGRITY LOG</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Student ID / Name</th>
+                            <th>Assessment / Lab</th>
+                            <th>Efficiency</th>
+                            <th>Score / Max</th>
+                            <th>Violations</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredSubmissions.map((s, i) => {
+                            const percentage = Math.round((s.score || s.totalScore || 0) / (s.maxScore || 1) * 100);
+                            const violationsCount = (s.tabSwitches || 0) + (s.pasteViolations || 0) + (s.fullScreenExits || 0);
+                            return \`
+                            <tr>
+                                <td><strong>#\${i + 1}</strong></td>
+                                <td>\${s.studentUsername || s.username}</td>
+                                <td>\${s.assignmentId?.title || s.testTitle || 'N/A'}</td>
+                                <td><strong style="color: \${percentage >= 70 ? '#16a34a' : percentage >= 40 ? '#ca8a04' : '#dc2626'}">\${percentage}%</strong></td>
+                                <td>\${s.score || s.totalScore} / \${s.maxScore}</td>
+                                <td class="\${violationsCount > 5 ? 'badge-danger' : violationsCount > 0 ? 'badge-warn' : 'badge-clean'}">\${violationsCount > 0 ? violationsCount + ' Flags' : 'Clean'}</td>
+                                <td>\${new Date(s.submittedAt).toLocaleString()}</td>
+                            </tr>
+                            \`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    };
+
     const glassStyle = {
         background: 'rgba(15, 23, 42, 0.6)',
         backdropFilter: 'blur(10px)',
@@ -187,7 +276,7 @@ const Gradebook = ({ token, serverUrl }) => {
                             <div onClick={() => setViewType('aptitude')} style={tabStyle(viewType === 'aptitude')}>Aptitude Missions</div>
                         </div>
                         <button
-                            onClick={() => window.print()}
+                            onClick={handleExportPDF}
                             className="no-print"
                             style={{ padding: '0 20px', borderRadius: '10px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}
                         >

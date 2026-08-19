@@ -215,7 +215,7 @@ const CourseManager = ({ token, serverUrl }) => {
                         </span>
                     </div>
 
-                    <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#f8fafc', margin: '0 0 10px 0' }}>{t.subject || "Subject Name"}</h3>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#f8fafc', margin: '0 0 10px 0' }}>{t.subjectName || t.subject || "Subject Name"}</h3>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px' }}>

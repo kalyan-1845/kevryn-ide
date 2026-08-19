@@ -365,8 +365,11 @@ const AdminDashboard = ({ token, onLogout }) => {
 
                     return (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid rgba(0, 212, 255, 0.2)', paddingBottom: '20px' }}>
-                            <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '4px', color: '#00d4ff', textShadow: '0 0 10px rgba(0, 212, 255, 0.5)' }}>
-                                KEVRYN
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <img src="/logo.png?v=4" alt="KevRyn Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(0,212,255,0.6))' }} />
+                                <div style={{ fontSize: '24px', fontWeight: '900', letterSpacing: '4px', color: '#00d4ff', textShadow: '0 0 10px rgba(0, 212, 255, 0.5)' }}>
+                                    KEVRYN
+                                </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                 <div style={{ textAlign: 'right' }}>

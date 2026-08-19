@@ -100,27 +100,122 @@ const StudentReports = ({ token, serverUrl }) => {
         fetchStudentSubmissions();
     }, [selectedReport, selectedCohortStr, api]);
 
-    const handleDownload = async (report) => {
-        if (!report || !reportRef.current) return;
+    const handleDownload = (report) => {
+        if (!report) return;
         setIsExporting(true);
         try {
-            const canvas = await html2canvas(reportRef.current, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#020617',
-                logging: false,
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'px',
-                format: [canvas.width / 2, canvas.height / 2]
-            });
-
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+            const printWindow = window.open('', '_blank');
+            const dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
             const studentName = report.studentId?.username || "Student";
-            pdf.save(`KEVRYN_DOSSIER_${studentName}_${selectedCohort.subjectName}.pdf`);
+            const subject = selectedCohort?.subjectName || "Unknown Subject";
+            
+            const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Security Dossier - ${studentName}</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; color: #0f172a; font-size: 13px; line-height: 1.4; }
+                        .header { text-align: center; border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 20px; }
+                        .header h2 { margin: 0; color: #1e3a8a; font-size: 20px; text-transform: uppercase; }
+                        .header h3 { margin: 4px 0 0 0; color: #0284c7; font-size: 14px; font-weight: 600; }
+                        .header p { margin: 4px 0 0 0; color: #64748b; font-size: 11px; font-weight: bold; }
+                        .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 20px; font-size: 12px; }
+                        .meta-item strong { display: block; color: #475569; font-size: 10px; text-transform: uppercase; }
+                        
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; margin-bottom: 20px; }
+                        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+                        th { background-color: #0f172a; color: #ffffff; font-weight: 600; text-transform: uppercase; font-size: 10px; }
+                        tr:nth-child(even) { background-color: #f8fafc; }
+                        
+                        .section-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; text-transform: uppercase; }
+                        .code-block { background: #0f172a; color: #e2e8f0; padding: 15px; border-radius: 6px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; margin-bottom: 15px; }
+                        .code-header { background: #e2e8f0; padding: 6px 12px; font-size: 10px; font-weight: bold; color: #334155; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; }
+                        
+                        @media print {
+                            body { padding: 0; }
+                            @page { margin: 15mm; }
+                            .code-block { page-break-inside: avoid; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div style="text-align:center; padding-bottom: 5px; margin-bottom: 10px;">
+                        <img src="${window.location.origin}/ace_logo.svg" alt="ACE Logo" style="height: 60px; object-fit: contain;" />
+                    </div>
+                    <div class="header">
+                        <h2>ACE ENGINEERING COLLEGE</h2>
+                        <h3>DEPARTMENT OF COMPUTER SCIENCE & ENGINEERING</h3>
+                        <p>OFFICIAL STUDENT SECURITY DOSSIER & PERFORMANCE AUDIT</p>
+                    </div>
+
+                    <div class="meta-grid">
+                        <div class="meta-item"><strong>Student Identifier</strong>${studentName}</div>
+                        <div class="meta-item"><strong>Course / Subject</strong>${subject}</div>
+                        <div class="meta-item"><strong>Generated Date</strong>${dateStr}</div>
+                        <div class="meta-item"><strong>Audit Result</strong><span style="${(report.attentionScore || 100) >= 80 ? 'color:#16a34a' : 'color:#dc2626'}">VERIFIED</span></div>
+                    </div>
+
+                    <div class="section-title">Telemetry & Integrity Overview</div>
+                    <table>
+                        <tr>
+                            <th>Engagement Time</th>
+                            <th>Focus Score</th>
+                            <th>Tab Switches</th>
+                            <th>Clipboard Pastes</th>
+                            <th>Verdict</th>
+                        </tr>
+                        <tr>
+                            <td><strong>${(report.totalTimeSpent / 60).toFixed(1)} min</strong></td>
+                            <td style="color: ${(report.attentionScore || 100) >= 80 ? '#16a34a' : '#dc2626'}"><strong>${report.attentionScore || 100}%</strong></td>
+                            <td style="color: ${report.tabSwitchCount > 5 ? '#dc2626' : '#475569'}"><strong>${report.tabSwitchCount || 0}</strong></td>
+                            <td style="color: ${report.pasteCount > 8 ? '#dc2626' : '#475569'}"><strong>${report.pasteCount || 0}</strong></td>
+                            <td><strong>${(report.attentionScore || 100) < 70 ? 'SUSPICIOUS' : 'CLEAN'}</strong></td>
+                        </tr>
+                    </table>
+
+                    <div class="section-title">Assignment Logic Verification</div>
+                    ${studentSubmissions.length === 0 ? '<p style="font-size: 12px; color: #64748b;">No logic assignments submitted.</p>' : `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Assignment Title</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${studentSubmissions.map(sub => `
+                                <tr>
+                                    <td>${sub.assignmentId?.title || 'Unknown Assignment'}</td>
+                                    <td><strong>${sub.score}</strong> / ${sub.maxScore}</td>
+                                    <td style="color: ${sub.score === sub.maxScore ? '#16a34a' : '#f59e0b'}"><strong>${sub.score === sub.maxScore ? 'PASSED' : 'PARTIAL'}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    `}
+
+                    <div class="section-title">Development Archive (Source Code Capture)</div>
+                    ${(!report.files || report.files.length === 0) ? '<p style="font-size: 12px; color: #64748b;">No source code captured.</p>' : 
+                        report.files.map(file => `
+                            <div>
+                                <div class="code-header">
+                                    <span>${file.fileName}</span>
+                                    <span>Modified: ${file.lastUpdated ? new Date(file.lastUpdated).toLocaleTimeString() : 'Unknown'} | Time: ${Math.ceil(file.timeSpent / 60)}m</span>
+                                </div>
+                                <div class="code-block">${file.code ? file.code.replace(/</g, '&lt;').replace(/>/g, '&gt;') : '// No content capture identified.'}</div>
+                            </div>
+                        `).join('')
+                    }
+                </body>
+                </html>
+            `;
+            printWindow.document.write(html);
+            printWindow.document.close();
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
         } catch (error) {
             console.error("PDF Export failed:", error);
             alert("Export failed. Please try again.");
@@ -345,50 +440,9 @@ const StudentReports = ({ token, serverUrl }) => {
                                 <MetricCard icon={<FaTasks color="#fbbf24" />} label="Assignments" value={studentSubmissions.length} trend="Total Submissions" />
                             </div>
 
-                            {/* Two Column Section */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '30px' }}>
-
-                                {/* Left: Code History */}
-                                <div>
-                                    <SectionTitle icon={<FaCode />} title="Development Archive" subtitle="Recent code captures and modifications" />
-                                    <div style={{ display: 'grid', gap: '16px' }}>
-                                        {selectedReport.files.map((file, idx) => (
-                                            <motion.div
-                                                key={idx}
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: idx * 0.1 }}
-                                                style={{ background: '#0f172a', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}
-                                            >
-                                                <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                            <FaCode color="#818cf8" size={14} />
-                                                        </div>
-                                                        <div>
-                                                            <div style={{ color: '#f8fafc', fontWeight: '700', fontSize: '14px' }}>{file.fileName}</div>
-                                                            <div style={{ fontSize: '11px', color: '#64748b' }}>Modified {new Date(file.lastUpdated).toLocaleTimeString()}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#6366f1', background: 'rgba(99,102,241,0.1)', padding: '4px 10px', borderRadius: '20px' }}>
-                                                        ⏱ {(file.timeSpent / 60).toFixed(1)}m
-                                                    </div>
-                                                </div>
-                                                <div style={{ padding: '20px', position: 'relative' }}>
-                                                    <pre style={{
-                                                        margin: 0, fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#cbd5e1',
-                                                        overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto',
-                                                        padding: '16px', background: '#020617', borderRadius: '12px'
-                                                    }}>
-                                                        {file.code || "// No content capture identified."}
-                                                    </pre>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Right: Assignment Sync */}
+                            {/* Analysis & Security Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '40px' }}>
+                                {/* Left: Assignment Sync */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                     <div>
                                         <SectionTitle icon={<FaTasks />} title="Logic Checks" subtitle="Assignment verification" />
@@ -404,7 +458,7 @@ const StudentReports = ({ token, serverUrl }) => {
                                                             padding: '16px', borderRadius: '12px', background: 'rgba(2, 6, 23, 0.5)',
                                                             border: '1px solid rgba(255,255,255,0.05)', position: 'relative'
                                                         }}>
-                                                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc', marginBottom: '8px' }}>{sub.assignmentId?.title}</div>
+                                                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#f8fafc', marginBottom: '8px' }}>{sub.assignmentId?.title || 'Unknown Assignment'}</div>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                                 <div style={{ fontSize: '16px', fontWeight: '900', color: sub.score === sub.maxScore ? '#10b981' : '#f59e0b' }}>
                                                                     {sub.score} <span style={{ fontSize: '11px', color: '#475569', fontWeight: '400' }}>/ {sub.maxScore}</span>
@@ -412,7 +466,7 @@ const StudentReports = ({ token, serverUrl }) => {
                                                                 {sub.score === sub.maxScore ? <FaCheckCircle color="#10b981" /> : <FaArrowRight color="#64748b" />}
                                                             </div>
                                                             <div style={{ height: '4px', width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', marginTop: '12px', overflow: 'hidden' }}>
-                                                                <div style={{ height: '100%', width: `${(sub.score / sub.maxScore) * 100}%`, background: sub.score === sub.maxScore ? '#10b981' : '#f59e0b' }} />
+                                                                <div style={{ height: '100%', width: `${(sub.score / (sub.maxScore || 1)) * 100}%`, background: sub.score === sub.maxScore ? '#10b981' : '#f59e0b' }} />
                                                             </div>
                                                         </div>
                                                     ))}
@@ -420,8 +474,10 @@ const StudentReports = ({ token, serverUrl }) => {
                                             )}
                                         </div>
                                     </div>
+                                </div>
 
-                                    {/* Security Insights */}
+                                {/* Right: Security Insights */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                     <div>
                                         <SectionTitle icon={<FaShieldAlt />} title="Security Dossier" subtitle="AI behavioral analysis" />
                                         <div style={{
@@ -457,44 +513,51 @@ const StudentReports = ({ token, serverUrl }) => {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Live Lab Workspace Code Rendering */}
-                                <div style={{ marginTop: '40px' }}>
-                                    <SectionTitle icon={<FaCode />} title="Live Lab Workspace" subtitle="Source code captured during lab sessions" />
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        {!selectedReport.files || selectedReport.files.length === 0 ? (
-                                            <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                No files created during live lab sessions.
-                                            </div>
-                                        ) : (
-                                            selectedReport.files.map((file, idx) => (
-                                                <div key={idx} style={{
-                                                    background: '#020617', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden'
-                                                }}>
-                                                    <div style={{
-                                                        padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                                                    }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            <FaFilePdf color="#3b82f6" /> {/* Just an icon */}
-                                                            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc' }}>{file.fileName}</span>
-                                                            <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>
-                                                                Created: {file.lastUpdated ? new Date(file.lastUpdated).toLocaleString() : 'Unknown'}
-                                                            </span>
+                            {/* Full Width Code Rendering */}
+                            <div style={{ marginTop: '20px' }}>
+                                <SectionTitle icon={<FaCode />} title="Development Archive" subtitle="Recent code captures and modifications" />
+                                <div style={{ display: 'grid', gap: '16px' }}>
+                                    {!selectedReport.files || selectedReport.files.length === 0 ? (
+                                        <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: 'rgba(15, 23, 42, 0.4)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            No files created during live lab sessions.
+                                        </div>
+                                    ) : (
+                                        selectedReport.files.map((file, idx) => (
+                                            <motion.div
+                                                key={idx}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: idx * 0.1 }}
+                                                style={{ background: '#0f172a', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}
+                                            >
+                                                <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <FaCode color="#818cf8" size={14} />
                                                         </div>
-                                                        <span style={{ fontSize: '11px', color: '#64748b', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '12px' }}>
-                                                            ⏱ {Math.ceil(file.timeSpent / 60)}m
-                                                        </span>
+                                                        <div>
+                                                            <div style={{ color: '#f8fafc', fontWeight: '700', fontSize: '14px' }}>{file.fileName}</div>
+                                                            <div style={{ fontSize: '11px', color: '#64748b' }}>Modified {new Date(file.lastUpdated).toLocaleTimeString()}</div>
+                                                        </div>
                                                     </div>
-                                                    <div style={{ padding: '16px', overflowX: 'auto' }}>
-                                                        <pre style={{ margin: 0, color: '#e2e8f0', fontSize: '13px', fontFamily: 'monospace' }}>
-                                                            {file.code || "// No code content available"}
-                                                        </pre>
+                                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#6366f1', background: 'rgba(99,102,241,0.1)', padding: '4px 10px', borderRadius: '20px' }}>
+                                                        ⏱ {(file.timeSpent / 60).toFixed(1)}m
                                                     </div>
                                                 </div>
-                                            ))
-                                        )}
-                                    </div>
+                                                <div style={{ padding: '20px', position: 'relative' }}>
+                                                    <pre style={{
+                                                        margin: 0, fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#cbd5e1',
+                                                        overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '500px', overflowY: 'auto',
+                                                        padding: '16px', background: '#020617', borderRadius: '12px'
+                                                    }}>
+                                                        {file.code || "// No content capture identified."}
+                                                    </pre>
+                                                </div>
+                                            </motion.div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
