@@ -85,7 +85,7 @@ function App() {
     useEffect(() => {
         if (!token) setIsAppLoading(false);
     }, [token]);
-    const [showStudentAssignments, setShowStudentAssignments] = useState(false); // NEW: Default to workspace (IDE) first <!-- id: 401 -->
+    const [showStudentAssignments, setShowStudentAssignments] = useState(true); // Default to Command Center <!-- id: 401 -->
     const [authData, setAuthData] = useState({ username: "", password: "", email: "", collegeCode: "" });
     const [userPicture, setUserPicture] = useState(localStorage.getItem('picture') || null); // Store picture
 
@@ -3074,3 +3074,4 @@ function App() {
 }
 
 export default App;
+
