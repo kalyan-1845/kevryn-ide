@@ -291,7 +291,7 @@ const allowedOrigins = [process.env.CLIENT_URL, process.env.CORS_ORIGIN, 'https:
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (mobile apps, Postman, server-to-server)
-        if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed)) || origin.includes('kevryn-ide.pages.dev')) {
             callback(null, true);
         } else {
             console.warn('[CORS] Blocked unrecognized origin:', origin);
