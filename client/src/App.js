@@ -1908,6 +1908,7 @@ function App() {
       
 
             <LabMode
+                key={activeSessionId}
                 localWorkspacePath={localWorkspacePath}
                 session={activeSession} // NEW: Pass the REAL session object (with courseId)
                 username={username}
