@@ -412,6 +412,7 @@ const InstitutionSetup = ({ token }) => {
                     identifier={selectedDevProfile} 
                     onClose={() => setSelectedDevProfile(null)} 
                     token={token} 
+                    serverUrl={process.env.REACT_APP_SERVER_URL || ''}
                 />
             )}
         </div>
