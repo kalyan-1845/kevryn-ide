@@ -22,7 +22,7 @@
   --glass-blur: blur(20px) saturate(180%);
   
   /* Background Grid Colors (Midnight Default) */
-  --grid-line: rgba(139, 92, 246, 0.05);
+  --grid-line: rgba(139, 92, 246, 0.2);
   --glow-1: rgba(139, 92, 246, 0.15);
   --glow-2: rgba(59, 130, 246, 0.1);
 }
@@ -41,7 +41,7 @@
   --glass-bg: rgba(255, 255, 255, 0.6);
   
   /* Background Grid Colors (Executive Snow) */
-  --grid-line: rgba(15, 23, 42, 0.04);
+  --grid-line: rgba(15, 23, 42, 0.15);
   --glow-1: rgba(59, 130, 246, 0.08);
   --glow-2: rgba(99, 102, 241, 0.05);
 }
@@ -60,7 +60,7 @@
   --glass-bg: rgba(18, 16, 38, 0.6);
   
   /* Background Grid Colors (Neon Matrix) */
-  --grid-line: rgba(0, 243, 255, 0.08);
+  --grid-line: rgba(0, 243, 255, 0.25);
   --glow-1: rgba(255, 0, 127, 0.15);
   --glow-2: rgba(0, 243, 255, 0.1);
 }
@@ -69,8 +69,7 @@ body {
   margin: 0;
   background-color: var(--bg-primary);
   background-image: 
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px),
     radial-gradient(at 0% 0%, var(--glow-1) 0, transparent 50%),
     radial-gradient(at 50% 0%, var(--glow-2) 0, transparent 50%),
     radial-gradient(at 100% 0%, var(--glow-1) 0, transparent 50%);
@@ -3192,5 +3191,20 @@ body.resizing-row .panel-resize-handle {
   background: rgba(139, 92, 246, 0.2);
   color: #a78bfa !important;
   border-bottom: 2px solid #8b5cf6;
+}
+
+
+
+
+/* Force Monaco background transparency to reveal global grid */
+.monaco-editor, 
+.monaco-editor-background, 
+.monaco-editor .inputarea.ime-input,
+.monaco-editor .margin {
+  background-color: transparent !important;
+}
+
+.editor-area {
+  background: transparent !important;
 }
 
