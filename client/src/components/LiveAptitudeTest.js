@@ -155,7 +155,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
         return (
             <div style={{
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                background: '#060b17', zIndex: 10001, display: 'flex', flexDirection: 'column',
+                background: 'transparent', zIndex: 10001, display: 'flex', flexDirection: 'column',
                 justifyContent: 'center', alignItems: 'center', color: '#f1f5f9'
             }}>
                 <div style={{ textAlign: 'center', animation: 'slideIn 0.5s ease-out' }}>
@@ -175,7 +175,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
         return (
             <div style={{
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                background: '#060b17', zIndex: 10000, display: 'flex', flexDirection: 'column',
+                background: 'transparent', zIndex: 10000, display: 'flex', flexDirection: 'column',
                 justifyContent: 'center', alignItems: 'center', color: '#f1f5f9'
             }}>
                 <div style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '40px', borderRadius: '16px', maxWidth: '600px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
@@ -212,7 +212,7 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-            background: '#060b17', zIndex: 10000, color: '#f1f5f9', display: 'flex', flexDirection: 'column'
+            background: 'transparent', zIndex: 10000, color: '#f1f5f9', display: 'flex', flexDirection: 'column'
         }}>
             {/* Header / StatusBar */}
             {isReadOnly && (
@@ -345,3 +345,4 @@ export default function LiveAptitudeTest({ token, serverUrl, session, onComplete
         </div>
     );
 }
+

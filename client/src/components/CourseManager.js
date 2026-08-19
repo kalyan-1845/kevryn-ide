@@ -389,7 +389,7 @@ const CourseManager = ({ token, serverUrl }) => {
     );
 
     const renderCourseDetails = () => (
-        <div style={{ display: 'flex', height: '100%', flexDirection: 'column', fontFamily: "'Outfit', sans-serif", background: '#020617' }}>
+        <div style={{ display: 'flex', height: '100%', flexDirection: 'column', fontFamily: "'Outfit', sans-serif", background: 'transparent' }}>
             {/* Header */}
             <div style={{ padding: '24px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(20px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -617,7 +617,7 @@ const CourseManager = ({ token, serverUrl }) => {
     );
 
     return (
-        <div style={{ height: '100%', background: '#020617', overflowY: 'auto' }}>
+        <div style={{ height: '100%', background: 'transparent', overflowY: 'auto' }}>
             {activeCourse ? renderCourseDetails() : renderCourseGrid()}
 
             {/* CREATE COURSE MODAL */}
@@ -682,4 +682,5 @@ const CourseManager = ({ token, serverUrl }) => {
 };
 
 export default CourseManager;
+
 

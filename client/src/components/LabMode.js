@@ -723,7 +723,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
     return (
         <div style={{
             width: '100vw', height: '100vh',
-            background: '#020617',
+            background: 'transparent',
             backgroundImage: 'radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.1) 0, transparent 40%), radial-gradient(at 100% 0%, rgba(88, 28, 135, 0.1) 0, transparent 40%)',
             display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: 'Inter, sans-serif'
         }}>
@@ -1103,7 +1103,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
                     </div>
                     <div style={{
                         height: '280px', borderTop: '1px solid rgba(255,255,255,0.05)',
-                        background: '#020617', display: 'flex', flexDirection: 'column', flexShrink: 0
+                        background: 'transparent', display: 'flex', flexDirection: 'column', flexShrink: 0
                     }}>
                         <div style={{
                             padding: '10px 20px', background: 'rgba(15, 23, 42, 0.6)',
@@ -1149,3 +1149,4 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
 };
 
 export default LabMode;
+

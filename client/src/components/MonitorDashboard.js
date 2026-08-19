@@ -686,7 +686,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                                 placeholder="Search student..." 
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                style={{ width: '100%', padding: '8px 12px', background: '#020617', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px', outline: 'none' }}
+                                style={{ width: '100%', padding: '8px 12px', background: 'transparent', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px', outline: 'none' }}
                             />
                         </div>
                         {Object.entries(students).filter(([username, s]) => username.toLowerCase().includes(searchQuery.toLowerCase())).map(([username, s]) => {
@@ -778,7 +778,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
 
                 {/* MAIN AREA */}
                 {!selectedStudent ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#020617' }}>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                         <div style={{ textAlign: 'center', opacity: 0.5 }}>
                             <FaDesktop size={64} color="#334155" style={{ marginBottom: '20px' }} />
                             <h3 style={{ color: '#94a3b8' }}>Select a student to monitor</h3>
@@ -828,7 +828,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                             {activeTab === 'live' && (
                                 <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minWidth: 0 }}>
                                     {/* Code View */}
-                                    <div style={{ flex: 1, background: '#020617', padding: '20px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                    <div style={{ flex: 1, background: 'transparent', padding: '20px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center', flexShrink: 0 }}>
                                             <span style={{ color: '#64748b', fontSize: '12px' }}>
                                                 {selectedFileContent ? `Viewing: ${selectedFileContent.name}` : (students[selectedStudent]?.activeFile ? `Live Edit: ${students[selectedStudent].activeFile}` : 'No file open')}
@@ -878,7 +878,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                             )}
 
                             {activeTab === 'portfolio' && (
-                                <div style={{ flex: 1, background: '#020617', padding: '30px', overflowY: 'auto' }}>
+                                <div style={{ flex: 1, background: 'transparent', padding: '30px', overflowY: 'auto' }}>
                                     {!studentPortfolio ? (
                                         <div style={{ color: '#64748b', textAlign: 'center', marginTop: '50px' }}>Loading academic record...</div>
                                     ) : (
@@ -952,7 +952,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                             )}
 
                             {activeTab === 'history' && (
-                                <div style={{ flex: 1, background: '#020617', padding: '30px', overflowY: 'auto' }}>
+                                <div style={{ flex: 1, background: 'transparent', padding: '30px', overflowY: 'auto' }}>
                                     <h3 style={{ color: '#fff', fontSize: '18px', marginBottom: '20px' }}>Session Activity Timeline</h3>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {sessionTimeline.length === 0 ? (
@@ -976,7 +976,7 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
                             )}
 
                             {activeTab === 'reports' && (
-                                <div style={{ flex: 1, background: '#020617', padding: '30px', overflowY: 'auto' }}>
+                                <div style={{ flex: 1, background: 'transparent', padding: '30px', overflowY: 'auto' }}>
                                     {!studentReport ? (
                                         <div style={{ textAlign: 'center', marginTop: '50px' }}>
                                             <div style={{ color: '#64748b', marginBottom: '10px' }}>No report data found.</div>
@@ -1033,3 +1033,4 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
 };
 
 export default MonitorDashboard;
+

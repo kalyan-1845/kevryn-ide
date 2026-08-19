@@ -236,7 +236,7 @@ const StudentReports = ({ token, serverUrl }) => {
     };
 
     return (
-        <div style={{ display: 'flex', height: '100%', background: '#020617', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif", overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: '100%', background: 'transparent', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif", overflow: 'hidden' }}>
 
             {/* --- SIDEBAR: ROSTER --- */}
             <div style={{
@@ -342,7 +342,7 @@ const StudentReports = ({ token, serverUrl }) => {
                                             <div style={{
                                                 position: 'absolute', bottom: '-4px', right: '-4px',
                                                 width: '14px', height: '14px', borderRadius: '50%',
-                                                background: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}>
                                                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: getIntegrityColor(report.attentionScore || 100) }} />
                                             </div>
@@ -550,7 +550,7 @@ const StudentReports = ({ token, serverUrl }) => {
                                                     <pre style={{
                                                         margin: 0, fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#cbd5e1',
                                                         overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: '500px', overflowY: 'auto',
-                                                        padding: '16px', background: '#020617', borderRadius: '12px'
+                                                        padding: '16px', background: 'transparent', borderRadius: '12px'
                                                     }}>
                                                         {file.code || "// No content capture identified."}
                                                     </pre>
@@ -610,3 +610,4 @@ const SecurityItem = ({ icon, label, value, desc }) => (
 );
 
 export default StudentReports;
+

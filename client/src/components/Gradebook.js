@@ -223,7 +223,7 @@ const Gradebook = ({ token, serverUrl }) => {
     });
 
     return (
-        <div style={{ padding: '30px', color: '#e2e8f0', height: '100%', display: 'flex', flexDirection: 'column', background: '#020617' }}>
+        <div style={{ padding: '30px', color: '#e2e8f0', height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
             <style>
                 {`
                     @media print {
@@ -482,3 +482,4 @@ const Gradebook = ({ token, serverUrl }) => {
 };
 
 export default Gradebook;
+

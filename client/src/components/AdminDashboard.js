@@ -232,7 +232,7 @@ const AdminDashboard = ({ token, onLogout }) => {
     return (
         <div style={{
             width: '100vw', height: '100vh',
-            background: '#050505', color: '#e0e0e0',
+            background: 'transparent', color: '#e0e0e0',
             fontFamily: "'Rajdhani', sans-serif", overflow: 'hidden',
             display: 'flex', position: 'relative'
         }}>
@@ -1106,3 +1106,4 @@ const headerStyle = {
 };
 
 export default AdminDashboard;
+

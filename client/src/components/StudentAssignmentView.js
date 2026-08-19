@@ -488,7 +488,7 @@ const StudentAssignmentView = ({
     // RENDER SOLVER
     if (viewMode === 'solve' && selectedAssignment) {
         return (
-            <div style={{ display: 'flex', height: '100vh', flexDirection: 'column', background: '#020617', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif" }}>
+            <div style={{ display: 'flex', height: '100vh', flexDirection: 'column', background: 'transparent', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif" }}>
                 
                 {/* STRICT PROCTORING FULLSCREEN OVERLAY */}
                 {!isFullscreen && (
@@ -662,5 +662,6 @@ const StudentAssignmentView = ({
 };
 
 export default StudentAssignmentView;
+
 
 

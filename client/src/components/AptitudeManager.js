@@ -196,7 +196,7 @@ const AptitudeManager = ({ token, serverUrl }) => {
     };
 
     return (
-        <div style={{ padding: '40px', color: '#f8fafc', minHeight: '100vh', background: '#020617' }}>
+        <div style={{ padding: '40px', color: '#f8fafc', minHeight: '100vh', background: 'transparent' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
                 <div>
                     <h1 style={{ fontSize: '32px', fontWeight: '900', margin: 0, background: 'linear-gradient(to right, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -661,3 +661,4 @@ const AptitudeManager = ({ token, serverUrl }) => {
 };
 
 export default AptitudeManager;
+
