@@ -11,7 +11,6 @@ import AptitudeManager from './AptitudeManager';
 import Gradebook from './Gradebook';
 import StudentReports from './StudentReports';
 import LabReports from './LabReports';
-import CodingArena from './CodingArena';
 import TimetableWidget from './TimetableWidget'; // NEW: Timetable
 import axios from 'axios';
 
@@ -168,7 +167,6 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                         <NavItem icon={<FaClipboardList />} label="Assignments" isActive={activeView === 'assignments'} onClick={() => setActiveView('assignments')} />
                         <NavItem icon={<FaTasks />} label="Aptitude Tests" isActive={activeView === 'aptitude'} onClick={() => setActiveView('aptitude')} />
                         <NavItem icon={<FaUserGraduate />} label="Gradebook" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
-                        <NavItem icon={<FaTrophy />} label="Coding Arena" isActive={activeView === 'arena'} onClick={() => setActiveView('arena')} />
                     </NavSection>
                     <NavSection label="Lab Control">
                         <NavItem icon={<FaEye />} label="Live Monitor" isActive={activeView === 'active-labs'} onClick={() => setActiveView('active-labs')} badge={stats.activeSessions > 0 ? 'LIVE' : null} />
@@ -225,7 +223,6 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                 {activeView === 'aptitude' && <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'active-labs' && <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} onLogout={onLogout} isEmbedded={true} onSessionChange={refreshStats} />}
                 {activeView === 'analytics' && <Gradebook token={token} serverUrl={serverUrl} />}
-                {activeView === 'arena' && <CodingArena />}
                 {activeView === 'lab-reports' && <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveView('dashboard')} />}
                 {activeView === 'reports' && <StudentReports token={token} serverUrl={serverUrl} />}
             </div>
