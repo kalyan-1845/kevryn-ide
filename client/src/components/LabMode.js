@@ -615,17 +615,7 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         setSaving(false);
     }, [activeFile, code, emitCodeUpdate, api, userId, session?.courseId, findFileFullPath]);
 
-    // Capture Ctrl+S
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                handleSave();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleSave]);
+    // Keyboard shortcuts are handled in the main shortcut block below
 
 
     // --- Run File ---
@@ -682,17 +672,23 @@ const LabMode = ({ session, username, userId, token, theme, webcontainer, onLogo
         });
     }, [activeFile, handleSave, session, userId, findFileFullPath]);
 
-    // --- Keyboard Shortcut: Ctrl+S ---
+    // --- Keyboard Shortcuts ---
     useEffect(() => {
         const handler = (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            // Ctrl+S or Cmd+S to Save
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 handleSave();
+            }
+            // Ctrl+Enter or Cmd+Enter to Run
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                handleRun();
             }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [handleSave]);
+    }, [handleSave, handleRun]);
 
     // --- Logout Handler ---
     const handleLogout = async () => {

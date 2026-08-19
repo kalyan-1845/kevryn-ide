@@ -699,9 +699,15 @@ function App() {
             const ctrl = e.ctrlKey || e.metaKey;
 
             // Ctrl+S: Save
-            if (ctrl && e.key === 's') {
+            if (ctrl && e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 handleSave();
+            }
+
+            // Ctrl+Enter: Run Code
+            if (ctrl && e.key === 'Enter') {
+                e.preventDefault();
+                if (typeof runCode === 'function') runCode();
             }
 
             // F2: Rename active file
