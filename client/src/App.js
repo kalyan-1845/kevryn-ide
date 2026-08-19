@@ -2653,14 +2653,19 @@ function App() {
                                              beforeMount={handleEditorWillMount}
                                              options={{
                                                  fontSize: 14,
-                                                 fontFamily: 'JetBrains Mono',
+                                                 fontFamily: 'JetBrains Mono, monospace',
                                                  minimap: { enabled: true },
                                                  automaticLayout: true,
                                                  scrollBeyondLastLine: false,
                                                  padding: { top: 10, bottom: 10 },
                                                  formatOnPaste: true,
+                                                 formatOnType: true, // Auto-formats code as they type
                                                  suggestSelection: 'first',
-                                                 quickSuggestions: true,
+                                                 quickSuggestions: { other: true, comments: false, strings: true }, // Live intellisense
+                                                 renderValidationDecorations: 'on', // Forces red squiggly lines for errors
+                                                 hover: { enabled: true, delay: 200 }, // Quick error explanations on hover
+                                                 lightbulb: { enabled: true }, // Shows the yellow lightbulb for quick fixes
+                                                 wordWrap: 'on',
                                                  readOnly: activeFileId === null
                                              }}
                                              onMount={(editor, monaco) => {
