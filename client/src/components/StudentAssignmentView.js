@@ -227,7 +227,7 @@ const StudentAssignmentView = ({
     const rootStyle = {
         height: '100%',
         width: '100%',
-        background: '#050505', // Solid background to obscure particles
+        background: 'transparent',
         overflowY: 'auto',
         position: 'relative',
         scrollBehavior: 'smooth'
@@ -662,4 +662,5 @@ const StudentAssignmentView = ({
 };
 
 export default StudentAssignmentView;
+
 

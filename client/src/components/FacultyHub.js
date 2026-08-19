@@ -105,7 +105,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
     };
 
     return (
-        <div style={{ display: 'flex', width: '100vw', height: '100vh', background: '#060b17', color: '#e2e8f0', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
+        <div style={{ display: 'flex', width: '100vw', height: '100vh', background: 'transparent', color: '#e2e8f0', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
 
             {/* === SIDEBAR === */}
             <div style={{
@@ -280,7 +280,7 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
     ];
 
     return (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '30px 40px', background: '#020617', position: 'relative' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '30px 40px', background: 'transparent', position: 'relative' }}>
             <div style={{ maxWidth: '1300px', margin: '0 auto', width: '100%', position: 'relative' }}>
             {/* Background Glows */}
             <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
@@ -406,4 +406,5 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
 
 
 export default FacultyHub;
+
 
