@@ -180,17 +180,17 @@ const Gradebook = ({ token, serverUrl }) => {
                         ${filteredSubmissions.map((s, i) => {
                             const percentage = Math.round((s.score || s.totalScore || 0) / (s.maxScore || 1) * 100);
                             const violationsCount = (s.tabSwitches || 0) + (s.pasteViolations || 0) + (s.fullScreenExits || 0);
-                            return \`
+                            return `
                             <tr>
-                                <td><strong>#\${i + 1}</strong></td>
-                                <td>\${s.studentUsername || s.username}</td>
-                                <td>\${s.assignmentId?.title || s.testTitle || 'N/A'}</td>
-                                <td><strong style="color: \${percentage >= 70 ? '#16a34a' : percentage >= 40 ? '#ca8a04' : '#dc2626'}">\${percentage}%</strong></td>
-                                <td>\${s.score || s.totalScore} / \${s.maxScore}</td>
-                                <td class="\${violationsCount > 5 ? 'badge-danger' : violationsCount > 0 ? 'badge-warn' : 'badge-clean'}">\${violationsCount > 0 ? violationsCount + ' Flags' : 'Clean'}</td>
-                                <td>\${new Date(s.submittedAt).toLocaleString()}</td>
+                                <td><strong>#${i + 1}</strong></td>
+                                <td>${s.studentUsername || s.username}</td>
+                                <td>${s.assignmentId?.title || s.testTitle || 'N/A'}</td>
+                                <td><strong style="color: ${percentage >= 70 ? '#16a34a' : percentage >= 40 ? '#ca8a04' : '#dc2626'}">${percentage}%</strong></td>
+                                <td>${s.score || s.totalScore} / ${s.maxScore}</td>
+                                <td class="${violationsCount > 5 ? 'badge-danger' : violationsCount > 0 ? 'badge-warn' : 'badge-clean'}">${violationsCount > 0 ? violationsCount + ' Flags' : 'Clean'}</td>
+                                <td>${new Date(s.submittedAt).toLocaleString()}</td>
                             </tr>
-                            \`;
+                            `;
                         }).join('')}
                     </tbody>
                 </table>

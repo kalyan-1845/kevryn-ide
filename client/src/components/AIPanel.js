@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import {
     FaPaperPlane, FaRobot, FaSpinner, FaCheck, FaTimes,
     FaBolt, FaMagic, FaCopy, FaCode,
@@ -110,7 +111,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
         while ((match = codeBlockRegex.exec(content)) !== null) {
             if (match.index > lastIndex) {
                 const textBefore = content.substring(lastIndex, match.index);
-                parts.push(<div key={`text-${blockIndex}`} dangerouslySetInnerHTML={{ __html: marked.parse(textBefore) }} className="ai-text-content" />);
+                parts.push(<div key={`text-${blockIndex}`} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(textBefore)) }} className="ai-text-content" />);
             }
 
             const codeLang = match[1] ? match[1].toLowerCase() : 'code';
@@ -144,10 +145,10 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 
         if (lastIndex < content.length) {
             const remaining = content.substring(lastIndex);
-            parts.push(<div key={`text-end`} dangerouslySetInnerHTML={{ __html: marked.parse(remaining) }} className="ai-text-content" />);
+            parts.push(<div key={`text-end`} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(remaining)) }} className="ai-text-content" />);
         }
 
-        return parts.length > 0 ? parts : <div dangerouslySetInnerHTML={{ __html: marked.parse(content) }} className="ai-text-content" />;
+        return parts.length > 0 ? parts : <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(content)) }} className="ai-text-content" />;
     }, [copiedIndex, onApplyCode]);
 
     // ── SEND MESSAGE ─────────────────────────────────────────────

@@ -156,6 +156,12 @@ router.post('/schedule', authenticate, checkManagement, async (req, res) => {
 
 router.delete('/schedule/:id', authenticate, checkManagement, async (req, res) => {
     try {
+        // SECURITY: Verify entry belongs to the same college
+        const entry = await Timetable.findById(req.params.id);
+        if (!entry) return res.status(404).json({ error: 'Schedule not found' });
+        if (req.user.role !== 'admin' && req.user.collegeId && entry.collegeId?.toString() !== req.user.collegeId?.toString()) {
+            return res.status(403).json({ error: 'Cannot delete schedules from another college' });
+        }
         await Timetable.findByIdAndDelete(req.params.id);
         res.json({ success: true });
     } catch (e) {
@@ -193,6 +199,17 @@ router.post('/students/bulk-add', authenticate, checkManagement, async (req, res
         if (!department || !year || !section || !rollNumbersString) {
             return res.status(400).json({ error: "Missing required fields" });
         }
+        if (typeof rollNumbersString !== 'string') {
+            return res.status(400).json({ error: "rollNumbersString must be a string" });
+        }
+
+        // Dynamically resolve college code instead of hardcoding
+        const College = require('../models/College');
+        let collegeCode = 'UNKNOWN';
+        if (req.user.collegeId) {
+            const adminCollege = await College.findById(req.user.collegeId);
+            if (adminCollege) collegeCode = adminCollege.code;
+        }
 
         const rollNumbers = rollNumbersString.split(',').map(r => r.trim()).filter(r => r);
         const addedUsers = [];
@@ -219,7 +236,7 @@ router.post('/students/bulk-add', authenticate, checkManagement, async (req, res
                     year,
                     section,
                     collegeId: (req.user.collegeId === 'undefined' || req.user.collegeId === 'null') ? undefined : req.user.collegeId,
-                    collegeCode: 'ACEEN-A5EC',
+                    collegeCode: collegeCode,
                     isActiveStudent: true
                 });
                 
@@ -241,6 +258,11 @@ router.patch('/students/:id/toggle-active', authenticate, checkManagement, async
     try {
         const user = await User.findById(req.params.id);
         if (!user) return res.status(404).json({ error: "User not found" });
+
+        // SECURITY: college_admin can only toggle students in their own college
+        if (req.user.role !== 'admin' && req.user.collegeId && user.collegeId?.toString() !== req.user.collegeId?.toString()) {
+            return res.status(403).json({ error: "Cannot modify students from another college" });
+        }
         
         user.isActiveStudent = !user.isActiveStudent;
         await user.save();
@@ -271,6 +293,7 @@ router.get('/my-schedule/faculty', authenticate, async (req, res) => {
 router.get('/my-schedule/student', authenticate, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
         if (!user.department || !user.year || !user.section) {
             return res.json([]); // Student not linked to a section
         }
@@ -278,7 +301,8 @@ router.get('/my-schedule/student', authenticate, async (req, res) => {
         const schedule = await Timetable.find({ 
             department: user.department, 
             year: user.year, 
-            section: user.section 
+            section: user.section,
+            collegeId: user.collegeId // SECURITY: Scope by college
         }).populate('facultyId', 'username').sort({ dayOfWeek: 1, startTime: 1 });
         
         res.json(schedule);
@@ -296,7 +320,7 @@ router.post('/start-lab/:timetableId', authenticate, async (req, res) => {
         if (!timetable) return res.status(404).json({ error: "Timetable entry not found" });
 
         // Ensure this faculty owns this timetable entry
-        if (timetable.facultyId.toString() !== req.user.userId) {
+        if (!timetable.facultyId || timetable.facultyId.toString() !== req.user.userId) {
             return res.status(403).json({ error: "Not authorized for this session" });
         }
 

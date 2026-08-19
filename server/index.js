@@ -287,11 +287,16 @@ app.use('/ai', aiLimiter);
 
 
 // --- CORS & SECURITY MIDDLEWARE ---
-// Explicitly handling CORS for Railway & Netlify production
+const allowedOrigins = [process.env.CLIENT_URL, process.env.CORS_ORIGIN, 'http://localhost:3000', 'http://localhost:5173'].filter(Boolean);
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow all origins to prevent CORS blocking issues
-        callback(null, true);
+        // Allow requests with no origin (mobile apps, Postman, server-to-server)
+        if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+            callback(null, true);
+        } else {
+            console.warn('[CORS] Blocked unrecognized origin:', origin);
+            callback(null, false);
+        }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -346,9 +351,13 @@ let IS_LICENSE_EXPIRED = false;
 app.post('/api/admin/kill-switch', (req, res) => {
     const { kalyanKey, raviKey, action } = req.body;
     
-    // Dual-Key Verification
-    const KALYAN_MASTER_KEY = process.env.KALYAN_KILL_KEY || 'KALYAN_OTP_2026';
-    const RAVI_MASTER_KEY = process.env.RAVI_KILL_KEY || 'RAVI_OTP_2026';
+    // Dual-Key Verification — SECURITY: No hardcoded fallbacks
+    const KALYAN_MASTER_KEY = process.env.KALYAN_KILL_KEY;
+    const RAVI_MASTER_KEY = process.env.RAVI_KILL_KEY;
+
+    if (!KALYAN_MASTER_KEY || !RAVI_MASTER_KEY) {
+        return res.status(503).json({ error: 'Kill switch not configured. Set KALYAN_KILL_KEY and RAVI_KILL_KEY in .env' });
+    }
 
     if (kalyanKey !== KALYAN_MASTER_KEY || raviKey !== RAVI_MASTER_KEY) {
         return res.status(403).json({ error: 'UNAUTHORIZED', message: 'Dual-Key Verification Failed. Both Founders must authorize.' });
@@ -449,12 +458,12 @@ app.post('/auth/register', async (req, res) => {
             username,
             password: hashedPassword,
             email: email || undefined,
-            role: role || 'student',
+            role: 'student', // SECURITY: Always force student on public registration
             collegeId: collegeId || undefined
         });
         await user.save();
 
-        const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET_RESOLVED, { expiresIn: '7d' });
 
         res.json({ token, user: { _id: user._id, username: user.username, role: user.role, picture: user.picture, collegeId: user.collegeId || null, collegeName } });
     } catch (e) {
@@ -585,7 +594,7 @@ app.post('/auth/google', async (req, res) => {
         // Admin Overrides
         if (user.email === 'prsnlkalyan@gmail.com') { user.role = 'admin'; user.username = 'P KALYAN REDDY'; }
 
-        const jwtToken = jwt.sign({ userId: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+        const jwtToken = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET_RESOLVED, { expiresIn: '7d' });
         res.json({ token: jwtToken, username: user.username, userId: user._id, picture: user.picture, role: user.role });
     } catch (e) {
         console.error("Google Auth Failed:", e);
@@ -640,7 +649,7 @@ app.get('/auth/github/callback', async (req, res) => {
             await user.save();
         }
 
-        const token = jwt.sign({ userId: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET_RESOLVED, { expiresIn: '7d' });
         res.redirect(`${CLIENT_URL}?token=${token}&username=${encodeURIComponent(user.username)}&userId=${user._id}&role=${user.role}&picture=${encodeURIComponent(user.picture || '')}`);
     } catch (e) {
         console.error("GitHub Auth Error:", e);
@@ -2389,7 +2398,7 @@ app.post('/auth/login', async (req, res) => {
             // Green AI: Track successful login
             greenAI.trackLoginSuccess(req.ip);
             // Include collegeId in JWT for query scoping
-            const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET, { expiresIn: '1d' });
+            const token = jwt.sign({ userId: user._id, username: user.username, role: user.role, collegeId: user.collegeId || null }, JWT_SECRET_RESOLVED, { expiresIn: '1d' });
             // Fetch college name if enrolled
             let collegeName = null;
             if (user.collegeId) {
@@ -2409,22 +2418,26 @@ app.post('/auth/login', async (req, res) => {
 
 app.post('/auth/reset-password', loginLimiter, async (req, res) => {
     try {
-        const { username, newPassword } = req.body;
-        if (!username || !newPassword) return res.status(400).json({ error: "Username and new password are required" });
+        const { username, currentPassword, newPassword } = req.body;
+        if (!username || !currentPassword || !newPassword) return res.status(400).json({ error: "Username, current password, and new password are required" });
         if (newPassword.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
 
         const user = await User.findOne({ username });
         if (!user) {
-            // Don't reveal whether the username exists (prevents user enumeration)
-            return res.status(200).json({ success: true, message: "If the account exists, the password has been updated." });
+            return res.status(403).json({ error: "Invalid credentials" });
+        }
+
+        // SECURITY: Verify current password before allowing reset
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(403).json({ error: "Current password is incorrect" });
         }
 
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(newPassword, salt);
         await user.save();
 
-        // Deliberately vague response to prevent user enumeration attacks
-        res.json({ success: true, message: "If the account exists, the password has been updated." });
+        res.json({ success: true, message: "Password has been updated successfully." });
     } catch (e) {
         res.status(500).json({ error: "Server error" });
     }
@@ -3043,7 +3056,7 @@ io.on('connection', (socket) => {
             const studentIdx = session.activeStudents.findIndex(s => s.username === username);
             if (studentIdx >= 0) {
                 session.activeStudents[studentIdx].raiseHand = true;
-                session.timeline.push({
+                session.activityLog.push({
                     username,
                     action: 'raise-hand',
                     timestamp: new Date(),
@@ -3063,7 +3076,7 @@ io.on('connection', (socket) => {
             const studentIdx = session.activeStudents.findIndex(s => s.username === username);
             if (studentIdx >= 0) {
                 session.activeStudents[studentIdx].raiseHand = false;
-                session.timeline.push({
+                session.activityLog.push({
                     username,
                     action: 'hand-acknowledged',
                     timestamp: new Date(),
@@ -3085,7 +3098,7 @@ io.on('connection', (socket) => {
         try {
             const session = await LabSession.findById(sessionId);
             if (session) {
-                session.timeline.push({
+                session.activityLog.push({
                     username: 'Faculty',
                     action: 'announcement',
                     timestamp: new Date(),

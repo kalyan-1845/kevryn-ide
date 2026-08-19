@@ -288,7 +288,7 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
             <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', bottom: '-100px', right: '-100px', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
 
-            <style>{\
+            <style>{`
                 @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
                 @keyframes pulse-glow { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
                 @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -297,7 +297,7 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
                 .quick-action-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; }
                 .quick-action-card:hover { transform: translateY(-6px); background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.15); }
                 .gradient-text { background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-            \}</style>
+            `}</style>
 
             {/* Premium Header */}
             <div style={{ marginBottom: '40px', animation: 'fadeUp 0.6s ease-out' }}>
@@ -325,9 +325,9 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '48px', animation: 'fadeUp 0.6s ease-out 0.2s both' }}>
                 {statCards.map((s, i) => (
                     <div key={i} className="glass-card" style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: \adial-gradient(circle, \20, transparent 70%)\, borderRadius: '50%' }} />
+                        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: `radial-gradient(circle, ${s.color}20, transparent 70%)`, borderRadius: '50%' }} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, fontSize: '24px', border: \1px solid \30\ }}>
+                            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, fontSize: '24px', border: `1px solid ${s.color}30` }}>
                                 {s.icon}
                             </div>
                             {s.pulse && (
@@ -358,7 +358,7 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
                                     width: '64px', height: '64px', borderRadius: '18px',
                                     background: a.gradient, display: 'flex', alignItems: 'center',
                                     justifyContent: 'center', fontSize: '24px', color: '#fff',
-                                    boxShadow: \  10px 25px \\, flexShrink: 0
+                                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)', flexShrink: 0
                                 }}>
                                     {a.icon}
                                 </div>

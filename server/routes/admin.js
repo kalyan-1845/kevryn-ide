@@ -32,6 +32,11 @@ router.get('/users', authenticate, checkAdmin, async (req, res) => {
         const { role, search } = req.query;
         let query = {};
 
+        // SECURITY: college_admin can only see their own college's users
+        if (req.user.role === 'college_admin' && req.user.collegeId) {
+            query.collegeId = req.user.collegeId;
+        }
+
         if (role && role !== 'all') query.role = role;
         if (search) {
             query.$or = [
@@ -59,12 +64,17 @@ router.get('/users', authenticate, checkAdmin, async (req, res) => {
 router.patch('/users/:id/status', authenticate, checkAdmin, async (req, res) => {
     try {
         const { isFacultyActive } = req.body;
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            { isFacultyActive },
-            { new: true }
-        ).select('-password');
-        res.json(user);
+        // SECURITY: college_admin can only modify users in their own college
+        const targetUser = await User.findById(req.params.id);
+        if (!targetUser) return res.status(404).json({ error: "User not found" });
+        if (req.user.role === 'college_admin' && targetUser.collegeId?.toString() !== req.user.collegeId?.toString()) {
+            return res.status(403).json({ error: "Cannot modify users from another college" });
+        }
+        targetUser.isFacultyActive = isFacultyActive;
+        await targetUser.save();
+        const safeUser = targetUser.toObject();
+        delete safeUser.password;
+        res.json(safeUser);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -78,8 +88,18 @@ router.patch('/users/:id/role', authenticate, checkAdmin, async (req, res) => {
             return res.status(400).json({ error: "Invalid role specified" });
         }
         
+        // SECURITY: college_admin can only modify users in their own college
+        const targetUser = await User.findById(req.params.id);
+        if (!targetUser) return res.status(404).json({ error: "User not found" });
+        if (req.user.role === 'college_admin' && targetUser.collegeId?.toString() !== req.user.collegeId?.toString()) {
+            return res.status(403).json({ error: "Cannot modify users from another college" });
+        }
+        // college_admin cannot promote to super admin
+        if (req.user.role === 'college_admin' && role === 'admin') {
+            return res.status(403).json({ error: "College admins cannot create super admins" });
+        }
+
         let updateData = { role };
-        // If promoting to faculty, auto-approve them so they aren't stuck in "Pending"
         if (role === 'faculty') {
             updateData.isFacultyActive = true;
         }
@@ -99,25 +119,29 @@ router.patch('/users/:id/role', authenticate, checkAdmin, async (req, res) => {
 // 3. Admin Analytics
 router.get('/analytics', authenticate, checkAdmin, async (req, res) => {
     try {
+        // SECURITY: Scope queries by college for college_admin
+        const collegeFilter = (req.user.role === 'college_admin' && req.user.collegeId)
+            ? { collegeId: req.user.collegeId } : {};
+
         // User Distribution
         const userCounts = await User.aggregate([
+            { $match: collegeFilter },
             { $group: { _id: "$role", count: { $sum: 1 } } }
         ]);
 
         // Active Sessions
-        const activeSessions = await LabSession.countDocuments({ isActive: true });
+        const activeSessions = await LabSession.countDocuments({ isActive: true, ...collegeFilter });
 
         // Recent Issues (last 24h)
         const recentIssues = await Issue.countDocuments({
-            createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+            createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+            ...collegeFilter
         });
 
         // Registration Trend (Last 7 days)
         const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const registrationTrend = await User.aggregate([
-            { $match: { _id: { $gte: mongoose.Types.ObjectId.createFromTime(Math.floor(last7Days.getTime() / 1000)) } } }, // Approx creation check via ObjectId if no createdAt field
-            // Wait, User model doesn't have createdAt. Using ObjectId timestamp as fallback.
-            // Actually, ObjectId contains timestamp.
+            { $match: { ...collegeFilter, _id: { $gte: mongoose.Types.ObjectId.createFromTime(Math.floor(last7Days.getTime() / 1000)) } } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$_id" } } },
@@ -133,7 +157,6 @@ router.get('/analytics', authenticate, checkAdmin, async (req, res) => {
             recentIssues,
             registrationTrend
         };
-        console.log("Admin Analytics Data:", JSON.stringify(data, null, 2));
         res.json(data);
     } catch (e) {
         console.error("Analytics Error:", e);
@@ -144,7 +167,10 @@ router.get('/analytics', authenticate, checkAdmin, async (req, res) => {
 // 4. Get All Issues
 router.get('/issues', authenticate, checkAdmin, async (req, res) => {
     try {
-        const issues = await Issue.find().sort({ createdAt: -1 }).limit(100);
+        // SECURITY: college_admin only sees their college's issues
+        const filter = (req.user.role === 'college_admin' && req.user.collegeId)
+            ? { collegeId: req.user.collegeId } : {};
+        const issues = await Issue.find(filter).sort({ createdAt: -1 }).limit(100);
         res.json(issues);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -223,11 +249,15 @@ router.post('/create-user', authenticate, checkAdmin, async (req, res) => {
         if (existing) return res.status(400).json({ error: "Username taken" });
 
         const hashedPassword = await bcrypt.hash(password, 10);
+        // SECURITY: Force college_admin's own collegeId
+        const resolvedCollegeId = (req.user.role === 'college_admin' && req.user.collegeId)
+            ? req.user.collegeId
+            : ((collegeId === 'undefined' || collegeId === 'null') ? undefined : collegeId);
         const user = new User({
             username,
             password: hashedPassword,
             role: role || 'user',
-            collegeId: (collegeId === 'undefined' || collegeId === 'null') ? undefined : collegeId
+            collegeId: resolvedCollegeId
         });
         await user.save();
 
