@@ -109,7 +109,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 
             {/* === SIDEBAR === */}
             <div style={{
-                width: '240px', minWidth: '240px', display: 'flex', flexDirection: 'column',
+                width: '260px', minWidth: '260px', display: 'flex', flexDirection: 'column',
                 background: 'linear-gradient(180deg, #0d1526 0%, #0a1020 100%)',
                 borderRight: '1px solid rgba(99,102,241,0.2)',
                 boxShadow: '4px 0 30px rgba(0,0,0,0.5)'
@@ -280,10 +280,11 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
     ];
 
     return (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 60px', background: '#020617', position: 'relative' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '30px 40px', background: '#020617', position: 'relative' }}>
+            <div style={{ maxWidth: '1300px', margin: '0 auto', width: '100%', position: 'relative' }}>
             {/* Background Glows */}
-            <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', bottom: '-100px', right: '-100px', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
+            <div style={{ position: 'absolute', bottom: '-100px', right: '-100px', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
 
             <style>{`
                 @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
@@ -301,10 +302,10 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
                 <div style={{ display: 'inline-block', padding: '6px 16px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '20px', fontSize: '12px', color: '#818cf8', fontWeight: '700', marginBottom: '16px', letterSpacing: '0.5px' }}>
                     {time.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </div>
-                <h1 style={{ fontSize: '42px', fontWeight: '900', margin: '0 0 12px 0', color: '#f8fafc', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
+                <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0 0 12px 0', color: '#f8fafc', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
                     Welcome back, <span className="gradient-text">{facultyName}</span> 👋
                 </h1>
-                <p style={{ color: '#94a3b8', fontSize: '16px', margin: 0, fontWeight: '500', maxWidth: '600px' }}>
+                <p style={{ color: '#94a3b8', fontSize: '18px', margin: 0, fontWeight: '500', maxWidth: '700px' }}>
                     Your command center is online. Monitor labs, manage assignments, and track student performance in real-time.
                 </p>
             </div>
@@ -334,8 +335,8 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
                             )}
                         </div>
                         <div>
-                            <div style={{ fontSize: '36px', fontWeight: '900', color: '#f8fafc', lineHeight: 1.1, marginBottom: '8px' }}>{s.value}</div>
-                            <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
+                            <div style={{ fontSize: '42px', fontWeight: '900', color: '#f8fafc', lineHeight: 1.1, marginBottom: '8px' }}>{s.value}</div>
+                            <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
                         </div>
                     </div>
                 ))}
@@ -360,8 +361,8 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
                                     {a.icon}
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', marginBottom: '6px' }}>{a.label}</div>
-                                    <div style={{ fontSize: '14px', color: '#94a3b8', lineHeight: '1.4' }}>{a.desc}</div>
+                                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px' }}>{a.label}</div>
+                                    <div style={{ fontSize: '15px', color: '#94a3b8', lineHeight: '1.5' }}>{a.desc}</div>
                                 </div>
                             </div>
                         </div>
@@ -398,9 +399,11 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     );
 };
 
 
 export default FacultyHub;
+
