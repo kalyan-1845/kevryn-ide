@@ -9,7 +9,7 @@ import {
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const StudentReports = ({ token, serverUrl }) => {
+const StudentReports = ({ token, serverUrl, onClose }) => {
     const reportRef = useRef(null);
     const [cohorts, setCohorts] = useState([]);
     const [selectedCohortStr, setSelectedCohortStr] = useState("");
@@ -234,8 +234,13 @@ const StudentReports = ({ token, serverUrl }) => {
         if (score >= 70) return '#f59e0b';
         return '#ef4444';
     };
-
     return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+            {onClose && (
+                <div style={{ padding: '15px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15, 23, 42, 0.4)' }}>
+                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', padding: '8px 14px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>Back</button>
+                </div>
+            )}
         <div style={{ display: 'flex', height: '100%', background: 'transparent', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif", overflow: 'hidden' }}>
 
             {/* --- SIDEBAR: ROSTER --- */}
@@ -610,4 +615,6 @@ const SecurityItem = ({ icon, label, value, desc }) => (
 );
 
 export default StudentReports;
+
+
 

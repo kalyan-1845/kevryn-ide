@@ -168,8 +168,6 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                     </NavSection>
                     <NavSection label="Lab Control">
                         <NavItem icon={<FaEye />} label="Live Monitor" isActive={activeView === 'active-labs'} onClick={() => setActiveView('active-labs')} badge={stats.activeSessions > 0 ? 'LIVE' : null} />
-                        <NavItem icon={<FaTasks />} label="Session Reports" isActive={activeView === 'lab-reports'} onClick={() => setActiveView('lab-reports')} />
-                        <NavItem icon={<FaChartLine />} label="General Reports" isActive={activeView === 'reports'} onClick={() => setActiveView('reports')} />
                     </NavSection>
                 </nav>
 
@@ -218,10 +216,10 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                 )}
                 {activeView === 'assignments' && <AssignmentManager token={token} serverUrl={serverUrl} userId={userId} />}
                 {activeView === 'aptitude' && <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} />}
-                {activeView === 'active-labs' && <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} onLogout={onLogout} isEmbedded={true} onSessionChange={refreshStats} />}
+                {activeView === 'active-labs' && <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} onLogout={onLogout} isEmbedded={true} onSessionChange={refreshStats} onOpenSessionReports={() => setActiveView('lab-reports')} onOpenGeneralReports={() => setActiveView('reports')} />}
                 {activeView === 'analytics' && <Gradebook token={token} serverUrl={serverUrl} />}
-                {activeView === 'lab-reports' && <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveView('dashboard')} />}
-                {activeView === 'reports' && <StudentReports token={token} serverUrl={serverUrl} />}
+                {activeView === 'lab-reports' && <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveView('active-labs')} />}
+                {activeView === 'reports' && <StudentReports token={token} serverUrl={serverUrl} onClose={() => setActiveView('active-labs')} />}
             </div>
         </div>
     );
@@ -402,6 +400,8 @@ const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, 
 
 
 export default FacultyHub;
+
+
 
 
 

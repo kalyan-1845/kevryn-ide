@@ -3,7 +3,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import {
     FaUserPlus, FaSignInAlt, FaChalkboardTeacher, FaDesktop, FaCode, FaCheckCircle,
-    FaExclamationTriangle, FaTimes, FaFile, FaSync, FaHistory, FaChartLine, FaFilePdf
+    FaExclamationTriangle, FaTimes, FaFile, FaSync, FaHistory, FaChartLine, FaFilePdf, FaTasks
 } from 'react-icons/fa';
 
 const _raw = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
@@ -45,7 +45,7 @@ const GlobalSessionTimer = ({ startTime, duration }) => {
 };
 
 
-const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSessionChange }) => { // Added isEmbedded <!-- id: 402 -->
+const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSessionChange, onOpenSessionReports, onOpenGeneralReports }) => { // Added isEmbedded <!-- id: 402 -->
     // Session State
     const [sessionId, setSessionId] = useState(null);
     const [sessionName, setSessionName] = useState("");
@@ -444,7 +444,33 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
     // --- RENDER: CREATE SESSION ---
     if (!sessionId || isCreatingSession) {
         return (
-            <div style={{ width: '100vw', height: '100vh', background: '#0f172a', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>
+            <div style={{ width: '100%', height: '100%', background: 'transparent', color: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '60px', fontFamily: 'Inter', padding: '40px' }}>
+                {/* LEFT SIDE: REPORTS CARDS */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '350px' }}>
+                    <div 
+                        onClick={onOpenSessionReports}
+                        style={{ background: 'rgba(30, 41, 59, 0.4)', backdropFilter: 'blur(12px)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '16px', padding: '30px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { transform: 'translateY(-5px)', background: 'rgba(30, 41, 59, 0.7)' } }}
+                        onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(30, 41, 59, 0.4)'; }}
+                    >
+                        <FaTasks size={32} color="#8b5cf6" style={{ marginBottom: '15px' }} />
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: '#fff' }}>Session Reports</h3>
+                        <p style={{ margin: 0, color: '#94a3b8', fontSize: '14px', lineHeight: '1.5' }}>View detailed analytics, submissions, and AI insights for past lab sessions.</p>
+                    </div>
+
+                    <div 
+                        onClick={onOpenGeneralReports}
+                        style={{ background: 'rgba(30, 41, 59, 0.4)', backdropFilter: 'blur(12px)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '16px', padding: '30px', cursor: 'pointer', transition: 'all 0.2s', ':hover': { transform: 'translateY(-5px)', background: 'rgba(30, 41, 59, 0.7)' } }}
+                        onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.background = 'rgba(30, 41, 59, 0.7)'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = 'rgba(30, 41, 59, 0.4)'; }}
+                    >
+                        <FaChartLine size={32} color="#10b981" style={{ marginBottom: '15px' }} />
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: '#fff' }}>General Reports</h3>
+                        <p style={{ margin: 0, color: '#94a3b8', fontSize: '14px', lineHeight: '1.5' }}>Analyze individual student profiles, overall performance, and gradebook.</p>
+                    </div>
+                </div>
+
+                {/* RIGHT SIDE: START LAB FORM */}
                 <div style={{ width: '400px', padding: '30px', background: '#1e293b', borderRadius: '12px', border: '1px solid #334155' }}>
                     {(() => {
                         const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -1033,4 +1059,6 @@ const MonitorDashboard = ({ token, serverUrl, userId, onLogout, isEmbedded, onSe
 };
 
 export default MonitorDashboard;
+
+
 
