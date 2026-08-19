@@ -55,6 +55,14 @@ try {
 }
 const fs = require('fs');
 const path = require('path');
+const cron = require('node-cron');
+const DevProfileSyncer = require('./services/DevProfileSyncer');
+
+// --- BACKGROUND JOBS ---
+// Run Developer Profile Sync every night at 2:00 AM
+cron.schedule('0 2 * * *', () => {
+    DevProfileSyncer.syncAllUsers();
+});
 const os = require('os');
 const axios = require('axios');
 const { spawn, exec } = require('child_process');
