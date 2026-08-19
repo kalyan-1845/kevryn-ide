@@ -472,7 +472,10 @@ app.use('/api/tracking', developerTrackingRouter);
 app.use('/api/admin', adminRouter); // NEW: Admin API
 app.use('/api/principal', require('./routes/principal'));
 app.use('/api/issues', issuesRouter); // NEW: Issue Reporting
+const managementAnalyticsRouter = require('./routes/managementAnalytics'); // NEW: Global Analytics
 app.use('/api/timetable', timetableRouter); // NEW: Timetable API
+app.use('/api/management-analytics', managementAnalyticsRouter); // NEW: Advanced Global Analytics API
+
 app.use('/api', collegeRouter); // NEW: Multi-College Routes (/api/college/join, /api/admin/colleges)
 app.use('/ai', aiRouter); // Mount AI routes
 app.use('/api/aptitude', aptitudeRouter); // NEW: Aptitude Module
