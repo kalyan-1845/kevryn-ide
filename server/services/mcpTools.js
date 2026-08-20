@@ -1,5 +1,5 @@
-﻿const LabSession = require('../models/LabSession');
-const User = require('../models/User');
+const LabSession = require('../LabSessionModel');
+const User = require('../User');
 const DeveloperMetrics = require('../models/DeveloperMetrics');
 
 const tools = [
