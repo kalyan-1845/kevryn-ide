@@ -18,7 +18,10 @@ const StudentAssignmentView = ({
     // viewMode: 'hub' | 'courses' | 'assignments' | 'solve' | 'aptitude-list'
     const [viewMode, setViewMode] = useState('hub');
     const [courses, setCourses] = useState([]);
-    const [selectedCourse, setSelectedCourse] = useState(null);
+    
+    // NEW: Master Subject Context
+    const [selectedContextId, setSelectedContextId] = useState('');
+
     const [assignments, setAssignments] = useState([]);
     const [selectedAssignment, setSelectedAssignment] = useState(null);
     const [submissions, setSubmissions] = useState([]);
@@ -124,29 +127,22 @@ const StudentAssignmentView = ({
         try {
             const res = await api.get('/api/student/enrolled-courses');
             setCourses(res.data);
+            if (res.data.length > 0 && !selectedContextId) {
+                setSelectedContextId(res.data[0]._id);
+            }
         } catch (e) { console.error("Failed to fetch courses", e); }
     };
 
     const fetchAptitudeHistory = async () => {
         try {
-            // New endpoint for student to see their test history
             const res = await api.get('/api/aptitude/student/history');
             setAptitudeHistory(res.data);
         } catch (e) { console.error("Failed to fetch aptitude history", e); }
     };
 
     const handleCourseClick = async (course) => {
-        setSelectedCourse(course);
-        setViewMode('assignments');
-        try {
-            const [assignRes, userRes] = await Promise.all([
-                api.get(`/api/assignments/course/${course._id}`),
-                api.get('/auth/user')
-            ]);
-            setAssignments(assignRes.data.map(a => ({ ...a, courseName: course.name })));
-            const subRes = await api.get(`/api/assignments/course/${course._id}/student/${userRes.data.username}`);
-            setSubmissions(subRes.data);
-        } catch (e) { console.error(e); }
+        setSelectedContextId(course._id);
+        setViewMode('hub'); // Instead of jumping to assignments, just select it
     };
 
     const openAssignment = (assignment) => {
@@ -171,7 +167,7 @@ const StudentAssignmentView = ({
             setViewMode('assignments');
             setSelectedAssignment(null);
         }
-        else if (viewMode === 'assignments') { setViewMode('hub'); setSelectedCourse(null); }
+        else if (viewMode === 'assignments') { setViewMode('hub'); }
         else if (viewMode === 'courses' || viewMode === 'aptitude-list') setViewMode('hub');
         else onBack();
     };
@@ -202,19 +198,20 @@ const StudentAssignmentView = ({
 
     // --- STYLES ---
     const cardStyle = {
-        background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'rgba(30, 41, 59, 0.4)', // Lightened slightly (slate-800 with opacity)
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: '24px',
         padding: '24px',
         cursor: 'pointer',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        boxShadow: '0 10px 30px -10px rgba(0,0,0,0.2)'
     };
 
     const containerStyle = {
-        padding: '60px 40px 120px 40px', // Increased bottom padding to ensure Developer section isn't cut off
+        padding: '40px 40px 120px 40px',
         color: '#f8fafc',
         maxWidth: '1250px',
         margin: '0 auto',
@@ -227,7 +224,7 @@ const StudentAssignmentView = ({
     const rootStyle = {
         height: '100%',
         width: '100%',
-        background: 'transparent',
+        background: 'linear-gradient(135deg, rgba(15,23,42,0.8), rgba(30,27,75,0.7))', // Less dark, more vibrant indigo/slate
         overflowY: 'auto',
         position: 'relative',
         scrollBehavior: 'smooth'
@@ -237,9 +234,9 @@ const StudentAssignmentView = ({
         position: 'fixed',
         bottom: '-5%',
         right: '-5%',
-        fontSize: '25vw',
+        fontSize: '20vw',
         fontWeight: '900',
-        color: 'rgba(255, 255, 255, 0.02)',
+        color: 'rgba(255, 255, 255, 0.015)',
         pointerEvents: 'none',
         zIndex: 1,
         fontFamily: "'Outfit', sans-serif",
@@ -256,29 +253,48 @@ const StudentAssignmentView = ({
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={containerStyle}>
                 {/* Header / Hero */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '60px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
                     <div>
-                        <h1 style={{ fontSize: '56px', fontWeight: '900', margin: '0 0 12px 0', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1.5px' }}>
-                            ACE Student Command Center
+                        <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0 0 12px 0', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1.5px' }}>
+                            Student Command Center
                         </h1>
-                        <p style={{ fontSize: '20px', color: '#94a3b8', margin: 0 }}>Welcome back, Operator. Stay sharp, your missions await.</p>
+                        <p style={{ fontSize: '18px', color: '#94a3b8', margin: '0 0 24px 0' }}>Welcome back, Operator. Stay sharp, your missions await.</p>
+                        
+                        {/* MASTER SUBJECT DROPDOWN */}
+                        {courses.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(30, 41, 59, 0.6)', padding: '12px 24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <FaBook color="#818cf8" size={20} />
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '1px' }}>Active Subject Context</span>
+                                    <select 
+                                        value={selectedContextId} 
+                                        onChange={(e) => setSelectedContextId(e.target.value)}
+                                        style={{ background: 'transparent', color: '#fff', border: 'none', fontSize: '18px', fontWeight: '800', outline: 'none', cursor: 'pointer', appearance: 'none', paddingRight: '20px' }}
+                                    >
+                                        {courses.map(c => (
+                                            <option key={c._id} value={c._id} style={{ background: '#0f172a' }}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={onBack}
                         style={{
                             padding: '14px 28px', borderRadius: '16px', border: '1px solid rgba(139, 92, 246, 0.3)',
-                            background: 'rgba(139, 92, 246, 0.05)', color: '#a78bfa', cursor: 'pointer',
+                            background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa', cursor: 'pointer',
                             fontWeight: '700', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '12px',
                             transition: 'all 0.2s', boxShadow: '0 0 20px rgba(139, 92, 246, 0.1)'
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'}}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.05)'; e.currentTarget.style.transform = 'translateY(0)'}}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'}}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)'; e.currentTarget.style.transform = 'translateY(0)'}}
                     >
                         <FaCode /> OPEN PERSONAL WORKSPACE
                     </button>
                 </div>
 
-                {/* NEW: Today's Schedule Widget */}
+                {/* Today's Schedule Widget */}
                 <div style={{ marginBottom: '40px' }}>
                     <StudentTimetableWidget token={token} activeSessionId={activeSessionId} onEnterLab={onEnterLab} />
                 </div>
@@ -288,83 +304,81 @@ const StudentAssignmentView = ({
                     <div style={{ marginBottom: '60px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                             <FaBolt color="#fbbf24" size={16} />
-                            <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Mission Control: Active Now</h2>
+                            <h2 style={{ fontSize: '14px', fontWeight: '800', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '2px', margin: 0 }}>Mission Control: Active Now</h2>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
                             {activeAptitudeSession && (
                                 <motion.div
                                     whileHover={{ scale: 1.02 }}
                                     style={{
-                                        background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(161, 98, 7, 0.05))',
-                                        border: '1px solid rgba(234, 179, 8, 0.4)', padding: '32px', borderRadius: '24px',
+                                        background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(161, 98, 7, 0.1))',
+                                        border: '1px solid rgba(234, 179, 8, 0.5)', padding: '32px', borderRadius: '24px',
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        boxShadow: '0 10px 40px -10px rgba(234, 179, 8, 0.1)'
+                                        boxShadow: '0 10px 40px -10px rgba(234, 179, 8, 0.2)'
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                        <div style={{ width: '56px', height: '56px', background: 'rgba(234,179,8,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#eab308' }}><FaExclamationTriangle size={28} /></div>
+                                        <div style={{ width: '56px', height: '56px', background: 'rgba(234,179,8,0.2)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24' }}><FaExclamationTriangle size={28} /></div>
                                         <div>
-                                            <div style={{ color: '#eab308', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>STRICT EXAM ACTIVE</div>
-                                            <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800' }}>{activeAptitudeSession.title}</h3>
+                                            <div style={{ color: '#fbbf24', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>STRICT EXAM ACTIVE</div>
+                                            <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800', color: '#fff' }}>{activeAptitudeSession.title}</h3>
                                         </div>
                                     </div>
-                                    <button onClick={onEnterAptitude} style={{ padding: '12px 24px', background: '#eab308', color: '#000', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>ENGAGE MISSION</button>
+                                    <button onClick={onEnterAptitude} style={{ padding: '12px 24px', background: '#fbbf24', color: '#000', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer' }}>ENGAGE MISSION</button>
                                 </motion.div>
                             )}
                             {activeSessionId && (
                                 <motion.div
                                     whileHover={{ scale: 1.02 }}
                                     style={{
-                                        background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(91, 33, 182, 0.05))',
-                                        border: '1px solid rgba(124, 58, 237, 0.4)', padding: '32px', borderRadius: '24px',
+                                        background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(91, 33, 182, 0.1))',
+                                        border: '1px solid rgba(124, 58, 237, 0.5)', padding: '32px', borderRadius: '24px',
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        boxShadow: '0 10px 40px -10px rgba(124, 58, 237, 0.1)'
+                                        boxShadow: '0 10px 40px -10px rgba(124, 58, 237, 0.2)'
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                        <div style={{ width: '56px', height: '56px', background: 'rgba(124,58,237,0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}><FaTerminal size={28} /></div>
+                                        <div style={{ width: '56px', height: '56px', background: 'rgba(124,58,237,0.2)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa' }}><FaTerminal size={28} /></div>
                                         <div>
-                                            <div style={{ color: '#a78bfa', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>LIVE LAB ACTIVE</div>
-                                            <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800' }}>Monitored Playground</h3>
+                                            <div style={{ color: '#c4b5fd', fontSize: '12px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>LIVE LAB ACTIVE</div>
+                                            <h3 style={{ margin: '4px 0', fontSize: '22px', fontWeight: '800', color: '#fff' }}>Monitored Playground</h3>
                                         </div>
                                     </div>
-                                    <button onClick={onEnterLab} style={{ padding: '12px 24px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}>JOIN SQUAD</button>
+                                    <button onClick={onEnterLab} style={{ padding: '12px 24px', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer' }}>JOIN SQUAD</button>
                                 </motion.div>
                             )}
                         </div>
                     </div>
                 )}
 
-                {/* Core Navigation Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
-                    <HubCard 
-                        title="Aptitude Center" 
-                        desc="Take standardized tests, mock exams, and view your detailed performance analytics."
-                        icon={<FaTrophy size={24} />}
-                        color="#eab308"
-                        onClick={() => setViewMode('aptitude-list')}
-                        count={activeAptitudeSession && new Date() >= new Date(activeAptitudeSession.startTime) && new Date() <= new Date(activeAptitudeSession.endTime) ? 1 : 0}
-                    />
-                    <HubCard 
-                        title="Assignment Depot" 
-                        desc="Complete your coding missions, handle edge cases, and deploy your best solutions."
-                        icon={<FaClipboardList size={24} />}
-                        color="#3b82f6"
-                        onClick={() => setViewMode('assignments')}
-                        count={activeAssignments.filter(a => new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
-                    />}
-                        color="#8b5cf6"
-                        onClick={() => setViewMode('courses')}
-                        count={courses.length}
-                    />
-                    <HubCard 
-                        title="Mission History" 
-                        desc="Review your past submissions, feedback from faculty, and grade progressions."
-                        icon={<FaHistory size={24} />}
-                        color="#10b981"
-                        onClick={() => { alert("History module coming soon!"); }}
-                    />
-                </div>
+                {/* Core Navigation Grid (Contextual) */}
+                {selectedContextId && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
+                        <HubCard 
+                            title="Aptitude Center" 
+                            desc="Take standardized tests and mock exams specific to this subject."
+                            icon={<FaTrophy size={24} />}
+                            color="#fbbf24"
+                            onClick={() => setViewMode('aptitude-list')}
+                            count={activeAptitudeSession && new Date() >= new Date(activeAptitudeSession.startTime) && new Date() <= new Date(activeAptitudeSession.endTime) ? 1 : 0}
+                        />
+                        <HubCard 
+                            title="Assignment Depot" 
+                            desc="Complete your coding missions and deploy solutions for this subject."
+                            icon={<FaClipboardList size={24} />}
+                            color="#3b82f6"
+                            onClick={() => setViewMode('assignments')}
+                            count={activeAssignments.filter(a => a.courseId === selectedContextId && new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
+                        />
+                        <HubCard 
+                            title="Performance Analytics" 
+                            desc="Review your past submissions, feedback, and grade progressions for this subject."
+                            icon={<FaHistory size={24} />}
+                            color="#10b981"
+                            onClick={() => { alert("History module coming soon!"); }}
+                        />
+                    </div>
+                )}
 
                 {/* NEW: Developer Identity Section */}
                 <div style={{ marginTop: '60px', marginBottom: '60px' }}>
@@ -430,7 +444,6 @@ const StudentAssignmentView = ({
             <div style={watermarkStyle}>TESTS</div>
             <div style={containerStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                    <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
                     <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Aptitude Test Center</h2>
                 </div>
 
@@ -471,20 +484,10 @@ const StudentAssignmentView = ({
                                 <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Score: {test.submission?.score || 'N/A'}</p>
                             </div>
                         ))
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-
-    // --- RENDER LOGIC ---
-    if (viewMode === 'hub') return renderHub();
-    if (viewMode === 'aptitude-list') return renderAptitudeList();
-
-    // RENDER SOLVER
-    if (viewMode === 'solve' && selectedAssignment) {
+    // --- RENDER SOLVE ---
+    const renderSolve = () => {
         return (
-            <div style={{ display: 'flex', height: '100vh', flexDirection: 'column', background: 'transparent', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif" }}>
+            <div style={{ display: 'flex', height: '100%', flexDirection: 'column', background: 'transparent', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif" }}>
                 
                 {/* STRICT PROCTORING FULLSCREEN OVERLAY */}
                 {!isFullscreen && (
@@ -574,14 +577,16 @@ const StudentAssignmentView = ({
                 </div>
             </div>
         );
-    }
+    };
 
-    // RENDER ASSIGNMENTS LIST
-    if (viewMode === 'assignments') {
+    // --- RENDER ASSIGNMENTS LIST ---
+    const renderAssignmentsList = () => {
         const now = new Date();
-        const activeNow = activeAssignments.filter(a => (!a.startTime || now >= new Date(a.startTime)) && (!a.endTime || now <= new Date(a.endTime)));
-        const upcoming = activeAssignments.filter(a => a.startTime && now < new Date(a.startTime));
-        const past = activeAssignments.filter(a => a.endTime && now > new Date(a.endTime));
+        const contextualAssignments = activeAssignments.filter(a => a.courseId === selectedContextId);
+        
+        const activeNow = contextualAssignments.filter(a => (!a.startTime || now >= new Date(a.startTime)) && (!a.endTime || now <= new Date(a.endTime)));
+        const upcoming = contextualAssignments.filter(a => a.startTime && now < new Date(a.startTime));
+        const past = contextualAssignments.filter(a => a.endTime && now > new Date(a.endTime));
 
         const renderAssignmentCards = (list) => (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '24px', marginBottom: '40px' }}>
@@ -606,7 +611,6 @@ const StudentAssignmentView = ({
                 <div style={watermarkStyle}>TASKS</div>
                 <div style={containerStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                        <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
                         <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Assigned Missions</h2>
                     </div>
                     
@@ -632,27 +636,72 @@ const StudentAssignmentView = ({
                 </div>
             </div>
         );
-    }
+    };
 
-    // RENDER COURSE LIST
-    return (
-        <div style={rootStyle}>
-            <div style={watermarkStyle}>ACADEMY</div>
-            <div style={containerStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-                    <motion.button whileHover={{ scale: 1.05 }} onClick={handleBack} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', color: '#fff', width: '40px', height: '40px', borderRadius: '12px', cursor: 'pointer' }}><FaArrowLeft /></motion.button>
-                    <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Academy Vault (Courses)</h2>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
-                    {courses.map(course => (
-                        <motion.div key={course._id} onClick={() => handleCourseClick(course)} whileHover={{ y: -5 }} style={cardStyle}>
-                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}></div>
-                            <h3 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>{course.name}</h3>
-                            <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>{course.code} • Sem {course.semester}</p>
-                        </motion.div>
-                    ))}
+    // --- RENDER COURSE LIST ---
+    const renderCourseList = () => {
+        return (
+            <div style={rootStyle}>
+                <div style={watermarkStyle}>ACADEMY</div>
+                <div style={containerStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
+                        <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Academy Vault (Courses)</h2>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>
+                        {courses.map(course => (
+                            <motion.div key={course._id} onClick={() => handleCourseClick(course)} whileHover={{ y: -5 }} style={cardStyle}>
+                                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)' }}></div>
+                                <h3 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>{course.name}</h3>
+                                <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>{course.code} • Sem {course.semester}</p>
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </div>
+        );
+    };
+
+    const renderActiveOverlay = () => {
+        if (viewMode === 'aptitude-list') return renderAptitudeList();
+        if (viewMode === 'solve' && selectedAssignment) return renderSolve();
+        if (viewMode === 'assignments') return renderAssignmentsList();
+        if (viewMode === 'courses') return renderCourseList();
+        return null;
+    };
+
+    return (
+        <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+            {/* BACKGROUND COMMAND CENTER (Always visible) */}
+            <div style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
+                {renderHub()}
+            </div>
+            
+            {/* OVERLAY ENGINE */}
+            <AnimatePresence>
+                {viewMode !== 'hub' && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg-primary, #0f172a)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
+                    >
+                        {viewMode !== 'solve' && (
+                            <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(10px)' }}>
+                                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    {viewMode === 'aptitude-list' ? 'Aptitude Test Center' : viewMode === 'assignments' ? 'Assignment Depot' : 'Academy Vault'}
+                                </div>
+                                <button onClick={() => setViewMode('hub')} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', padding: '6px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', transition: 'all 0.2s' }}>
+                                    <FaTimesCircle /> Close Overlay
+                                </button>
+                            </div>
+                        )}
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            {renderActiveOverlay()}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

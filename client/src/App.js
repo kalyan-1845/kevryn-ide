@@ -81,11 +81,16 @@ function App() {
         });
     }, []);
 
-    // Ensure loading screen turns off if no token
     useEffect(() => {
         if (!token) setIsAppLoading(false);
     }, [token]);
-    const [showStudentAssignments, setShowStudentAssignments] = useState(true); // Default to Command Center <!-- id: 401 -->
+    
+    // Default to Command Center ONLY if they are an ACE student
+    const [showStudentAssignments, setShowStudentAssignments] = useState(() => {
+        const cName = localStorage.getItem('collegeName');
+        return cName ? cName.toLowerCase().includes('ace') : false;
+    });
+
     const [authData, setAuthData] = useState({ username: "", password: "", email: "", collegeCode: "" });
     const [userPicture, setUserPicture] = useState(localStorage.getItem('picture') || null); // Store picture
 
@@ -262,6 +267,13 @@ function App() {
             setUserPicture(p);
             setCollegeId(cId);
             setCollegeName(cName);
+            
+            // Set Command Center visibility dynamically on login
+            if (r === 'student' && cName && cName.toLowerCase().includes('ace')) {
+                setShowStudentAssignments(true);
+            } else {
+                setShowStudentAssignments(false);
+            }
         }
     };
 
