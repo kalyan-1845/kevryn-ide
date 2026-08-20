@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FaCalendarAlt, FaClock, FaChartBar, FaTimes, FaDownload, FaPrint, FaExclamationTriangle, FaCheckCircle, FaUserCheck, FaUserTimes, FaShieldAlt } from 'react-icons/fa';
 
-const LabReports = ({ token, serverUrl, onClose }) => {
+const LabReports = ({ token, serverUrl, onClose, preSelectedCohort }) => {
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedReport, setSelectedReport] = useState(null);
@@ -16,7 +16,11 @@ const LabReports = ({ token, serverUrl, onClose }) => {
             try {
                 const api = axios.create({ baseURL: serverUrl || 'http://localhost:5000', headers: { Authorization: token } });
                 const res = await api.get('/lab/sessions/past');
-                setSessions(res.data.sessions || []);
+                let allSessions = res.data.sessions || [];
+                if (preSelectedCohort && preSelectedCohort.subjectName) {
+                    allSessions = allSessions.filter(s => s.subject === preSelectedCohort.subjectName);
+                }
+                setSessions(allSessions);
             } catch (err) {
                 console.error("Failed to load past sessions", err);
             } finally {

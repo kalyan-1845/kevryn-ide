@@ -99,10 +99,11 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 
         const renderComponent = () => {
             switch(activeOverlay) {
-                case 'monitor': return <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} isEmbedded={true} />;
+                case 'monitor': return <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} isEmbedded={true} onOpenSessionReports={() => setActiveOverlay('reports')} onOpenGeneralReports={() => setActiveOverlay('general-reports')} />;
                 case 'assignments': return <AssignmentManager token={token} serverUrl={serverUrl} userId={userId} preSelectedCohort={selectedClass} />;
                 case 'aptitude': return <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} preSelectedCohort={selectedClass} />;
-                case 'reports': return <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveOverlay(null)} />;
+                case 'reports': return <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveOverlay(null)} preSelectedCohort={selectedClass} />;
+                case 'general-reports': return <StudentReports token={token} serverUrl={serverUrl} onClose={() => setActiveOverlay(null)} preSelectedCohort={selectedClass} />;
                 default: return null;
             }
         };
@@ -137,7 +138,8 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
         { id: 'monitor', label: 'Launch Live Lab', desc: 'Initialize telemetry & student monitoring', icon: <FaRocket />, color: '#ef4444', glow: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.3)', action: handleStartLab, loading: startingLab },
         { id: 'assignments', label: 'Distribute Assignments', desc: 'Push coding tasks to this specific batch', icon: <FaClipboardList />, color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.3)', action: () => setActiveOverlay('assignments') },
         { id: 'aptitude', label: 'Conduct Aptitude Test', desc: 'Start live quiz & assessments', icon: <FaTasks />, color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.3)', action: () => setActiveOverlay('aptitude') },
-        { id: 'reports', label: 'Fetch Automated Reports', desc: 'Generate PDF logs & session analytics', icon: <FaFilePdf />, color: '#10b981', glow: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', action: () => setActiveOverlay('reports') }
+        { id: 'reports', label: 'Session Reports', desc: 'Generate PDF logs & session analytics', icon: <FaFilePdf />, color: '#10b981', glow: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', action: () => setActiveOverlay('reports') },
+        { id: 'general-reports', label: 'General Profiles', desc: 'Analyze student profiles & gradebook', icon: <FaChartLine />, color: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.15)', border: 'rgba(14, 165, 233, 0.3)', action: () => setActiveOverlay('general-reports') }
     ];
 
     return (

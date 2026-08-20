@@ -9,10 +9,18 @@ import {
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const StudentReports = ({ token, serverUrl, onClose }) => {
+const StudentReports = ({ token, serverUrl, onClose, preSelectedCohort }) => {
     const reportRef = useRef(null);
     const [cohorts, setCohorts] = useState([]);
-    const [selectedCohortStr, setSelectedCohortStr] = useState("");
+    const [selectedCohortStr, setSelectedCohortStr] = useState(
+        preSelectedCohort ? JSON.stringify({
+            department: preSelectedCohort.department,
+            year: preSelectedCohort.year,
+            section: preSelectedCohort.section,
+            subjectName: preSelectedCohort.subjectName,
+            label: `${preSelectedCohort.department} - Yr ${preSelectedCohort.year} - Sec ${preSelectedCohort.section} (${preSelectedCohort.subjectName})`
+        }) : ""
+    );
     const selectedCohort = useMemo(() => selectedCohortStr ? JSON.parse(selectedCohortStr) : null, [selectedCohortStr]);
     const [searchTerm, setSearchTerm] = useState("");
     const [reports, setReports] = useState([]);
