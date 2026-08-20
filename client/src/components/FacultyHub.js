@@ -1,91 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import {
-    FaChalkboardTeacher, FaCode, FaChartLine, FaSignOutAlt, FaBookOpen,
-    FaUserGraduate, FaClipboardList, FaDesktop, FaTachometerAlt,
-    FaBell, FaShieldAlt, FaEye, FaTasks, FaTrophy, FaCalendarAlt
+    FaDesktop, FaClipboardList, FaTasks, FaChartLine, FaSignOutAlt, 
+    FaCalendarAlt, FaTimes, FaSpinner, FaRocket, FaFilePdf, FaBook
 } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 import MonitorDashboard from './MonitorDashboard';
 import AssignmentManager from './AssignmentManager';
 import AptitudeManager from './AptitudeManager';
-import Gradebook from './Gradebook';
 import StudentReports from './StudentReports';
 import LabReports from './LabReports';
-import TimetableWidget from './TimetableWidget'; // NEW: Timetable
+import TimetableWidget from './TimetableWidget';
 import axios from 'axios';
 
-// Fallback local constants
 const _raw = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
 const SERVER_FALLBACK = _raw.startsWith('http') ? _raw : `https://${_raw}`;
 
-const LiveClock = () => {
-    const [time, setTime] = useState(new Date());
-    useEffect(() => {
-        const timer = setInterval(() => setTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-    return <span>{time.toLocaleTimeString()}</span>;
-};
-
-const Skeleton = ({ width = '100%', height = '20px', borderRadius = '4px', margin = '0' }) => (
-    <div style={{
-        width, height, borderRadius, margin,
-        background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)',
-        backgroundSize: '200% 100%',
-        animation: 'shimmer 2s infinite linear'
-    }} />
-);
-
 const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
-    const [activeView, setActiveView] = useState(localStorage.getItem('facultyActiveView') || 'dashboard');
-    const [stats, setStats] = useState({ courses: 0, students: 0, activeSessions: 0, scheduledLabs: 0 });
+    // Top-Level State
     const [facultyName, setFacultyName] = useState('Faculty');
     const [collegeName, setCollegeName] = useState(localStorage.getItem('collegeName') || null);
-    const [isLoading, setIsLoading] = useState(true);
     const [time, setTime] = useState(new Date());
+    
+    // Schedule & Master Context
+    const [schedule, setSchedule] = useState([]);
+    const [masterContextId, setMasterContextId] = useState("");
+    const [isLoadingSchedule, setIsLoadingSchedule] = useState(true);
+    const [startingLab, setStartingLab] = useState(false);
+
+    // Overlay Engine
+    const [activeOverlay, setActiveOverlay] = useState(null); // 'monitor', 'assignments', 'aptitude', 'reports'
+
+    const api = axios.create({ baseURL: serverUrl || SERVER_FALLBACK, headers: { Authorization: token } });
 
     useEffect(() => {
-        localStorage.setItem('facultyActiveView', activeView);
-    }, [activeView]);
-
-    // The 1s timer for 'time' state is removed from here as per instruction.
-    // The 'time' state will now only update on component mount or other re-renders,
-    // which is sufficient for greeting and dashboard date display.
-
-    const refreshStats = async () => {
-        if (!token) return;
-        setIsLoading(true);
-        const api = axios.create({ baseURL: serverUrl || SERVER_FALLBACK, headers: { Authorization: token } });
-        try {
-            const [courseRes, sessionRes, timetableRes] = await Promise.all([
-                api.get('/api/courses'),
-                api.get('/lab/active-session'),
-                api.get('/api/timetable/my-schedule/faculty')
-            ]);
-            const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-            const todaysLabs = (timetableRes.data || []).filter(s => s.dayOfWeek === today).length;
-            setStats({
-                courses: courseRes.data.length,
-                students: 0, // Mock student count for now or fetch if available
-                activeSessions: sessionRes.data.session ? 1 : 0,
-                scheduledLabs: todaysLabs
-            });
-        } catch (e) {
-            console.error("Stats Fetch Error:", e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        refreshStats();
-        // Try to get faculty info from token
         try {
             const payload = JSON.parse(atob(token.replace('Bearer ', '').split('.')[1]));
             if (payload.username) setFacultyName(payload.username);
             
-            // Fetch college info if not in localStorage
             if (!localStorage.getItem('collegeName')) {
-                const api = axios.create({ baseURL: serverUrl || SERVER_FALLBACK, headers: { Authorization: token } });
                 api.get('/api/college/my').then(res => {
                     if (res.data.college) {
                         setCollegeName(res.data.college.name);
@@ -96,312 +48,230 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
         } catch (e) { }
     }, [token, serverUrl]);
 
-    const greeting = () => {
-        const h = time.getHours();
-        if (h < 12) return 'Good Morning';
-        if (h < 17) return 'Good Afternoon';
-        return 'Good Evening';
+    useEffect(() => {
+        const fetchSchedule = async () => {
+            try {
+                const res = await api.get('/api/timetable/my-schedule/faculty');
+                setSchedule(res.data || []);
+            } catch (err) {
+                console.error("Failed to load schedule", err);
+            } finally {
+                setIsLoadingSchedule(false);
+            }
+        };
+        fetchSchedule();
+    }, [token]);
+
+    const today = time.toLocaleDateString('en-US', { weekday: 'long' });
+    const todaysClasses = schedule.filter(s => s.dayOfWeek === today);
+    const selectedClass = schedule.find(s => s._id === masterContextId);
+
+    const handleStartLab = async () => {
+        if (!masterContextId) return;
+        try {
+            setStartingLab(true);
+            // Auto-create/start the lab session for this timetable context
+            await api.post(`/api/timetable/start-lab/${masterContextId}`);
+            setActiveOverlay('monitor');
+        } catch (err) {
+            console.error("Failed to start lab via timetable", err);
+            // If it's already active, just open it
+            if (err.response?.status === 400 && err.response.data.error.includes("active")) {
+                setActiveOverlay('monitor');
+            } else {
+                alert(err.response?.data?.error || "Failed to start lab");
+            }
+        } finally {
+            setStartingLab(false);
+        }
     };
 
-    return (
-        <div style={{ display: 'flex', width: '100vw', height: '100vh', background: 'transparent', color: '#e2e8f0', fontFamily: "'Inter', sans-serif", overflow: 'hidden' }}>
+    // --- RENDERERS ---
 
-            {/* === SIDEBAR === */}
-            <div style={{
-                width: '260px', minWidth: '260px', display: 'flex', flexDirection: 'column',
-                background: 'linear-gradient(180deg, #0d1526 0%, #0a1020 100%)',
-                borderRight: '1px solid rgba(99,102,241,0.2)',
-                boxShadow: '4px 0 30px rgba(0,0,0,0.5)'
-            }}>
-                {/* Logo */}
-                <div style={{ padding: '24px 20px', borderBottom: '1px solid rgba(99,102,241,0.15)' }}>
+    const renderOverlay = () => {
+        if (!activeOverlay) return null;
+
+        const overlayVariants = {
+            hidden: { opacity: 0, scale: 0.98 },
+            visible: { opacity: 1, scale: 1, transition: { duration: 0.2, ease: "easeOut" } },
+            exit: { opacity: 0, scale: 0.98, transition: { duration: 0.15 } }
+        };
+
+        const renderComponent = () => {
+            switch(activeOverlay) {
+                case 'monitor': return <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} isEmbedded={true} />;
+                case 'assignments': return <AssignmentManager token={token} serverUrl={serverUrl} userId={userId} preSelectedCohort={selectedClass} />;
+                case 'aptitude': return <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} preSelectedCohort={selectedClass} />;
+                case 'reports': return <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveOverlay(null)} />;
+                default: return null;
+            }
+        };
+
+        return (
+            <motion.div 
+                initial="hidden" animate="visible" exit="exit" variants={overlayVariants}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    background: 'var(--bg-primary, #000000)',
+                    display: 'flex', flexDirection: 'column'
+                }}
+            >
+                <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            <img src="/logo.png?v=4" alt="KevRyn Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 0 10px rgba(99,102,241,0.6))' }} />
+                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            {selectedClass ? `${selectedClass.subjectName} (${selectedClass.department} ${selectedClass.year}-${selectedClass.section})` : 'Command Overlay'}
                         </div>
-                        <div>
-                            <div style={{ fontSize: '15px', fontWeight: '800', color: '#f1f5f9', letterSpacing: '-0.3px' }}>KevRyn</div>
-                            <div style={{ fontSize: '10px', color: '#6366f1', fontWeight: '600', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Faculty Command</div>
-                        </div>
+                    </div>
+                    <button onClick={() => setActiveOverlay(null)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', padding: '6px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                        <FaTimes /> Close Environment
+                    </button>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                    {renderComponent()}
+                </div>
+            </motion.div>
+        );
+    };
+
+    const actionBlocks = [
+        { id: 'monitor', label: 'Launch Live Lab', desc: 'Initialize telemetry & student monitoring', icon: <FaRocket />, color: '#ef4444', glow: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.3)', action: handleStartLab, loading: startingLab },
+        { id: 'assignments', label: 'Distribute Assignments', desc: 'Push coding tasks to this specific batch', icon: <FaClipboardList />, color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.3)', action: () => setActiveOverlay('assignments') },
+        { id: 'aptitude', label: 'Conduct Aptitude Test', desc: 'Start live quiz & assessments', icon: <FaTasks />, color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.3)', action: () => setActiveOverlay('aptitude') },
+        { id: 'reports', label: 'Fetch Automated Reports', desc: 'Generate PDF logs & session analytics', icon: <FaFilePdf />, color: '#10b981', glow: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', action: () => setActiveOverlay('reports') }
+    ];
+
+    return (
+        <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', color: '#e2e8f0', fontFamily: "'Outfit', 'Inter', sans-serif", overflow: 'hidden' }}>
+            
+            {/* 1. TOP NAVBAR (Single Page Paradigm) */}
+            <header style={{ padding: '16px 32px', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <img src="/logo.png?v=4" alt="KevRyn Logo" style={{ height: '36px', filter: 'drop-shadow(0 0 10px rgba(99,102,241,0.4))' }} />
+                    <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '16px' }}>
+                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', letterSpacing: '-0.5px' }}>Faculty Command Center</div>
+                        <div style={{ fontSize: '12px', color: '#818cf8', fontWeight: '600', letterSpacing: '1px' }}>{time.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
                     </div>
                 </div>
 
-                {/* Faculty Info */}
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                            width: '34px', height: '34px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '13px', fontWeight: '700', color: '#fff',
-                            flexShrink: 0
-                        }}>
-                            {facultyName[0]?.toUpperCase()}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{facultyName}</div>
-                            {collegeName ? (
-                                <div style={{ fontSize: '9px', color: '#818cf8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    {collegeName.substring(0, 20)}{collegeName.length > 20 ? '...' : ''}
-                                </div>
-                            ) : (
-                                <div style={{ fontSize: '10px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ width: '5px', height: '5px', background: '#4ade80', borderRadius: '50%', display: 'inline-block' }}></span>
-                                    Online
-                                </div>
-                            )}
-                        </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{facultyName}</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{collegeName || 'Instructor'}</div>
                     </div>
-                </div>
-
-                {/* Nav */}
-                <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
-                    <NavSection label="Overview">
-                        <NavItem icon={<FaTachometerAlt />} label="Dashboard" isActive={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')} />
-                    </NavSection>
-                    <NavSection label="Management">
-                        <NavItem icon={<FaClipboardList />} label="Assignments" isActive={activeView === 'assignments'} onClick={() => setActiveView('assignments')} />
-                        <NavItem icon={<FaTasks />} label="Aptitude Tests" isActive={activeView === 'aptitude'} onClick={() => setActiveView('aptitude')} />
-                        <NavItem icon={<FaUserGraduate />} label="Gradebook" isActive={activeView === 'analytics'} onClick={() => setActiveView('analytics')} />
-                    </NavSection>
-                    <NavSection label="Lab Control">
-                        <NavItem icon={<FaEye />} label="Live Monitor" isActive={activeView === 'active-labs'} onClick={() => setActiveView('active-labs')} badge={stats.activeSessions > 0 ? 'LIVE' : null} />
-                    </NavSection>
-                </nav>
-
-                {/* Bottom */}
-                <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: '11px', color: '#475569', textAlign: 'center', marginBottom: '10px' }}>
-                        <LiveClock />
-                    </div>
-                    <button onClick={onLogout} style={{
-                        width: '100%', padding: '9px', background: 'rgba(239,68,68,0.1)',
-                        border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444',
-                        borderRadius: '8px', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', gap: '8px',
-                        fontSize: '13px', fontWeight: '600', transition: 'all 0.2s'
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
-                    >
+                    <button onClick={onLogout} style={{ padding: '8px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold' }}>
                         <FaSignOutAlt /> Logout
                     </button>
                 </div>
-            </div>
+            </header>
 
-            {/* === MAIN CONTENT === */}
-            <div style={{ flex: 1, overflowY: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-                {activeView === 'dashboard' && (
-                    isLoading ? (
-                        <div style={{ padding: '40px' }}>
-                            <Skeleton width="200px" height="30px" margin="0 0 20px 0" />
-                            <Skeleton height="150px" borderRadius="16px" margin="0 0 40px 0" />
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <Skeleton height="100px" borderRadius="16px" />
-                                <Skeleton height="100px" borderRadius="16px" />
-                            </div>
-                        </div>
-                    ) : (
-                        <FacultyDashboardHome
-                            greeting={greeting()}
-                            facultyName={facultyName}
-                            stats={stats}
-                            time={time}
-                            onNavigate={setActiveView}
-                            serverUrl={serverUrl}
-                        />
-                    )
-                )}
-                {activeView === 'assignments' && <AssignmentManager token={token} serverUrl={serverUrl} userId={userId} />}
-                {activeView === 'aptitude' && <AptitudeManager token={token} serverUrl={serverUrl} userId={userId} />}
-                {activeView === 'active-labs' && <MonitorDashboard token={token} serverUrl={serverUrl} userId={userId} onLogout={onLogout} isEmbedded={true} onSessionChange={refreshStats} onOpenSessionReports={() => setActiveView('lab-reports')} onOpenGeneralReports={() => setActiveView('reports')} />}
-                {activeView === 'analytics' && <Gradebook token={token} serverUrl={serverUrl} />}
-                {activeView === 'lab-reports' && <LabReports token={token} serverUrl={serverUrl} onClose={() => setActiveView('active-labs')} />}
-                {activeView === 'reports' && <StudentReports token={token} serverUrl={serverUrl} onClose={() => setActiveView('active-labs')} />}
-            </div>
-        </div>
-    );
-};
-
-/* ── Sub-components ── */
-
-const NavSection = ({ label, children }) => (
-    <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '9px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '6px', paddingLeft: '8px' }}>{label}</div>
-        {children}
-    </div>
-);
-
-const NavItem = ({ icon, label, isActive, onClick, badge }) => (
-    <div onClick={onClick} style={{
-        display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px',
-        borderRadius: '8px', cursor: 'pointer', marginBottom: '2px',
-        background: isActive ? 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15))' : 'transparent',
-        border: isActive ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
-        color: isActive ? '#a5b4fc' : '#64748b',
-        fontWeight: isActive ? '600' : '400',
-        transition: 'all 0.15s',
-        position: 'relative'
-    }}
-        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-    >
-        <span style={{ fontSize: '13px' }}>{icon}</span>
-        <span style={{ fontSize: '13px', flex: 1 }}>{label}</span>
-        {badge && (
-            <span style={{
-                fontSize: '9px', fontWeight: '800', padding: '2px 6px', borderRadius: '8px',
-                background: badge === 'LIVE' ? '#ef4444' : '#6366f1', color: '#fff', letterSpacing: '0.5px',
-                animation: badge === 'LIVE' ? 'pulse 2s infinite' : 'none'
-            }}>{badge}</span>
-        )}
-    </div>
-);
-
-const FacultyDashboardHome = ({ greeting, facultyName, stats, time, onNavigate, serverUrl }) => {
-    const quickActions = [
-        { label: 'Start Live Lab', icon: <FaDesktop />, view: 'active-labs', color: '#818cf8', gradient: 'linear-gradient(135deg, #4f46e5, #7c3aed)', desc: 'Monitor students in real-time', glow: 'rgba(99, 102, 241, 0.4)' },
-        { label: 'Assignments', icon: <FaClipboardList />, view: 'assignments', color: '#fbbf24', gradient: 'linear-gradient(135deg, #d97706, #f59e0b)', desc: 'Create & review assignments', glow: 'rgba(245, 158, 11, 0.4)' },
-        { label: 'Student Reports', icon: <FaChartLine />, view: 'reports', color: '#34d399', gradient: 'linear-gradient(135deg, #059669, #10b981)', desc: 'View lab activity reports', glow: 'rgba(16, 185, 129, 0.4)' },
-    ];
-
-    const statCards = [
-        { label: 'Scheduled Labs Today', value: stats.scheduledLabs || 0, icon: <FaCalendarAlt />, color: '#34d399', bg: 'rgba(16, 185, 129, 0.1)' },
-        { label: 'Live Sessions', value: stats.activeSessions, icon: <FaDesktop />, color: stats.activeSessions > 0 ? '#f87171' : '#94a3b8', bg: stats.activeSessions > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(148, 163, 184, 0.1)', pulse: stats.activeSessions > 0 },
-        { label: 'Today', value: time.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }), icon: <FaChartLine />, color: '#818cf8', bg: 'rgba(99, 102, 241, 0.1)' },
-    ];
-
-    return (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '30px 40px', background: 'transparent', position: 'relative' }}>
-            <div style={{ maxWidth: '1300px', margin: '0 auto', width: '100%', position: 'relative' }}>
-            {/* Background Glows */}
-            <div style={{ position: 'absolute', top: '-100px', left: '-100px', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
-            <div style={{ position: 'absolute', bottom: '-100px', right: '-100px', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
-
-            <style>{`
-                @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
-                @keyframes pulse-glow { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-                @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-                .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-                .glass-card:hover { border: 1px solid rgba(255, 255, 255, 0.2); transform: translateY(-4px); box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5); }
-                .quick-action-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; }
-                .quick-action-card:hover { transform: translateY(-6px); background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255,255,255,0.15); }
-                .gradient-text { background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-            `}</style>
-
-            {/* Premium Header */}
-            <div style={{ marginBottom: '40px', animation: 'fadeUp 0.6s ease-out' }}>
-                <div style={{ display: 'inline-block', padding: '6px 16px', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '20px', fontSize: '12px', color: '#818cf8', fontWeight: '700', marginBottom: '16px', letterSpacing: '0.5px' }}>
-                    {time.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                </div>
-                <h1 style={{ fontSize: '48px', fontWeight: '900', margin: '0 0 12px 0', color: '#f8fafc', letterSpacing: '-1.5px', lineHeight: '1.2' }}>
-                    Welcome back, <span className="gradient-text">{facultyName}</span> 👋
-                </h1>
-                <p style={{ color: '#94a3b8', fontSize: '18px', margin: 0, fontWeight: '500', maxWidth: '700px' }}>
-                    Your command center is online. Monitor labs, manage assignments, and track student performance in real-time.
-                </p>
-            </div>
-
-            {/* Smart Schedule Widget */}
-            <div style={{ animation: 'fadeUp 0.6s ease-out 0.1s both', marginBottom: '40px' }}>
-                <div style={{ padding: '2px', background: 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(168,85,247,0.1), rgba(255,255,255,0.02))', borderRadius: '22px' }}>
-                    <div style={{ background: '#0f172a', borderRadius: '20px', padding: '24px' }}>
-                        <TimetableWidget token={localStorage.getItem('token')} serverUrl={serverUrl} onLabStarted={() => onNavigate('active-labs')} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Premium Stat Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '48px', animation: 'fadeUp 0.6s ease-out 0.2s both' }}>
-                {statCards.map((s, i) => (
-                    <div key={i} className="glass-card" style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: `radial-gradient(circle, ${s.color}20, transparent 70%)`, borderRadius: '50%' }} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, fontSize: '24px', border: `1px solid ${s.color}30` }}>
-                                {s.icon}
-                            </div>
-                            {s.pulse && (
-                                <div style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '20px', color: '#ef4444', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', animation: 'pulse-glow 2s infinite' }}>
-                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} /> LIVE NOW
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '42px', fontWeight: '900', color: '#f8fafc', lineHeight: 1.1, marginBottom: '8px' }}>{s.value}</div>
-                            <div style={{ fontSize: '14px', color: '#94a3b8', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{s.label}</div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Quick Actions (Floating Glass Cards) */}
-            <div style={{ animation: 'fadeUp 0.6s ease-out 0.3s both' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                    <div style={{ width: '4px', height: '16px', background: '#818cf8', borderRadius: '2px' }} />
-                    <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>Command Modules</h3>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
-                    {quickActions.map((a, i) => (
-                        <div key={i} className="quick-action-card" onClick={() => onNavigate(a.view)} style={{ padding: '24px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                <div style={{
-                                    width: '64px', height: '64px', borderRadius: '18px',
-                                    background: a.gradient, display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', fontSize: '24px', color: '#fff',
-                                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)', flexShrink: 0
-                                }}>
-                                    {a.icon}
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '20px', fontWeight: '800', color: '#f8fafc', marginBottom: '8px' }}>{a.label}</div>
-                                    <div style={{ fontSize: '15px', color: '#94a3b8', lineHeight: '1.5' }}>{a.desc}</div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Feature Highlights - Premium Data Grid */}
-            <div style={{ marginTop: '48px', animation: 'fadeUp 0.6s ease-out 0.4s both' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                    <div style={{ width: '4px', height: '16px', background: '#34d399', borderRadius: '2px' }} />
-                    <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '1.5px', margin: 0 }}>Platform Capabilities</h3>
-                </div>
-                <div className="glass-card" style={{ padding: '32px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
-                        {[
-                            { icon: '👁️', label: 'Real-time Telemetry', desc: 'Monitor every keystroke and screen instantly' },
-                            { icon: '🛡️', label: 'Security Enforcement', desc: 'Automated tab tracking & paste detection' },
-                            { icon: '🧠', label: 'AI Integrity Scoring', desc: 'Behavioral analysis for academic honesty' },
-                            { icon: '⚡', label: 'Live IDE Sandbox', desc: 'Secure cloud environments for coding' },
-                            { icon: '📡', label: 'Global Broadcast', desc: 'Send alerts directly to student workspaces' },
-                            { icon: '📊', label: 'Automated Grading', desc: 'Run test cases and generate score reports' },
-                        ].map((f, i) => (
-                            <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                                <div style={{ fontSize: '24px', width: '48px', height: '48px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    {f.icon}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#f8fafc', marginBottom: '4px' }}>{f.label}</div>
-                                    <div style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.5' }}>{f.desc}</div>
-                                </div>
-                            </div>
+            {/* 2. MASTER DROPDOWN BAR */}
+            <div style={{ padding: '24px 32px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '24px', zIndex: 5 }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Global Context:</div>
+                <div style={{ position: 'relative', flex: 1, maxWidth: '500px' }}>
+                    <select 
+                        value={masterContextId} 
+                        onChange={(e) => setMasterContextId(e.target.value)}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', background: '#0f172a', border: '1px solid #3b82f6', color: '#fff', fontSize: '16px', fontWeight: '600', outline: 'none', cursor: 'pointer', appearance: 'none', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)' }}
+                    >
+                        <option value="">-- Select Today's Assigned Lab Context --</option>
+                        {todaysClasses.map(cls => (
+                            <option key={cls._id} value={cls._id}>
+                                {cls.subjectName} ({cls.subjectCode}) • {cls.department} Year {cls.year} Sec {cls.section} • {cls.startTime} - {cls.endTime}
+                            </option>
                         ))}
+                    </select>
+                    {/* Custom Arrow */}
+                    <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#3b82f6' }}>▼</div>
+                </div>
+                {todaysClasses.length === 0 && !isLoadingSchedule && (
+                    <div style={{ fontSize: '13px', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                        You have no assigned classes today.
                     </div>
+                )}
+            </div>
+
+            {/* 3. MAIN WORKSPACE */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '32px', position: 'relative' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+
+                    {/* INITIAL STATE: Schedule View (when no context is selected) */}
+                    <AnimatePresence mode="wait">
+                        {!masterContextId ? (
+                            <motion.div key="schedule" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
+                                <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '20px' }}>
+                                    <div style={{ width: '64px', height: '64px', background: 'rgba(99,102,241,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8', fontSize: '24px' }}>
+                                        <FaCalendarAlt />
+                                    </div>
+                                    <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#f8fafc', margin: '0 0 12px 0' }}>Welcome, {facultyName}.</h2>
+                                    <p style={{ color: '#94a3b8', fontSize: '16px', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
+                                        Select a lab context from the dropdown above to initialize automated command modules, or review your weekly schedule below.
+                                    </p>
+                                </div>
+                                
+                                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px', backdropFilter: 'blur(10px)' }}>
+                                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#e2e8f0', margin: '0 0 24px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '16px' }}>Your Weekly Timetable</h3>
+                                    <TimetableWidget token={token} serverUrl={serverUrl} onLabStarted={() => {}} />
+                                </div>
+                            </motion.div>
+                        ) : (
+                            /* ACTIVE STATE: Action Blocks (when context IS selected) */
+                            <motion.div key="actions" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
+                                
+                                <div style={{ marginBottom: '32px', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05))', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '24px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                    <div style={{ width: '56px', height: '56px', background: '#3b82f6', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#fff', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }}>
+                                        <FaBook />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Active Context</div>
+                                        <div style={{ fontSize: '24px', fontWeight: '800', color: '#fff' }}>{selectedClass?.subjectName}</div>
+                                        <div style={{ fontSize: '14px', color: '#818cf8', fontWeight: '600' }}>Target: {selectedClass?.department} Year {selectedClass?.year} Section {selectedClass?.section}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                                    {actionBlocks.map((block) => (
+                                        <motion.div 
+                                            key={block.id}
+                                            whileHover={{ y: -5, scale: 1.02 }}
+                                            onClick={block.loading ? null : block.action}
+                                            style={{ 
+                                                background: `linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9))`, 
+                                                border: `1px solid ${block.border}`, 
+                                                borderRadius: '24px', 
+                                                padding: '32px 24px', 
+                                                cursor: block.loading ? 'wait' : 'pointer',
+                                                position: 'relative',
+                                                overflow: 'hidden',
+                                                boxShadow: `0 10px 30px -10px ${block.glow}`
+                                            }}
+                                        >
+                                            <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: `radial-gradient(circle, ${block.glow}, transparent 70%)`, borderRadius: '50%', zIndex: 0 }} />
+                                            
+                                            <div style={{ position: 'relative', zIndex: 1 }}>
+                                                <div style={{ fontSize: '32px', color: block.color, marginBottom: '20px' }}>
+                                                    {block.loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}><FaSpinner /></motion.div> : block.icon}
+                                                </div>
+                                                <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#f8fafc', margin: '0 0 8px 0' }}>{block.label}</h3>
+                                                <p style={{ margin: 0, fontSize: '14px', color: '#94a3b8', lineHeight: '1.5' }}>{block.desc}</p>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </div>
+
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                 </div>
             </div>
-            </div>
+
+            {/* OVERLAY ENGINE */}
+            <AnimatePresence>
+                {renderOverlay()}
+            </AnimatePresence>
+
         </div>
     );
 };
-
 
 export default FacultyHub;
-
-
-
-
-

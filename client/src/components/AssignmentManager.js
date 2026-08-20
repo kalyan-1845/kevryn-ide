@@ -3,7 +3,7 @@ import axios from 'axios';
 import Editor from '@monaco-editor/react';
 import { FaPlus, FaTrash, FaSave, FaCode, FaPython, FaJs, FaJava, FaCalendarAlt, FaFlask, FaStar, FaFire } from 'react-icons/fa';
 
-const AssignmentManager = ({ token, serverUrl, userId }) => {
+const AssignmentManager = ({ token, serverUrl, userId, preSelectedCohort }) => {
     const [cohorts, setCohorts] = useState([]);
     const [selectedCohort, setSelectedCohort] = useState('');
     const [assignments, setAssignments] = useState([]);
@@ -56,7 +56,20 @@ const AssignmentManager = ({ token, serverUrl, userId }) => {
             }
             const uniqueCohorts = Array.from(uniqueMap.values());
             setCohorts(uniqueCohorts);
-            if (uniqueCohorts.length > 0) {
+            if (preSelectedCohort) {
+                // Find matching cohort from the list
+                const match = uniqueCohorts.find(c => 
+                    c.targetDepartment === preSelectedCohort.department && 
+                    c.targetYear === preSelectedCohort.year && 
+                    c.targetSection === preSelectedCohort.section && 
+                    c.subjectName === preSelectedCohort.subjectName
+                );
+                if (match) {
+                    setSelectedCohort(JSON.stringify(match));
+                } else if (uniqueCohorts.length > 0) {
+                    setSelectedCohort(JSON.stringify(uniqueCohorts[0]));
+                }
+            } else if (uniqueCohorts.length > 0) {
                 setSelectedCohort(JSON.stringify(uniqueCohorts[0]));
             }
         } catch (e) {

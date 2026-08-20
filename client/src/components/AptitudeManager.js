@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FaPlus, FaTasks, FaMagic, FaTrash, FaPlay, FaStop, FaSave, FaCheck, FaExclamationTriangle, FaChartLine } from 'react-icons/fa';
 
-const AptitudeManager = ({ token, serverUrl }) => {
+const AptitudeManager = ({ token, serverUrl, preSelectedCohort }) => {
     const [tests, setTests] = useState([]);
     const [cohorts, setCohorts] = useState([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -65,6 +65,21 @@ const AptitudeManager = ({ token, serverUrl }) => {
             }
             const uniqueCohorts = Array.from(uniqueMap.values());
             setCohorts(uniqueCohorts);
+            if (preSelectedCohort) {
+                const match = uniqueCohorts.find(c => 
+                    c.targetDepartment === preSelectedCohort.department && 
+                    c.targetYear === preSelectedCohort.year && 
+                    c.targetSection === preSelectedCohort.section && 
+                    c.subjectName === preSelectedCohort.subjectName
+                );
+                if (match) {
+                    setFormData(prev => ({ ...prev, selectedCohort: JSON.stringify(match) }));
+                } else if (uniqueCohorts.length > 0) {
+                    setFormData(prev => ({ ...prev, selectedCohort: JSON.stringify(uniqueCohorts[0]) }));
+                }
+            } else if (uniqueCohorts.length > 0) {
+                setFormData(prev => ({ ...prev, selectedCohort: JSON.stringify(uniqueCohorts[0]) }));
+            }
         } catch (e) {
             console.error("Failed to fetch cohorts", e);
         }
