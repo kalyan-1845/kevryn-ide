@@ -368,7 +368,12 @@ const StudentAssignmentView = ({
                             icon={<FaClipboardList size={24} />}
                             color="#3b82f6"
                             onClick={() => setViewMode('assignments')}
-                            count={activeAssignments.filter(a => (a.courseId?._id || a.courseId) === selectedContextId && new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
+                            count={activeAssignments.filter(a => {
+                                const isContext = (a.courseId) 
+                                    ? (a.courseId._id || a.courseId) === selectedContextId 
+                                    : (courses.find(c => c._id === selectedContextId)?.name?.toLowerCase() === a.subjectName?.toLowerCase());
+                                return isContext && (!a.startTime || new Date() >= new Date(a.startTime)) && (!a.endTime || new Date() <= new Date(a.endTime));
+                            }).length}
                         />
                         <HubCard 
                             title="Performance Analytics" 
@@ -588,7 +593,13 @@ const StudentAssignmentView = ({
     // --- RENDER ASSIGNMENTS LIST ---
     const renderAssignmentsList = () => {
         const now = new Date();
-        const contextualAssignments = activeAssignments.filter(a => a.courseId === selectedContextId);
+        const selectedCourse = courses.find(c => c._id === selectedContextId);
+        
+        const contextualAssignments = activeAssignments.filter(a => {
+            if (a.courseId) return (a.courseId?._id || a.courseId) === selectedContextId;
+            if (selectedCourse && a.subjectName) return a.subjectName.toLowerCase() === selectedCourse.name.toLowerCase();
+            return false;
+        });
         
         const activeNow = contextualAssignments.filter(a => (!a.startTime || now >= new Date(a.startTime)) && (!a.endTime || now <= new Date(a.endTime)));
         const upcoming = contextualAssignments.filter(a => a.startTime && now < new Date(a.startTime));
@@ -638,7 +649,7 @@ const StudentAssignmentView = ({
                             {renderAssignmentCards(past)}
                         </>
                     )}
-                    {activeAssignments.length === 0 && <div style={{ color: '#94a3b8' }}>No assignments found for your cohort.</div>}
+                    {contextualAssignments.length === 0 && <div style={{ color: '#94a3b8' }}>No assignments found for this subject.</div>}
                 </div>
             </div>
         );
