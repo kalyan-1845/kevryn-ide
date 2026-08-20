@@ -296,7 +296,7 @@ const StudentAssignmentView = ({
 
                 {/* Today's Schedule Widget */}
                 <div style={{ marginBottom: '40px' }}>
-                    <StudentTimetableWidget token={token} activeSessionId={activeSessionId} onEnterLab={onEnterLab} />
+                    <StudentTimetableWidget token={token} serverUrl={serverUrl} activeSessionId={activeSessionId} onEnterLab={onEnterLab} />
                 </div>
 
                 {/* Mission Control (Active) */}
@@ -368,7 +368,7 @@ const StudentAssignmentView = ({
                             icon={<FaClipboardList size={24} />}
                             color="#3b82f6"
                             onClick={() => setViewMode('assignments')}
-                            count={activeAssignments.filter(a => a.courseId === selectedContextId && new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
+                            count={activeAssignments.filter(a => (a.courseId?._id || a.courseId) === selectedContextId && new Date() >= new Date(a.startTime) && new Date() <= new Date(a.endTime)).length}
                         />
                         <HubCard 
                             title="Performance Analytics" 
@@ -431,7 +431,7 @@ const StudentAssignmentView = ({
             <p style={{ color: '#94a3b8', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px 0' }}>{desc}</p>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: color, display: 'flex', alignItems: 'center', gap: '8px' }}>EXPLORE <FaArrowLeft style={{ transform: 'rotate(180deg)', fontSize: '10px' }} /></span>
-                {count !== undefined && (
+                {count !== undefined && count > 0 && (
                     <span style={{ background: `${color}22`, color: color, padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '800' }}>{count} ACTIVE</span>
                 )}
             </div>
@@ -504,10 +504,10 @@ const StudentAssignmentView = ({
                             Assignments are conducted in Strict Full-Screen mode. Exiting full-screen or switching tabs will be logged as a violation.
                         </p>
                         <button 
-                            onClick={() => document.documentElement.requestFullscreen().catch(err => console.error(err))}
-                            style={{ padding: '16px 40px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 0 30px rgba(239, 68, 68, 0.4)' }}
+                            onClick={() => document.documentElement.requestFullscreen().catch(e => console.error(e))}
+                            style={{ padding: '16px 32px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: '800', cursor: 'pointer' }}
                         >
-                            <FaTerminal /> ENTER FULLSCREEN
+                            ENTER FULLSCREEN TO CONTINUE
                         </button>
                     </div>
                 )}

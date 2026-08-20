@@ -3,13 +3,13 @@ import axios from 'axios';
 import { FaCalendarAlt, FaPlayCircle } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
-const StudentTimetableWidget = ({ token, activeSessionId, onEnterLab }) => {
+const StudentTimetableWidget = ({ token, serverUrl, activeSessionId, onEnterLab }) => {
     const [schedule, setSchedule] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const api = axios.create({
-        baseURL: '/api',
-        headers: { Authorization: `Bearer ${token}` }
+        baseURL: serverUrl,
+        headers: { Authorization: token }
     });
 
     useEffect(() => {
@@ -19,7 +19,7 @@ const StudentTimetableWidget = ({ token, activeSessionId, onEnterLab }) => {
     const fetchSchedule = async () => {
         setIsLoading(true);
         try {
-            const res = await api.get('/timetable/my-schedule/student');
+            const res = await api.get('/api/timetable/my-schedule/student');
             setSchedule(res.data);
         } catch (err) {
             console.error("Failed to fetch schedule");

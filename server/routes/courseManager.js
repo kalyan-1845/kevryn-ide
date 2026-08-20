@@ -259,14 +259,22 @@ router.get('/student/enrolled-courses', authenticate, async (req, res) => {
         const coursesMap = new Map();
         student.enrolledBatches.forEach(batch => {
             if (batch.courseId) {
-                // Multi-College Tenancy Scoping
-                // If the student has a college, only show courses from that college
                 if (req.user.collegeId && batch.courseId.collegeId && batch.courseId.collegeId.toString() !== req.user.collegeId.toString()) {
-                    return; // Skip this course as it belongs to a different college
+                    return;
                 }
                 coursesMap.set(batch.courseId._id.toString(), batch.courseId);
             }
         });
+
+        // Add courses matching student's department and year
+        if (student.department && student.year) {
+            const query = { department: student.department, year: student.year };
+            if (req.user.collegeId) query.collegeId = req.user.collegeId;
+            const deptCourses = await Course.find(query);
+            deptCourses.forEach(course => {
+                coursesMap.set(course._id.toString(), course);
+            });
+        }
 
         res.json(Array.from(coursesMap.values()));
     } catch (e) {
