@@ -137,6 +137,78 @@ Always aim for zero-bug delivery.`;
     }
 });
 
+// ── FACULTY AI ASSISTANT (WITH MCP TOOLS) ──────────────────────────
+const mcpTools = require('../services/mcpTools');
+
+router.post('/faculty-assistant', authenticate, async (req, res, next) => {
+    try {
+        if (req.user.role !== 'faculty') return res.status(403).json({ error: 'Faculty only' });
+        const { messages, sessionId } = req.body;
+        if (!messages) return res.status(400).json({ error: 'Messages are required' });
+
+        const systemContext = `You are the KevRyn Faculty Assistant, a professional AI embedded in the Faculty Command Center.
+You have access to advanced MCP tools to fetch live lab session data, generate CSV reports, and track student competitive programming stats.
+When asked about sessions or reports, ALWAYS use your tools. If returning a CSV report link, format it using standard markdown: [Download CSV Report](/api/lab/sessions/ID/csv).`;
+
+        const fullMessages = [
+            { role: 'system', content: systemContext },
+            ...messages.map(m => ({ role: m.role, content: m.content }))
+        ];
+
+        // Call LLM with tools
+        let result = await aiService.chat(fullMessages, { tools: mcpTools.tools });
+        
+        // Handle tool calls loop
+        if (result.tool_calls) {
+            fullMessages.push({ role: 'assistant', content: result.content || null, tool_calls: result.tool_calls });
+            
+            for (const toolCall of result.tool_calls) {
+                const args = JSON.parse(toolCall.function.arguments);
+                console.log(`[Faculty AI] Executing tool ${toolCall.function.name}...`);
+                const toolResult = await mcpTools.executeTool(toolCall.function.name, args, req.user.userId);
+                
+                fullMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolCall.id,
+                    name: toolCall.function.name,
+                    content: JSON.stringify(toolResult)
+                });
+            }
+            // Call LLM again to get final answer
+            result = await aiService.chat(fullMessages);
+        }
+
+        // Persist session
+        let session;
+        if (sessionId) {
+            session = await ChatSession.findOne({ _id: sessionId, userId: req.user.userId });
+        }
+        if (!session) {
+            session = new ChatSession({
+                userId: req.user.userId,
+                title: `[Faculty] ${messages[messages.length - 1].content.substring(0, 40)}`,
+                messages: [
+                    ...messages,
+                    { role: 'assistant', content: result.content }
+                ]
+            });
+        } else {
+            session.messages.push(messages[messages.length - 1]);
+            session.messages.push({ role: 'assistant', content: result.content });
+        }
+        await session.save();
+
+        res.json({
+            response: result.content,
+            model: result.model,
+            sessionId: session._id
+        });
+    } catch (error) {
+        console.error('[Faculty Assistant Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ── TERMINAL SELF-HEALING ────────────────────────────────────────
 router.post('/fix-terminal-error', authenticate, async (req, res, next) => {
     try {

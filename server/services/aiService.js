@@ -11,11 +11,11 @@ const GROQ_KEYS = [
     process.env.GROQ_API_KEY // Fallback
 ].filter(Boolean);
 
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+const GROQ_MODEL = 'llama3-8b-8192'; // Using valid model
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // ── CHAT ─────────────────────────────────────────────────────────
-const chat = async (messages) => {
+const chat = async (messages, options = {}) => {
     if (GROQ_KEYS.length === 0) {
         throw new Error('No Groq API keys found. Please check your environment variables.');
     }
@@ -26,14 +26,21 @@ const chat = async (messages) => {
         try {
             console.log(`[NeuralCore] Attempting KevRyn Neural Core with Key ${i+1}...`);
 
-            const response = await axios.post(GROQ_URL, {
+            const payload = {
                 model: GROQ_MODEL,
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 2048,
                 top_p: 0.9,
                 stream: false
-            }, {
+            };
+            
+            if (options.tools) {
+                payload.tools = options.tools;
+                payload.tool_choice = options.tool_choice || 'auto';
+            }
+
+            const response = await axios.post(GROQ_URL, payload, {
                 headers: {
                     'Authorization': `Bearer ${key}`,
                     'Content-Type': 'application/json'
@@ -42,10 +49,14 @@ const chat = async (messages) => {
             });
 
             console.log(`[NeuralCore] Key ${i+1} response status: ${response.status}`);
-            const content = response.data?.choices?.[0]?.message?.content;
-            if (!content) throw new Error('Model returned empty response');
+            const message = response.data?.choices?.[0]?.message;
+            if (!message) throw new Error('Model returned empty response');
 
-            return { content, model: 'KevRyn Neural Core' };
+            return { 
+                content: message.content || "", 
+                tool_calls: message.tool_calls || null,
+                model: 'KevRyn Neural Core' 
+            };
         } catch (e) {
             console.error(`[NeuralCore] Key ${i+1} failed: ${e.message}`);
             lastError = e;
