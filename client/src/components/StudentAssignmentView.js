@@ -484,6 +484,12 @@ const StudentAssignmentView = ({
                                 <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Score: {test.submission?.score || 'N/A'}</p>
                             </div>
                         ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
     // --- RENDER SOLVE ---
     const renderSolve = () => {
         return (
