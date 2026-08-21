@@ -69,6 +69,13 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 
     const handleStartLab = async () => {
         if (!masterContextId) return;
+
+        const isScheduledToday = todaysClasses.some(c => c._id === masterContextId);
+        if (!isScheduledToday) {
+            const confirmUnscheduled = window.confirm("Cohort not scheduled today. Override and launch live session?");
+            if (!confirmUnscheduled) return;
+        }
+
         try {
             setStartingLab(true);
             // Auto-create/start the lab session for this timetable context
@@ -215,7 +222,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                             <motion.div key="schedule" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
                                 <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px', backdropFilter: 'blur(10px)' }}>
                                     <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#e2e8f0', margin: '0 0 24px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '16px' }}>Your Weekly Timetable</h3>
-                                    <TimetableWidget token={token} serverUrl={serverUrl} onLabStarted={() => {}} />
+                                    <TimetableWidget token={token} serverUrl={serverUrl} onLabStarted={(session) => { setMasterContextId(session.timetableId || session.timetableRef); setActiveOverlay('monitor'); }} />
                                 </div>
                             </motion.div>
                         ) : (
@@ -280,6 +287,8 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 };
 
 export default FacultyHub;
+
+
 
 
 
