@@ -187,12 +187,12 @@ const StudentAssignmentView = ({
         if (!window.confirm("Are you sure you want to submit?")) return;
         setSubmissionStatus('Submitting...');
         try {
-            const res = await api.post(/api/assignments//submit, {
+            const res = await api.post(`/api/assignments/${selectedAssignment._id}/submit`, {
                 code, language: selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language
             });
             setTestResults(res.data.results);
             const { score, maxScore } = res.data.submission;
-            setSubmissionStatus(Submitted Successfully! Marks: /);
+            setSubmissionStatus(`Submitted Successfully! Marks: ${score}/${maxScore}`);
             if (document.fullscreenElement) {
                 document.exitFullscreen().catch(e => console.error(e));
             }
