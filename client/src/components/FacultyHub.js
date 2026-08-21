@@ -220,7 +220,52 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                     <AnimatePresence mode="wait">
                         {!masterContextId ? (
                             <motion.div key="schedule" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
-                                <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px', backdropFilter: 'blur(10px)' }}>
+                                  
+                                  {/* NEW GLOBAL MCP AI ASSISTANT WIDGET */}
+                                  <div 
+                                      onClick={() => setActiveOverlay('ai-assistant')}
+                                      style={{
+                                          background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 27, 75, 0.9))',
+                                          border: '1px solid rgba(236, 72, 153, 0.3)',
+                                          borderRadius: '24px',
+                                          padding: '24px 32px',
+                                          display: 'flex',
+                                          flexWrap: 'wrap',
+                                          alignItems: 'center',
+                                          gap: '24px',
+                                          cursor: 'pointer',
+                                          boxShadow: '0 0 30px rgba(236, 72, 153, 0.1)',
+                                          marginBottom: '32px',
+                                          position: 'relative',
+                                          overflow: 'hidden',
+                                          backdropFilter: 'blur(10px)'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                          e.currentTarget.style.boxShadow = '0 0 40px rgba(236, 72, 153, 0.3)';
+                                          e.currentTarget.style.transform = 'translateY(-2px)';
+                                          e.currentTarget.style.transition = 'all 0.3s ease';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                          e.currentTarget.style.boxShadow = '0 0 30px rgba(236, 72, 153, 0.1)';
+                                          e.currentTarget.style.transform = 'translateY(0)';
+                                      }}
+                                  >
+                                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6)' }}></div>
+                                      <div style={{ width: '64px', height: '64px', background: 'rgba(236, 72, 153, 0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', color: '#ec4899', boxShadow: '0 0 20px rgba(236, 72, 153, 0.2)' }}>
+                                          <FaRobot />
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: '250px' }}>
+                                          <div style={{ fontSize: '20px', fontWeight: '900', color: '#f8fafc', marginBottom: '6px', letterSpacing: '0.5px' }}>Global MCP AI Assistant</div>
+                                          <div style={{ fontSize: '15px', color: '#94a3b8', lineHeight: '1.5' }}>
+                                              Click to open the chat panel. Ask the AI to analyze student performance, generate assignments, or fetch data across <strong style={{ color: '#fff' }}>all your cohorts and sections</strong> instantly.
+                                          </div>
+                                      </div>
+                                      <div style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', padding: '12px 24px', borderRadius: '12px', color: '#fff', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 4px 15px rgba(236, 72, 153, 0.3)', whiteSpace: 'nowrap' }}>
+                                          Open Chat &rarr;
+                                      </div>
+                                  </div>
+
+                                  <div style={{ background: 'rgba(15, 23, 42, 0.6)'', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px', backdropFilter: 'blur(10px)' }}>
                                     <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#e2e8f0', margin: '0 0 24px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '16px' }}>Your Weekly Timetable</h3>
                                     <TimetableWidget token={token} serverUrl={serverUrl} onLabStarted={(session) => { setMasterContextId(session.timetableId || session.timetableRef); setActiveOverlay('monitor'); }} />
                                 </div>
@@ -287,6 +332,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 };
 
 export default FacultyHub;
+
 
 
 
