@@ -57,7 +57,7 @@ const StudentAssignmentView = ({
         const handleFullscreenChange = () => {
             if (!document.fullscreenElement) {
                 setIsFullscreen(false);
-                if (viewMode === 'solve') {
+                if (viewMode === 'solve' && (!submissionStatus || !submissionStatus.includes('Submitted Successfully'))) {
                     setProctorWarning('STRICT PROCTORING VIOLATION: You exited fullscreen. This incident has been logged.');
                 }
             } else {
@@ -83,7 +83,7 @@ const StudentAssignmentView = ({
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             window.removeEventListener('popstate', handlePopState);
         };
-    }, [viewMode, onBack]);
+    }, [viewMode, onBack, submissionStatus]);
 
     const fetchDeveloperProfiles = async () => {
         try {
@@ -187,12 +187,15 @@ const StudentAssignmentView = ({
         if (!window.confirm("Are you sure you want to submit?")) return;
         setSubmissionStatus('Submitting...');
         try {
-            const res = await api.post(`/api/assignments/${selectedAssignment._id}/submit`, {
+            const res = await api.post(/api/assignments//submit, {
                 code, language: selectedAssignment.language === 'any' ? studentLanguage : selectedAssignment.language
             });
             setTestResults(res.data.results);
             const { score, maxScore } = res.data.submission;
-            setSubmissionStatus(`Submitted Successfully! Marks: ${score}/${maxScore}`);
+            setSubmissionStatus(Submitted Successfully! Marks: /);
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => console.error(e));
+            }
         } catch (e) { setSubmissionStatus('Submission Error: ' + e.message); }
     };
 
@@ -497,11 +500,12 @@ const StudentAssignmentView = ({
 
     // --- RENDER SOLVE ---
     const renderSolve = () => {
+        const isSubmitted = submissionStatus && submissionStatus.includes('Submitted Successfully');
         return (
             <div style={{ display: 'flex', height: '100%', flexDirection: 'column', background: 'transparent', color: '#e2e8f0', fontFamily: "'Outfit', sans-serif" }}>
                 
                 {/* STRICT PROCTORING FULLSCREEN OVERLAY */}
-                {!isFullscreen && (
+                {!isFullscreen && !isSubmitted && (
                     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.95)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <FaExclamationTriangle size={64} color="#ef4444" style={{ marginBottom: '20px' }} />
                         <h1 style={{ color: '#ef4444', fontSize: '32px', fontWeight: '900', marginBottom: '10px' }}>PROCTORING ACTIVE</h1>
@@ -724,6 +728,7 @@ const StudentAssignmentView = ({
 };
 
 export default StudentAssignmentView;
+
 
 
 
