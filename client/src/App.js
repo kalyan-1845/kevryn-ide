@@ -3026,7 +3026,6 @@ function App() {
                                         </div>
                                     </div>
                                 </div>
-                                </div>
                             </div> {/* End main-content-horizontal */}
 
                             {/* --- BOTTOM STATUS BAR (Beast Mode) --- */}
