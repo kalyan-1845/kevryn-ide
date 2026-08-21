@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 // Kickstart Vercel Deploy - Force Sync
 import Editor, { loader } from '@monaco-editor/react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 import axios from 'axios';
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
 import {
@@ -39,6 +39,7 @@ import IssueReporter from './components/IssueReporter'; // NEW: Issue Reporting
 import KevrynLogin from './components/KevrynLogin'; // NEW: Cinematic Login
 import LiveAptitudeTest from './components/LiveAptitudeTest'; // NEW: Aptitude Module
 import LabTimer from './components/LabTimer'; // OPTIMIZATION: Extract timer to prevent global re-renders
+import AgentHubModal from './components/AgentHubModal';
 
 // --- MONACO CDN SETUP (More Reliable) ---
 // Using CDN to avoid local worker resolution issues
@@ -97,7 +98,9 @@ function App() {
     // --- LAB MODE STATE (Moved to top to fix ReferenceError) ---
     const [activeSessionId, setActiveSessionId] = useState(null);
     const [activeSession, setActiveSession] = useState(null); // NEW: Store full session data (including courseId)
-    const [activeAptitudeSession, setActiveAptitudeSession] = useState(null); // NEW: Aptitude Session
+    const [activeAptitudeSession, setActiveAptitudeSession] = useState(null);
+    const [isAgentHubOpen, setIsAgentHubOpen] = useState(false);
+    const [installedAgents, setInstalledAgents] = useState([]);
     const [isAptitudeOpen, setIsAptitudeOpen] = useState(false); // Controls opening the test environment
     const [isLabOpen, setIsLabOpen] = useState(false); // NEW: Explicitly control lab opening
     const [newAssignmentAlert, setNewAssignmentAlert] = useState(null); // Alert banner for assignments
@@ -2489,6 +2492,9 @@ function App() {
                                         <FaCog size={14} />
                                         {activeMenu === 'settings' && (
                                             <div className="dropdown-menu" style={{ right: 0, left: 'auto' }}>
+                                                {window.__KEVRYN_DESKTOP__ && (
+                                                    <div className="dropdown-option" onClick={() => { setIsAgentHubOpen(true); setActiveMenu(null); }}><FaRobot size={11} /> Agent Extension Hub</div>
+                                                )}
                                                 <div className="dropdown-option" onClick={handleLogout}><FaSignOutAlt size={11} /> Sign Out ({username})</div>
                                             </div>
                                         )}
@@ -2920,58 +2926,107 @@ function App() {
                                 </div> {/* End center-workspace */}
 
                                 {/* --- RIGHT SIDEBAR (AI) --- */}
-                                <AnimatePresence>
-                                    {isAiPanelOpen && (
-                                        <motion.div
-                                            initial={{ width: 0, opacity: 0 }}
-                                            animate={{ width: aiPanelWidth, opacity: 1 }}
-                                            exit={{ width: 0, opacity: 0 }}
-                                            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                                            style={{ display: 'flex', overflow: 'hidden', height: '100%', flexShrink: 0 }}
-                                        >
-                                            <div className="resize-handle" onMouseDown={startResizingAi} style={{ width: '4px', cursor: 'col-resize', background: 'transparent', zIndex: 100 }} />
-                                            <div className="right-sidebar" style={{ width: '100%', height: '100%' }}>
-                                                <AIPanel
-                                                    token={token}
-                                                    code={code}
-                                                    fileName={fileName}
-                                                    language={getLanguage(fileName)}
-                                                    onApplyCode={(newCode, lang) => {
-                                                        const terminalLangs = ['powershell', 'bash', 'shell', 'sh', 'cmd', 'zsh', 'terminal'];
-                                                        if (lang && terminalLangs.includes(lang.toLowerCase())) {
-                                                            const commands = newCode.split('\n').filter(line => line.trim());
-                                                            const runCommands = async () => {
-                                                                for (const cmd of commands) {
-                                                                    safeEmit('terminal:write', { termId: activeTermId, data: cmd + '\r' });
-                                                                    await new Promise(r => setTimeout(r, 50));
-                                                                }
-                                                            };
-                                                            runCommands();
-                                                            setIsBottomPanelOpen(true);
-                                                            setBottomPanelTab('terminal');
-                                                            return;
-                                                        }
-
-                                                        window.openDiff({
-                                                            oldCode: code,
-                                                            newCode: newCode,
-                                                            fileName: fileName,
-                                                            language: getLanguage(fileName),
-                                                            onApply: (finalCode) => {
-                                                                setCode(finalCode);
-                                                                if (activeFileId) {
-                                                                    setOpenFiles(prev => prev.map(f => f._id === activeFileId ? { ...f, content: finalCode } : f));
-                                                                    safeEmit('code-change', { fileId: activeFileId, newCode: finalCode, userId });
-                                                                    safeEmit('save-file-disk', { fileName, code: finalCode, userId, fileId: activeFileId });
+                                <div style={{ display: 'flex', height: '100%' }}>
+                                    <AnimatePresence>
+                                        {isAiPanelOpen && (
+                                            <motion.div
+                                                initial={{ width: 0, opacity: 0 }}
+                                                animate={{ width: aiPanelWidth, opacity: 1 }}
+                                                exit={{ width: 0, opacity: 0 }}
+                                                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                                                style={{ display: 'flex', overflow: 'hidden', height: '100%', flexShrink: 0, borderRight: '1px solid var(--border-color)' }}
+                                            >
+                                                <div className="resize-handle" onMouseDown={startResizingAi} style={{ width: '4px', cursor: 'col-resize', background: 'transparent', zIndex: 100 }} />
+                                                <div className="right-sidebar" style={{ width: '100%', height: '100%' }}>
+                                                    <AIPanel
+                                                        token={token}
+                                                        code={code}
+                                                        fileName={fileName}
+                                                        language={getLanguage(fileName)}
+                                                        onApplyCode={(newCode, lang) => {
+                                                            const terminalLangs = ['powershell', 'bash', 'shell', 'sh', 'cmd', 'zsh', 'terminal'];
+                                                            if (lang && terminalLangs.includes(lang.toLowerCase())) {
+                                                                const commands = newCode.split('\n').filter(line => line.trim());
+                                                                const runCommands = async () => {
+                                                                    for (const cmd of commands) {
+                                                                        safeEmit('terminal:write', { termId: activeTermId, data: cmd + '\r' });
+                                                                        await new Promise(r => setTimeout(r, 50));
+                                                                    }
+                                                                };
+                                                                runCommands();
+                                                                setIsBottomPanelOpen(true);
+                                                                setBottomPanelTab('terminal');
+                                                            } else {
+                                                                setCode(newCode);
+                                                                if (editorRef.current) {
+                                                                    editorRef.current.setValue(newCode);
                                                                 }
                                                             }
-                                                        });
-                                                    }}
-                                                />
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                                        }}
+                                                    />
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                    
+                                    {/* --- RIGHT ACTIVITY BAR (AI Extension Hub) --- */}
+                                    <div style={{
+                                        width: '48px',
+                                        background: 'var(--bg-secondary)',
+                                        borderLeft: '1px solid var(--border-color)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        padding: '10px 0',
+                                        gap: '12px'
+                                    }}>
+                                        <div 
+                                            onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} 
+                                            style={{
+                                                padding: '10px',
+                                                cursor: 'pointer',
+                                                borderRadius: '8px',
+                                                background: isAiPanelOpen ? 'var(--accent-primary)' : 'transparent',
+                                                color: isAiPanelOpen ? '#fff' : 'var(--text-secondary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                            title="KevRyn AI (Default)"
+                                        >
+                                            <FaRobot size={18} />
+                                        </div>
+                                        <div 
+                                            onClick={() => {
+                                                // Trigger Gemini Extension (Mock for now, sets AI panel open)
+                                                setIsAiPanelOpen(true);
+                                            }} 
+                                            style={{
+                                                padding: '10px',
+                                                cursor: 'pointer',
+                                                borderRadius: '8px',
+                                                color: '#10b981',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                            title="Google Gemini (Installed)"
+                                        >
+                                            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" alt="Gemini" style={{ width: '18px', height: '18px' }} />
+                                        </div>
+                                        <div 
+                                            onClick={() => setIsAgentHubOpen(true)}
+                                            style={{
+                                                padding: '10px',
+                                                cursor: 'pointer',
+                                                borderRadius: '8px',
+                                                color: 'var(--text-secondary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                marginTop: 'auto'
+                                            }}
+                                            title="Agent Hub Settings"
+                                        >
+                                            <FaCog size={16} />
+                                        </div>
+                                    </div>
+                                </div>
+                                </div>
                             </div> {/* End main-content-horizontal */}
 
                             {/* --- BOTTOM STATUS BAR (Beast Mode) --- */}
@@ -3080,6 +3135,12 @@ function App() {
                                         setIsAptitudeOpen(false);
                                         setActiveAptitudeSession(null); // Clear session after completion
                                     }}
+                                />
+                            )}
+                            {isAgentHubOpen && (
+                                <AgentHubModal 
+                                    isOpen={isAgentHubOpen} 
+                                    onClose={() => setIsAgentHubOpen(false)} 
                                 />
                             )}
                         </AnimatePresence>

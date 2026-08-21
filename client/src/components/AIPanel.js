@@ -159,28 +159,78 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
         const userMessage = input.trim();
         setInput('');
         setIsLoading(true);
-        setAgentStatus('Connecting to Neural Core...');
+        setAgentStatus('Connecting...');
         setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
         try {
-            // Build full message history for context
-            const fullMessages = [
-                ...messages,
-                { role: 'user', content: userMessage }
-            ];
+            if (window.__KEVRYN_DESKTOP__ && window.electronAPI) {
+                // Desktop Agent Extension Hub routing (Hardcoded to gemini for now)
+                setMessages(prev => [...prev, { role: 'assistant', content: '' }]); // placeholder
+                
+                // Set up chunk listener BEFORE sending request
+                let accumulated = '';
+                const onChunk = (chunk) => {
+                    accumulated += chunk;
+                    setMessages(prev => {
+                        const newMsg = [...prev];
+                        newMsg[newMsg.length - 1].content = accumulated;
+                        return newMsg;
+                    });
+                };
+                
+                window.electronAPI.onAgentChatChunk('google-gemini', onChunk);
+                
+                return new Promise((resolve) => {
+                    window.electronAPI.onAgentChatDone('google-gemini', () => {
+                        setIsLoading(false);
+                        setAgentStatus(null);
+                        resolve();
+                    });
+                    window.electronAPI.onAgentChatError('google-gemini', (err) => {
+                        setMessages(prev => {
+                            const newMsg = [...prev];
+                            newMsg[newMsg.length - 1].content = `❌ Error: ${err}`;
+                            return newMsg;
+                        });
+                        setIsLoading(false);
+                        setAgentStatus(null);
+                        resolve();
+                    });
+                    
+                    window.electronAPI.chatWithAgent('google-gemini', userMessage, {
+                        code, fileName, language
+                    }).catch(e => {
+                        setMessages(prev => {
+                            const newMsg = [...prev];
+                            newMsg[newMsg.length - 1].content = `❌ Failed to start chat: ${e.message}`;
+                            return newMsg;
+                        });
+                        setIsLoading(false);
+                        setAgentStatus(null);
+                        resolve();
+                    });
+                });
+            } else {
+                // Cloud / Legacy Routing
+                const fullMessages = [
+                    ...messages,
+                    { role: 'user', content: userMessage }
+                ];
 
-            const response = await api.post('/ai/chat', {
-                messages: fullMessages,
-                sessionId: currentSessionId
-            });
+                const response = await api.post('/ai/chat', {
+                    messages: fullMessages,
+                    sessionId: currentSessionId
+                });
 
-            setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
-            if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
+                setMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
+                if (response.data.sessionId) setCurrentSessionId(response.data.sessionId);
+                setIsLoading(false);
+                setAgentStatus(null);
+            }
         } catch (error) {
             console.error("AI Error:", error);
             const errorMsg = error.response?.data?.error || error.message;
             setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${errorMsg}` }]);
-        } finally {
             setIsLoading(false);
             setAgentStatus(null);
         }

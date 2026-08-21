@@ -23,6 +23,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     spawnTerminal: (cwd: string, cols?: number, rows?: number) => ipcRenderer.invoke('spawn-terminal', cwd, cols, rows),
     terminalWrite: (data: string) => ipcRenderer.invoke('terminal-write', data),
     terminalResize: (cols: number, rows: number) => ipcRenderer.invoke('terminal-resize', cols, rows),
+    
+    // Agent Hub APIs
+    getAgentList: () => ipcRenderer.invoke('agent-list'),
+    authenticateAgent: (agentId: string, secret: string) => ipcRenderer.invoke('agent-authenticate', agentId, secret),
+    chatWithAgent: (agentId: string, message: string, context: any) => ipcRenderer.invoke('agent-chat', agentId, message, context),
+    onAgentChatChunk: (agentId: string, callback: (chunk: string) => void) => {
+        ipcRenderer.on(`agent-chat-chunk-${agentId}`, (_event, chunk) => callback(chunk));
+    },
+    onAgentChatDone: (agentId: string, callback: () => void) => {
+        ipcRenderer.on(`agent-chat-done-${agentId}`, () => callback());
+    },
+    onAgentChatError: (agentId: string, callback: (error: string) => void) => {
+        ipcRenderer.on(`agent-chat-error-${agentId}`, (_event, error) => callback(error));
+    },
+
     onUpdateAvailable: (callback: (info: any) => void) => {
         ipcRenderer.removeAllListeners('update-available');
         ipcRenderer.on('update-available', (_event, info) => callback(info));

@@ -3,12 +3,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { RuntimeManager } from '../runtime/RuntimeManager';
 import { EnvironmentManager } from '../runtime/EnvironmentManager';
-
-const CONFIG_FILE = path.join(app.getPath('userData'), 'kevryn_workspace.json');
-
+import { WorkspaceManager } from '../main/WorkspaceManager';
 
 export function setupIpcHandlers(mainWindow: BrowserWindow) {
     const runtimeManager = new RuntimeManager(mainWindow);
+    const workspaceManager = new WorkspaceManager(mainWindow);
+
+    // Initial load of previous workspace if exists
+    const CONFIG_FILE = path.join(app.getPath('userData'), 'kevryn_workspace.json');
+    if (fs.existsSync(CONFIG_FILE)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+            if (data.workspacePath) {
+                workspaceManager.openFolder(data.workspacePath).catch(console.error);
+            }
+        } catch(e) {}
+    }
 
     ipcMain.handle('run-code', async (event, fileName: string, content?: string) => {
         return await runtimeManager.executeFile(fileName);
@@ -25,41 +35,33 @@ export function setupIpcHandlers(mainWindow: BrowserWindow) {
         if (result.canceled || result.filePaths.length === 0) {
             return null;
         }
-        return result.filePaths[0];
+        const ctx = await workspaceManager.openFolder(result.filePaths[0]);
+        return ctx ? ctx.rootPath : null;
     });
 
     ipcMain.handle('get-workspace-path', async () => {
-        try {
-            if (fs.existsSync(CONFIG_FILE)) {
-                const data = await fs.promises.readFile(CONFIG_FILE, 'utf-8');
-                return JSON.parse(data).workspacePath || null;
-            }
-        } catch (e) {
-            console.error('Error reading workspace path', e);
-        }
-        return null;
+        const ctx = workspaceManager.getActiveWorkspace();
+        return ctx ? ctx.rootPath : null;
     });
 
     ipcMain.handle('save-workspace-path', async (event, workspacePath: string) => {
-        try {
-            await fs.promises.writeFile(CONFIG_FILE, JSON.stringify({ workspacePath }), 'utf-8');
-            return true;
-        } catch (e) {
-            console.error('Error saving workspace path', e);
-            return false;
-        }
+        const ctx = await workspaceManager.openFolder(workspacePath);
+        return !!ctx;
     });
 
     ipcMain.handle('read-local-dir', async (event, dirPath: string) => {
         try {
+            const ctx = workspaceManager.getActiveWorkspace();
+            if (!ctx) return [];
+            
+            // Build tree recursively for frontend compatibility (max depth 5 for performance)
             const buildTree = async (currentPath: string, relativePath: string, depth = 0): Promise<any[]> => {
-                if (depth > 4) return []; // Prevent massive hangs on huge directories
+                if (depth > 5) return [];
                 
                 const entries = await fs.promises.readdir(currentPath, { withFileTypes: true });
                 
                 const promises = entries.map(async (entry) => {
-                    // Skip hidden files/folders and node_modules for performance
-                    if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'System Volume Information') return null;
+                    if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') return null;
                     
                     const fullPath = path.join(currentPath, entry.name);
                     const relPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
@@ -83,10 +85,11 @@ export function setupIpcHandlers(mainWindow: BrowserWindow) {
                 const resolved = await Promise.all(promises);
                 return resolved.filter(Boolean);
             };
+            
             return await buildTree(dirPath, '');
         } catch (error: any) {
             console.error('Failed to read local dir:', error);
-            throw error;
+            return [];
         }
     });
 
