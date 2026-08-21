@@ -36,6 +36,15 @@ const AgentHubModal = ({ isOpen, onClose }) => {
         }
     };
 
+    const handleSignout = async (agentId) => {
+        try {
+            await window.electronAPI.signoutAgent(agentId);
+            loadAgents();
+        } catch (e) {
+            alert("Error signing out: " + e.message);
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -93,8 +102,16 @@ const AgentHubModal = ({ isOpen, onClose }) => {
                             )}
 
                             {(agent.status === 'AUTHENTICATED' || agent.status === 'RUNNING') && (
-                                <div style={{ marginTop: '10px', fontSize: '12px', color: '#10b981' }}>
-                                    ✓ Authenticated and ready for secure workspace access.
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                                    <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <FaCheckCircle size={12} /> Authenticated and ready for secure workspace access.
+                                    </div>
+                                    <button 
+                                        onClick={() => handleSignout(agent.manifest.id)}
+                                        style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '6px', padding: '6px 15px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                    >
+                                        Sign out
+                                    </button>
                                 </div>
                             )}
                         </div>

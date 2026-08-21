@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Agent Hub APIs
     getAgentList: () => ipcRenderer.invoke('agent-list'),
     authenticateAgent: (agentId: string, secret: string) => ipcRenderer.invoke('agent-authenticate', agentId, secret),
+    signoutAgent: (agentId: string) => ipcRenderer.invoke('agent-signout', agentId),
     chatWithAgent: (agentId: string, message: string, context: any) => ipcRenderer.invoke('agent-chat', agentId, message, context),
     onAgentChatChunk: (agentId: string, callback: (chunk: string) => void) => {
         ipcRenderer.on(`agent-chat-chunk-${agentId}`, (_event, chunk) => callback(chunk));

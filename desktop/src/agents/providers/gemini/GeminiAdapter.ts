@@ -72,10 +72,13 @@ If the user asks for code, provide it cleanly. If you provide terminal commands,
                 generationConfig: { temperature: 0.7 }
             };
 
-            // We use simple non-streaming fetch for now, yielding chunks to simulate stream
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${this.apiKey}`, {
+            // The apiKey variable here is actually an OAuth Access Token from our Google OAuth flow
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
                 body: JSON.stringify(payload)
             });
 
