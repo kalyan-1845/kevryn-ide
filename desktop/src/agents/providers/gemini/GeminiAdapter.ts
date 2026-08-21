@@ -72,12 +72,10 @@ If the user asks for code, provide it cleanly. If you provide terminal commands,
                 generationConfig: { temperature: 0.7 }
             };
 
-            // The apiKey variable here is actually an OAuth Access Token from our Google OAuth flow
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${this.apiKey}`, {
                 method: 'POST',
                 headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
             });

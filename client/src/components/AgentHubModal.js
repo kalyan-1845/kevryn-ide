@@ -22,14 +22,19 @@ const AgentHubModal = ({ isOpen, onClose }) => {
     };
 
     const handleAuthenticate = async (agentId) => {
+        const secret = authKey[agentId];
+        if (!secret) {
+            alert("Please enter an API Key first.");
+            return;
+        }
         try {
-            // Initiate OAuth flow via main process
-            const success = await window.electronAPI.authenticateAgent(agentId, 'oauth-flow-request');
+            const success = await window.electronAPI.authenticateAgent(agentId, secret);
             if (success) {
                 alert("Agent Authenticated Successfully!");
                 loadAgents(); // refresh status
+                setAuthKey(prev => ({ ...prev, [agentId]: '' }));
             } else {
-                alert("Authentication Failed or was cancelled.");
+                alert("Authentication Failed. Invalid API Key.");
             }
         } catch (e) {
             alert("Error authenticating: " + e.message);
@@ -91,13 +96,25 @@ const AgentHubModal = ({ isOpen, onClose }) => {
                             </div>
                             
                             {(agent.status === 'AUTH_REQUIRED' || agent.status === 'NOT_INSTALLED') && (
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                    <button 
-                                        onClick={() => handleAuthenticate(agent.manifest.id)}
-                                        style={{ background: 'var(--accent-primary)', color: 'white', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 24px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
-                                    >
-                                        <FaKey size={12} /> Sign in
-                                    </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <input 
+                                            type="password"
+                                            placeholder="Paste Google AI Studio API Key..."
+                                            value={authKey[agent.manifest.id] || ''}
+                                            onChange={(e) => setAuthKey(prev => ({...prev, [agent.manifest.id]: e.target.value}))}
+                                            style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', color: 'white', padding: '8px 12px', borderRadius: '6px', fontSize: '13px' }}
+                                        />
+                                        <button 
+                                            onClick={() => handleAuthenticate(agent.manifest.id)}
+                                            style={{ background: 'var(--accent-primary)', color: 'white', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 24px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                        >
+                                            <FaKey size={12} /> Save Key
+                                        </button>
+                                    </div>
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: '#8b5cf6', fontSize: '12px', textDecoration: 'none' }}>
+                                        Get a free Gemini API Key here &rarr;
+                                    </a>
                                 </div>
                             )}
 
