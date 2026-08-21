@@ -178,19 +178,29 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                         onChange={(e) => setMasterContextId(e.target.value)}
                         style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', background: '#0f172a', border: '1px solid #3b82f6', color: '#fff', fontSize: '16px', fontWeight: '600', outline: 'none', cursor: 'pointer', appearance: 'none', boxShadow: '0 0 15px rgba(59, 130, 246, 0.2)' }}
                     >
-                        <option value="">-- Select Today's Assigned Lab Context --</option>
-                        {todaysClasses.map(cls => (
-                            <option key={cls._id} value={cls._id}>
-                                {cls.subjectName} ({cls.subjectCode}) • {cls.department} Year {cls.year} Sec {cls.section} • {cls.startTime} - {cls.endTime}
-                            </option>
-                        ))}
-                    </select>
+                        <option value="">-- Select Global Context (Course & Cohort) --</option>
+                          {todaysClasses.length > 0 && (
+                              <optgroup label="Today's Labs">
+                                  {todaysClasses.map(cls => (
+                                      <option key={cls._id} value={cls._id}>
+                                          {cls.subjectName} ({cls.subjectCode}) | {cls.department} Y{cls.year}-S{cls.section} | {cls.startTime}-{cls.endTime}
+                                      </option>
+                                  ))}
+                              </optgroup>
+                          )}
+                          <optgroup label="All Scheduled Cohorts (Weekly)">
+                              {schedule.filter(cls => !todaysClasses.find(t => t._id === cls._id)).map(cls => (
+                                  <option key={cls._id} value={cls._id}>
+                                      {cls.subjectName} ({cls.subjectCode}) | {cls.department} Y{cls.year}-S{cls.section} | {cls.dayOfWeek}
+                                  </option>
+                              ))}
+                          </optgroup></select>
                     {/* Custom Arrow */}
                     <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#3b82f6' }}>▼</div>
                 </div>
                 {todaysClasses.length === 0 && !isLoadingSchedule && (
                     <div style={{ fontSize: '13px', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                        You have no assigned classes today.
+                        No assigned classes today, but you can select any cohort to manage assignments.
                     </div>
                 )}
             </div>
@@ -270,4 +280,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 };
 
 export default FacultyHub;
+
+
+
 
