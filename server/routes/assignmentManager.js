@@ -340,17 +340,9 @@ router.get('/student/active', authenticate, async (req, res) => {
             .populate('courseId', 'name')
             .sort({ endTime: 1 }); // Sort by end time (closest first)
 
-        // Fetch submissions to filter out completed ones
-        const assignmentIds = assignments.map(a => a._id);
-        const submissions = await Submission.find({ 
-            assignmentId: { $in: assignmentIds },
-            studentUsername: req.user.username
-        });
-        
-        const submittedAssignmentIds = submissions.map(s => s.assignmentId.toString());
-        const unsubmittedAssignments = assignments.filter(a => !submittedAssignmentIds.includes(a._id.toString()));
-
-        res.json(unsubmittedAssignments);
+        // Note: We return ALL assignments (unsubmitted and submitted) 
+        // so the frontend can display them in History or mark them as "SUBMITTED"
+        res.json(assignments);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
