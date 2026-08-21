@@ -2278,8 +2278,18 @@ function App() {
                                             <div className="dropdown-option" onClick={() => createNode('file')}>New File</div>
                                             <div className="dropdown-option" onClick={() => createNode('folder')}>New Folder</div>
                                             <div className="dropdown-separator"></div>
-                                            <div className="dropdown-option" onClick={() => folderInputRef.current.click()}>Open Folder...</div>
-                                            <div className="dropdown-option" onClick={() => fileInputRef.current.click()}>Open File...</div>
+                                            <div className="dropdown-option" onClick={async () => {
+                                                if (window.__KEVRYN_DESKTOP__ && window.electronAPI) {
+                                                    const res = await window.electronAPI.selectWorkspace();
+                                                    if (res.success && res.path) await window.electronAPI.openWorkspace(res.path);
+                                                } else {
+                                                    folderInputRef.current.click();
+                                                }
+                                            }}>Open Folder...</div>
+                                            <div className="dropdown-option" onClick={() => {
+                                                // File input is fine to leave as web-based for now, or we can use native if needed, but the issue was with large folders.
+                                                fileInputRef.current.click();
+                                            }}>Open File...</div>
                                             <div className="dropdown-separator"></div>
                                             <div className="dropdown-option" onClick={() => setIsCloneModalOpen(true)}>Clone Repository...</div>
                                             <div className="dropdown-option" onClick={() => setIsSwitchRepoModalOpen(true)}>Switch Repository...</div>
@@ -2560,6 +2570,11 @@ function App() {
                                         <div onClick={() => setShowStudentAssignments(true)} className={`sidebar-icon-container ${showStudentAssignments ? 'active' : ''}`} style={{ flex: 1, padding: '8px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                                             <FaClipboardList title="My Learning (Assignments & Courses)" />
                                         </div>
+                                        {typeof window !== 'undefined' && window.__KEVRYN_DESKTOP__ && (
+                                            <div onClick={() => setIsAgentHubOpen(true)} style={{ flex: 1, padding: '8px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                                <FaPuzzlePiece title="AI Agent Extensions" />
+                                            </div>
+                                        )}
                                         <button className="icon-btn" title="New Template" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 10px', cursor: 'pointer' }}><FaMagic size={11} /></button>
                                     </div>
                                     {/* Sidebar Tab Content Area (Ensure it takes space to push logout down) */}
@@ -3054,20 +3069,7 @@ function App() {
                                         >
                                             <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" alt="Gemini" style={{ width: '18px', height: '18px' }} />
                                         </div>
-                                        <div 
-                                            onClick={() => setIsAgentHubOpen(true)}
-                                            style={{
-                                                padding: '10px',
-                                                cursor: 'pointer',
-                                                borderRadius: '8px',
-                                                color: 'var(--text-secondary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                marginTop: 'auto'
-                                            }}
-                                            title="Agent Hub Settings"
-                                        >
-                                            <FaCog size={16} />
-                                        </div>
+
                                     </div>
                                 </div>
                             </div> {/* End main-content-horizontal */}
@@ -3124,10 +3126,12 @@ function App() {
                             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, cursor: isResizingPanel ? 'row-resize' : 'col-resize', background: 'transparent' }} />
                         )}
 
-                        {/* --- FLOATING AI BUTTON --- */}
-                        <button className={`ai-fab ${isAiPanelOpen ? 'active' : ''}`} onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} title="Toggle AI Assistant">
-                            <FaRobot size={20} />
-                        </button>
+                        {/* --- FLOATING AI BUTTON (Only for Cloud Web IDE) --- */}
+                        {(!window.__KEVRYN_DESKTOP__) && (
+                            <button className={`ai-fab ${isAiPanelOpen ? 'active' : ''}`} onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} title="Toggle AI Assistant">
+                                <FaRobot size={20} />
+                            </button>
+                        )}
 
                         <AnimatePresence>
                             {isDiffModalOpen && (

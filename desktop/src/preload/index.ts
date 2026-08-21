@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+contextBridge.exposeInMainWorld('__KEVRYN_DESKTOP__', true);
+
 contextBridge.exposeInMainWorld('electronAPI', {
     runCode: (fileName: string, content?: string) => ipcRenderer.invoke('run-code', fileName, content),
     onTerminalData: (callback: (data: string) => void) => {

@@ -50,10 +50,54 @@ export class GeminiAdapter implements AgentExtension {
             await this.launch();
         }
 
-        // Mock response for now until we integrate @google/genai SDK
-        yield "Hello! I am Google Gemini. ";
-        yield "You said: " + message;
-        yield "\nWorkspace Context: " + (context?.workspaceRoot || "None");
+        if (!this.apiKey) {
+            yield "❌ API Key missing. Please authenticate Google Gemini in the Agent Hub.";
+            return;
+        }
+
+        try {
+            const systemPrompt = `You are an advanced AI Agent in the KevRyn Desktop IDE. 
+You have access to the user's workspace context.
+Current File: ${context?.fileName || 'None'}
+Language: ${context?.language || 'None'}
+Code Context:
+${context?.code || 'Empty'}
+
+If the user asks for code, provide it cleanly. If you provide terminal commands, use a code block with language 'bash' or 'powershell'.`;
+
+            const payload = {
+                contents: [
+                    { role: "user", parts: [{ text: systemPrompt + "\n\nUser: " + message }] }
+                ],
+                generationConfig: { temperature: 0.7 }
+            };
+
+            // We use simple non-streaming fetch for now, yielding chunks to simulate stream
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${this.apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                yield `❌ Gemini API Error: ${data.error.message}`;
+                return;
+            }
+
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+            
+            // Stream it back to the UI in chunks for a smooth effect
+            const chunkSize = 20;
+            for (let i = 0; i < text.length; i += chunkSize) {
+                yield text.substring(i, i + chunkSize);
+                await new Promise(r => setTimeout(r, 20)); // smooth streaming
+            }
+
+        } catch (error: any) {
+            yield `❌ Local Agent Error: ${error.message}`;
+        }
     }
 
     dispose(): void {
