@@ -882,17 +882,26 @@ function App() {
         });
 
         // NEW: Listen for new sessions (Real-time join)
-        s.on('session-started', (sess) => {
+        s.on('session-started', async (sess) => {
             if (userRole === 'student' && sess) {
                 // Verify student is allowed (empty array means general college lab available to everyone)
-                if (!sess.allowedStudents || sess.allowedStudents.length === 0 || sess.allowedStudents.includes(username)) {
-                    setActiveSessionId(sess._id);
-                    setActiveSession(sess);
-                    showDialog({ 
-                        type: 'alert', 
-                        title: 'Lab Session Started!', 
-                        message: `A new Lab Session "${sess.sessionName}" has been started by the instructor. Click 'Join Session' in the top banner to enter the workspace.` 
-                    });
+                if (sess.targetGroup && sess.targetGroup !== '*') {
+                    if (!userTargetGroup || userTargetGroup !== sess.targetGroup) return;
+                }
+                
+                setActiveSessionId(sess._id);
+                setActiveSession(sess);
+
+                // Replaced 'alert' with 'confirm' so the student can directly join the lab from the popup
+                const joinNow = await showDialog({ 
+                    type: 'confirm', 
+                    title: 'Live Lab Started!', 
+                    message: 'A new Lab Session "' + sess.sessionName + '" has been started by your instructor.\n\nDo you want to enter the lab workspace now?'? 
+                });
+
+                if (joinNow) {
+                    setIsLabOpen(true);
+                    setShowStudentAssignments(false);
                 }
             }
         });
@@ -3086,4 +3095,6 @@ function App() {
 }
 
 export default App;
+
+
 
