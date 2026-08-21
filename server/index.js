@@ -2438,6 +2438,36 @@ app.post('/auth/reset-password', loginLimiter, async (req, res) => {
     }
 });
 // --- CREATE FILE (REST) ---
+
+// NEW: Desktop Lab Environment Sync (Upsert based on courseId and fileName)
+app.post('/student/lab-sync', authenticate, async (req, res) => {
+    try {
+        const { fileName, content, courseId } = req.body;
+        if (!courseId) return res.status(400).json({ error: 'Missing courseId' });
+
+        let file = await File.findOne({ owner: req.user.id, name: fileName, courseId });
+        
+        if (file) {
+            file.content = content;
+            await file.save();
+            return res.json({ success: true, action: 'updated', file });
+        } else {
+            file = new File({
+                name: fileName,
+                content,
+                type: 'file',
+                owner: req.user.id,
+                courseId
+            });
+            await file.save();
+            return res.json({ success: true, action: 'created', file });
+        }
+    } catch (error) {
+        console.error('Desktop Lab Sync Error:', error);
+        res.status(500).json({ error: 'Failed to sync lab file' });
+    }
+});
+
 app.post('/files', authenticate, async (req, res) => {
     try {
         const { name, content, courseId, subjectName } = req.body;

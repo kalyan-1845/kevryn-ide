@@ -1218,6 +1218,19 @@ function App() {
                 const res = await window.electronAPI.createLocalItem(newPath, type);
                 if (res.success) {
                     fetchFiles(true);
+                    
+                    // NEW: If in Lab Mode on Desktop, we MUST sync the creation to the backend so the faculty can report on it!
+                    if (isLabOpen && activeSession?.courseId) {
+                        try {
+                            await api.post('/files', {
+                                name: name,
+                                type: type,
+                                courseId: activeSession.courseId,
+                                content: "" // Will be updated on save
+                            });
+                        } catch(e) { console.error("Lab Backend Sync Error:", e); }
+                    }
+                    
                 } else {
                     alert("Failed to create native file: " + res.error);
                 }
@@ -1583,7 +1596,18 @@ function App() {
         }
 
         // OPTIMIZED: Parallelize DB save and Disk sync for instant performance
-        const dbSavePromise = api.put(`/files/${activeFileId}`, { content: latestCode }).catch(e => console.error("DB Save Failed:", e));
+        let dbSavePromise;
+        if (window.__KEVRYN_DESKTOP__ && isLabOpen && activeSession?.courseId) {
+            dbSavePromise = api.post('/student/lab-sync', {
+                fileName: fileName,
+                content: latestCode,
+                courseId: activeSession.courseId
+            }).catch(e => console.error("Desktop Lab Sync Failed:", e));
+        } else if (!window.__KEVRYN_DESKTOP__ || (activeFileId && !activeFileId.includes('\\') && !activeFileId.includes('/'))) {
+            dbSavePromise = api.put(`/files/${activeFileId}`, { content: latestCode }).catch(e => console.error("DB Save Failed:", e));
+        } else {
+            dbSavePromise = Promise.resolve();
+        }
         
         const saveData = {
             fileName: fullPath,
@@ -2198,7 +2222,27 @@ function App() {
                             userId={userId}
                             onBack={() => setShowStudentAssignments(false)}
                             activeSessionId={activeSessionId}
-                            onEnterLab={() => {
+                            onEnterLab={async () => {
+                                if (window.__KEVRYN_DESKTOP__ && window.electronAPI && activeSession?.courseId) {
+                                    const courseId = activeSession.courseId;
+                                    let selectedPath = localStorage.getItem(`lab_path_${courseId}`);
+                                    
+                                    if (!selectedPath) {
+                                        alert(`Please select a local folder for this Lab Environment (${activeSession.courseName || 'Lab'}). Files created here will be synced automatically.`);
+                                        const result = await window.electronAPI.selectWorkspace();
+                                        if (result.success && result.path) {
+                                            selectedPath = result.path;
+                                            localStorage.setItem(`lab_path_${courseId}`, selectedPath);
+                                        } else {
+                                            return; // Cancel entering lab if they didn't choose a folder
+                                        }
+                                    }
+                                    
+                                    // Open the specific lab workspace via IPC
+                                    await window.electronAPI.openWorkspace(selectedPath);
+                                    // App.js 'workspace-opened' event listener will auto-update localWorkspacePath
+                                }
+
                                 setIsLabOpen(true);
                                 if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
                                     document.documentElement.requestFullscreen().catch(e => console.warn("Fullscreen request denied:", e));
