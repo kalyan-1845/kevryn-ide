@@ -30,7 +30,7 @@ export class AgentManager {
             const agent = this.registry.get(agentId);
             if (!agent) return false;
 
-            let finalSecret = secret;
+            let finalSecret: string | null = secret;
 
             if (secret === 'oauth-flow-request' && agentId === 'google-gemini') {
                 finalSecret = await new Promise<string | null>((resolve) => {
