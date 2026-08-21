@@ -3542,6 +3542,11 @@ app.get('/lab/session-activity-log/:sessionId', authenticate, async (req, res) =
     }
 });
 
+// --- GOOGLE DOMAIN VERIFICATION ROUTE ---
+app.get('/googlef3aea75d866e02a7.html', (req, res) => {
+    res.send('google-site-verification: googlef3aea75d866e02a7.html');
+});
+
 // --- LAST RESORT 404 HANDLER (For Debugging) ---
 app.use((req, res) => {
     console.log(`[404] Unhandled request: ${req.method} ${req.url}`);
