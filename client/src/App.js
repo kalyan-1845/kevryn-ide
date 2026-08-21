@@ -896,7 +896,7 @@ function App() {
                 const joinNow = await showDialog({ 
                     type: 'confirm', 
                     title: 'Live Lab Started!', 
-                    message: 'A new Lab Session "' + sess.sessionName + '" has been started by your instructor.\n\nDo you want to enter the lab workspace now?'? 
+                    message: "A new Lab Session '" + sess.sessionName + "' has been started by your instructor.\n\nDo you want to enter the lab workspace now?"
                 });
 
                 if (joinNow) {
@@ -3095,6 +3095,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
