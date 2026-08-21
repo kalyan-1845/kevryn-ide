@@ -29,12 +29,57 @@ export class AgentManager {
         ipcMain.handle('agent-authenticate', async (event, agentId: string, secret: string) => {
             const agent = this.registry.get(agentId);
             if (!agent) return false;
+
+            let finalSecret = secret;
+
+            if (secret === 'oauth-flow-request') {
+                // Simulate OAuth flow exactly like VS Code
+                finalSecret = await new Promise<string | null>((resolve) => {
+                    const authWindow = new BrowserWindow({
+                        width: 500, height: 600, show: false,
+                        webPreferences: { nodeIntegration: false, contextIsolation: true },
+                        autoHideMenuBar: true, title: 'Sign In to AI Provider'
+                    });
+
+                    // Build a mock OAuth consent screen
+                    const html = `
+                        <html><body style="font-family: sans-serif; padding: 40px; text-align: center; background: #fff; color: #333;">
+                            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" width="60" />
+                            <h2>Sign in to Google</h2>
+                            <p style="color: #666; font-size: 14px; margin-bottom: 30px;">KevRyn IDE is requesting access to use your personal Gemini API limits.</p>
+                            <input type="password" id="key" placeholder="Paste your Google AI Studio API Key" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 20px; font-size: 14px;" />
+                            <button onclick="submit()" style="background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; width: 100%; font-weight: bold;">Authorize & Continue</button>
+                            <script>
+                                function submit() {
+                                    const val = document.getElementById('key').value;
+                                    if(val) document.title = "AUTH_SUCCESS:" + val;
+                                }
+                            </script>
+                        </body></html>
+                    `;
+
+                    authWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+                    authWindow.once('ready-to-show', () => authWindow.show());
+
+                    authWindow.on('page-title-updated', (e, title) => {
+                        if (title.startsWith('AUTH_SUCCESS:')) {
+                            const key = title.split(':')[1];
+                            authWindow.close();
+                            resolve(key);
+                        }
+                    });
+
+                    authWindow.on('closed', () => resolve(null));
+                });
+            }
+
+            if (!finalSecret) return false; // Cancelled
             
             // Store securely
-            await this.credManager.storeCredential(agentId, secret);
+            await this.credManager.storeCredential(agentId, finalSecret);
             
             // Attempt to auth
-            const success = await agent.authenticate({ apiKey: secret });
+            const success = await agent.authenticate({ apiKey: finalSecret });
             return success;
         });
 

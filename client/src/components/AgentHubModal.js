@@ -22,16 +22,14 @@ const AgentHubModal = ({ isOpen, onClose }) => {
     };
 
     const handleAuthenticate = async (agentId) => {
-        const secret = authKey[agentId];
-        if (!secret) return alert("Please enter an API Key");
-
         try {
-            const success = await window.electronAPI.authenticateAgent(agentId, secret);
+            // Initiate OAuth flow via main process
+            const success = await window.electronAPI.authenticateAgent(agentId, 'oauth-flow-request');
             if (success) {
                 alert("Agent Authenticated Successfully!");
                 loadAgents(); // refresh status
             } else {
-                alert("Authentication Failed. Check your API Key.");
+                alert("Authentication Failed or was cancelled.");
             }
         } catch (e) {
             alert("Error authenticating: " + e.message);
@@ -85,21 +83,11 @@ const AgentHubModal = ({ isOpen, onClose }) => {
                             
                             {(agent.status === 'AUTH_REQUIRED' || agent.status === 'NOT_INSTALLED') && (
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                    <div style={{ flex: 1, position: 'relative' }}>
-                                        <FaKey style={{ position: 'absolute', left: '10px', top: '9px', color: '#666' }} size={12} />
-                                        <input 
-                                            type="password" 
-                                            placeholder={`Enter your ${agent.manifest.name} API Key`}
-                                            value={authKey[agent.manifest.id] || ''}
-                                            onChange={e => setAuthKey({...authKey, [agent.manifest.id]: e.target.value})}
-                                            style={{ width: '100%', padding: '8px 8px 8px 30px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)', color: 'white', fontSize: '13px', boxSizing: 'border-box' }}
-                                        />
-                                    </div>
                                     <button 
                                         onClick={() => handleAuthenticate(agent.manifest.id)}
-                                        style={{ background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '6px', padding: '0 15px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                        style={{ background: 'var(--accent-primary)', color: 'white', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '8px 24px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
                                     >
-                                        Connect
+                                        <FaKey size={12} /> Sign in
                                     </button>
                                 </div>
                             )}
