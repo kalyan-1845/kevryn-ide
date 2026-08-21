@@ -119,7 +119,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                     display: 'flex', flexDirection: 'column'
                 }}
             >
-                <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '12px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             {selectedClass ? `${selectedClass.subjectName} (${selectedClass.department} ${selectedClass.year}-${selectedClass.section})` : 'Command Overlay'}
@@ -149,7 +149,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
         <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', color: '#e2e8f0', fontFamily: "'Outfit', 'Inter', sans-serif", overflow: 'hidden' }}>
             
             {/* 1. TOP NAVBAR (Single Page Paradigm) */}
-            <header style={{ padding: '16px 32px', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+            <header style={{ padding: '16px 32px', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', zIndex: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <img src="/logo.png?v=4" alt="KevRyn Logo" style={{ height: '36px', filter: 'drop-shadow(0 0 10px rgba(99,102,241,0.4))' }} />
                     <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '16px' }}>
@@ -170,7 +170,7 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
             </header>
 
             {/* 2. MASTER DROPDOWN BAR */}
-            <div style={{ padding: '24px 32px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '24px', zIndex: 5 }}>
+            <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '24px', zIndex: 5 }}>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Global Context:</div>
                 <div style={{ position: 'relative', flex: 1, maxWidth: '500px' }}>
                     <select 
@@ -203,16 +203,6 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
                     <AnimatePresence mode="wait">
                         {!masterContextId ? (
                             <motion.div key="schedule" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3 }}>
-                                <div style={{ textAlign: 'center', marginBottom: '40px', marginTop: '20px' }}>
-                                    <div style={{ width: '64px', height: '64px', background: 'rgba(99,102,241,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8', fontSize: '24px' }}>
-                                        <FaCalendarAlt />
-                                    </div>
-                                    <h2 style={{ fontSize: '32px', fontWeight: '800', color: '#f8fafc', margin: '0 0 12px 0' }}>Welcome, {facultyName}.</h2>
-                                    <p style={{ color: '#94a3b8', fontSize: '16px', maxWidth: '500px', margin: '0 auto', lineHeight: '1.5' }}>
-                                        Select a lab context from the dropdown above to initialize automated command modules, or review your weekly schedule below.
-                                    </p>
-                                </div>
-                                
                                 <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '24px', padding: '24px', backdropFilter: 'blur(10px)' }}>
                                     <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#e2e8f0', margin: '0 0 24px 0', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '16px' }}>Your Weekly Timetable</h3>
                                     <TimetableWidget token={token} serverUrl={serverUrl} onLabStarted={() => {}} />
@@ -280,3 +270,4 @@ const FacultyHub = ({ token, SERVER_URL: serverUrl, userId, onLogout }) => {
 };
 
 export default FacultyHub;
+
