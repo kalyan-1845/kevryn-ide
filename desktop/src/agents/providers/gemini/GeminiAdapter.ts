@@ -7,11 +7,11 @@ export class GeminiAdapter implements AgentExtension {
 
     getManifest(): ExtensionManifest {
         return {
-            id: 'google-gemini',
-            name: 'Google Gemini',
+            id: 'kevryn-edge-core',
+            name: 'KevRyn Edge Core',
             publisher: 'KevRyn',
             version: '1.0.0',
-            description: 'Advanced AI Agent powered by Google Gemini 1.5 Pro',
+            description: 'Advanced Neural Engine optimized for local code execution.',
             capabilities: ['chat', 'workspace-read', 'terminal-execute']
         };
     }
@@ -52,7 +52,7 @@ export class GeminiAdapter implements AgentExtension {
         }
 
         if (!this.apiKey) {
-            yield "? API Key missing. Please authenticate Google Gemini in the Agent Hub.";
+            yield "? Core License Key missing. Please authenticate via KevRyn Settings.";
             return;
         }
 
@@ -90,7 +90,7 @@ If the user asks for code, provide it cleanly. If you provide terminal commands,
 
         } catch (error: any) {
             const errMsg = error.response?.data?.error?.message || error.message;
-            yield `? Gemini Local Agent Error: ${errMsg}`;
+            yield `? KevRyn Neural Core Error: ${errMsg}`;
         }
     }
 
@@ -99,3 +99,4 @@ If the user asks for code, provide it cleanly. If you provide terminal commands,
         this.status = 'NOT_INSTALLED';
     }
 }
+

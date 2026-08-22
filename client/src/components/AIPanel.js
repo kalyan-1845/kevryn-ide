@@ -178,15 +178,15 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     });
                 };
                 
-                window.electronAPI.onAgentChatChunk('google-gemini', onChunk);
+                window.electronAPI.onAgentChatChunk('kevryn-edge-core', onChunk);
                 
                 return new Promise((resolve) => {
-                    window.electronAPI.onAgentChatDone('google-gemini', () => {
+                    window.electronAPI.onAgentChatDone('kevryn-edge-core', () => {
                         setIsLoading(false);
                         setAgentStatus(null);
                         resolve();
                     });
-                    window.electronAPI.onAgentChatError('google-gemini', (err) => {
+                    window.electronAPI.onAgentChatError('kevryn-edge-core', (err) => {
                         setMessages(prev => {
                             const newMsg = [...prev];
                             newMsg[newMsg.length - 1].content = `❌ Error: ${err}`;
@@ -197,7 +197,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                         resolve();
                     });
                     
-                    window.electronAPI.chatWithAgent('google-gemini', userMessage, {
+                    window.electronAPI.chatWithAgent('kevryn-edge-core', userMessage, {
                         code, fileName, language
                     }).catch(e => {
                         setMessages(prev => {
@@ -327,3 +327,4 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 };
 
 export default AIPanel;
+

@@ -2547,8 +2547,7 @@ function App() {
                                         {activeMenu === 'settings' && (
                                             <div className="dropdown-menu" style={{ right: 0, left: 'auto' }}>
                                                 {window.__KEVRYN_DESKTOP__ && (
-                                                    <div className="dropdown-option" onClick={() => { setIsAgentHubOpen(true); setActiveMenu(null); }}><FaRobot size={11} /> Agent Extension Hub</div>
-                                                )}
+                                                    )}
                                                 <div className="dropdown-option" onClick={handleLogout}><FaSignOutAlt size={11} /> Sign Out ({username})</div>
                                             </div>
                                         )}
@@ -2571,10 +2570,7 @@ function App() {
                                             <FaClipboardList title="My Learning (Assignments & Courses)" />
                                         </div>
                                         {typeof window !== 'undefined' && window.__KEVRYN_DESKTOP__ && (
-                                            <div onClick={() => setIsAgentHubOpen(true)} style={{ flex: 1, padding: '8px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                                                <FaPuzzlePiece title="AI Agent Extensions" />
-                                            </div>
-                                        )}
+                                            )}
                                         <button className="icon-btn" title="New Template" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 10px', cursor: 'pointer' }}><FaMagic size={11} /></button>
                                     </div>
                                     {/* Sidebar Tab Content Area (Ensure it takes space to push logout down) */}
@@ -3201,6 +3197,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
