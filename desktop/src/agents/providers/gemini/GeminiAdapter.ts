@@ -1,4 +1,5 @@
 import { AgentExtension, AgentStatus, ExtensionManifest } from '../../core/AgentExtension';
+import axios from 'axios';
 
 export class GeminiAdapter implements AgentExtension {
     private status: AgentStatus = 'NOT_INSTALLED';
@@ -26,7 +27,7 @@ export class GeminiAdapter implements AgentExtension {
 
     async authenticate(credentials: any): Promise<boolean> {
         if (credentials.apiKey) {
-            this.apiKey = credentials.apiKey;
+            this.apiKey = credentials.apiKey.trim();
             this.status = 'AUTHENTICATED';
             return true;
         }
@@ -51,7 +52,7 @@ export class GeminiAdapter implements AgentExtension {
         }
 
         if (!this.apiKey) {
-            yield "❌ API Key missing. Please authenticate Google Gemini in the Agent Hub.";
+            yield "? API Key missing. Please authenticate Google Gemini in the Agent Hub.";
             return;
         }
 
@@ -72,22 +73,13 @@ If the user asks for code, provide it cleanly. If you provide terminal commands,
                 generationConfig: { temperature: 0.7 }
             };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await axios.post(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`,
+                payload,
+                { headers: { 'Content-Type': 'application/json' } }
+            );
 
-            const data = await response.json();
-            
-            if (data.error) {
-                yield `❌ Gemini API Error: ${data.error.message}`;
-                return;
-            }
-
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+            const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
             
             // Stream it back to the UI in chunks for a smooth effect
             const chunkSize = 20;
@@ -97,7 +89,8 @@ If the user asks for code, provide it cleanly. If you provide terminal commands,
             }
 
         } catch (error: any) {
-            yield `❌ Local Agent Error: ${error.message}`;
+            const errMsg = error.response?.data?.error?.message || error.message;
+            yield `? Gemini Local Agent Error: ${errMsg}`;
         }
     }
 
