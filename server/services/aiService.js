@@ -11,7 +11,7 @@ const GROQ_KEYS = [
     process.env.GROQ_API_KEY // Fallback
 ].filter(Boolean);
 
-const GROQ_MODEL = 'llama3-8b-8192'; // Using valid model
+const GROQ_MODEL = 'llama-3.1-8b-instant'; // Using valid model
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // ── CHAT ─────────────────────────────────────────────────────────
@@ -102,3 +102,4 @@ module.exports = {
     generateCode,
     startKeepAlive
 };
+
