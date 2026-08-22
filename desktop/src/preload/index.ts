@@ -32,12 +32,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     signoutAgent: (agentId: string) => ipcRenderer.invoke('agent-signout', agentId),
     chatWithAgent: (agentId: string, message: string, context: any) => ipcRenderer.invoke('agent-chat', agentId, message, context),
     onAgentChatChunk: (agentId: string, callback: (chunk: string) => void) => {
+        ipcRenderer.removeAllListeners(`agent-chat-chunk-${agentId}`);
         ipcRenderer.on(`agent-chat-chunk-${agentId}`, (_event, chunk) => callback(chunk));
     },
     onAgentChatDone: (agentId: string, callback: () => void) => {
+        ipcRenderer.removeAllListeners(`agent-chat-done-${agentId}`);
         ipcRenderer.on(`agent-chat-done-${agentId}`, () => callback());
     },
     onAgentChatError: (agentId: string, callback: (error: string) => void) => {
+        ipcRenderer.removeAllListeners(`agent-chat-error-${agentId}`);
         ipcRenderer.on(`agent-chat-error-${agentId}`, (_event, error) => callback(error));
     },
 
