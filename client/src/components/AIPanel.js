@@ -5,13 +5,13 @@ import DOMPurify from 'dompurify';
 import {
     FaPaperPlane, FaRobot, FaSpinner, FaCheck, FaTimes,
     FaBolt, FaMagic, FaCopy, FaCode,
-    FaTrash, FaTerminal, FaPlus, FaHistory
+    FaTrash, FaTerminal, FaPlus, FaHistory, FaKey
 } from 'react-icons/fa';
 
 const _rawServerUrl = (process.env.REACT_APP_SERVER_URL || 'http://localhost:5000').trim();
 const SERVER_URL = _rawServerUrl.startsWith('http') ? _rawServerUrl : `https://${_rawServerUrl}`;
 
-const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
+const AIPanel = ({ token, code, fileName, language, onApplyCode, onOpenSettings }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -246,6 +246,7 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
                     <span style={{ fontSize: '10px', color: '#10b981', marginLeft: '8px', fontWeight: 600 }}>● Online</span>
                 </div>
                 <div className="ai-header-right">
+                    {window.__KEVRYN_DESKTOP__ && <button onClick={onOpenSettings} className="ai-header-btn" title="Core Settings"><FaKey size={12} /></button>}
                     <button onClick={newChat} className="ai-header-btn" title="New Chat"><FaPlus size={12} /></button>
                     <button onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchSessions(); }} className={`ai-header-btn ${showHistory ? 'active' : ''}`} title="History"><FaHistory size={12} /></button>
                 </div>
@@ -327,4 +328,5 @@ const AIPanel = ({ token, code, fileName, language, onApplyCode }) => {
 };
 
 export default AIPanel;
+
 

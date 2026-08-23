@@ -2546,8 +2546,7 @@ function App() {
                                         <FaCog size={14} />
                                         {activeMenu === 'settings' && (
                                             <div className="dropdown-menu" style={{ right: 0, left: 'auto' }}>
-                                                {window.__KEVRYN_DESKTOP__ && (
-                                                    )}
+                                                
                                                 <div className="dropdown-option" onClick={handleLogout}><FaSignOutAlt size={11} /> Sign Out ({username})</div>
                                             </div>
                                         )}
@@ -2569,8 +2568,7 @@ function App() {
                                         <div onClick={() => setShowStudentAssignments(true)} className={`sidebar-icon-container ${showStudentAssignments ? 'active' : ''}`} style={{ flex: 1, padding: '8px', textAlign: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                                             <FaClipboardList title="My Learning (Assignments & Courses)" />
                                         </div>
-                                        {typeof window !== 'undefined' && window.__KEVRYN_DESKTOP__ && (
-                                            )}
+                                        
                                         <button className="icon-btn" title="New Template" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', padding: '0 10px', cursor: 'pointer' }}><FaMagic size={11} /></button>
                                     </div>
                                     {/* Sidebar Tab Content Area (Ensure it takes space to push logout down) */}
@@ -3197,6 +3195,9 @@ function App() {
 }
 
 export default App;
+
+
+
 
 
 
