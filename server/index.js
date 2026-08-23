@@ -1918,7 +1918,19 @@ app.post('/deploy/frontend', authenticate, async (req, res) => {
             }
         }
 
-        const liveUrl = `/sites/${userId}/${safeSiteName}/index.html`;
+        let serveFile = 'index.html';
+        const indexPath = path.join(deployPath, 'index.html');
+        if (!fs.existsSync(indexPath)) {
+            try {
+                const files = fs.readdirSync(deployPath);
+                const htmlFile = files.find(f => f.endsWith('.html'));
+                if (htmlFile) serveFile = htmlFile;
+            } catch (e) {
+                console.warn("[Deploy] Could not read deploy path for html fallback", e);
+            }
+        }
+
+        const liveUrl = `/sites/${userId}/${safeSiteName}/${serveFile}`;
         res.json({ message: "Frontend Deployed!", url: liveUrl });
     } catch (err) {
         console.error("Deploy Error:", err);
