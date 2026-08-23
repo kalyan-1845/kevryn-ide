@@ -20,6 +20,15 @@ async function createWindow() {
         }
     });
 
+    // Fix: Open external links in default OS browser (Chrome/Edge) instead of internal Electron window.
+    // This prevents Google Login from crashing with a blank screen or 'disallowed_useragent'.
+    win.webContents.setWindowOpenHandler(({ url }) => {
+        if (url.startsWith('http') || url.startsWith('https')) {
+            require('electron').shell.openExternal(url);
+        }
+        return { action: 'deny' };
+    });
+
     // Detect environment on startup
     await EnvironmentManager.detectAll();
 
@@ -30,9 +39,11 @@ async function createWindow() {
     // Setup Agent Hub
     const { AgentManager } = require('../agents/core/AgentManager');
     const { GeminiAdapter } = require('../agents/providers/gemini/GeminiAdapter');
+    const { GroqAdapter } = require('../agents/providers/groq/GroqAdapter');
     
     const agentManager = new AgentManager(win);
     agentManager.registerAgent(new GeminiAdapter());
+    agentManager.registerAgent(new GroqAdapter());
     agentManager.setupIpc();
     agentManager.initializeAgents().catch(console.error);
 

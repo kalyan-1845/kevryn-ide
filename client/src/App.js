@@ -465,6 +465,7 @@ function App() {
 
     // --- AI PANEL STATE ---
     const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+    const [activeAiAgent, setActiveAiAgent] = useState('groq-assistant');
     const [aiPanelWidth, setAiPanelWidth] = useState(350);
     const [isResizingAi, setIsResizingAi] = useState(false);
 
@@ -631,37 +632,42 @@ function App() {
     const fetchFiles = useCallback(async (silent = false) => {
         if (!userId) return;
         
-        // Native Local Folder Mode
-        if (localWorkspacePath && window.electronAPI) {
-            try {
-                if (!silent) setIsAppLoading(true);
-                const localFiles = await window.electronAPI.readLocalDir(localWorkspacePath);
-                
-                // Flatten the tree for the existing files state structure, since the legacy tree expects flat arrays with parentId
-                const flattenTree = (nodes, parentId = 'root') => {
-                    let flat = [];
-                    nodes.forEach(node => {
-                        const { children, ...rest } = node;
-                        flat.push({ ...rest, parentId });
-                        if (children && children.length > 0) {
-                            flat = flat.concat(flattenTree(children, node._id));
-                        }
-                    });
-                    return flat;
-                };
-                
-                const flatFiles = flattenTree(localFiles);
-                setFiles(flatFiles);
-                return;
-            } catch (err) {
-                console.error("Failed to read local dir:", err);
-                alert("Could not load local directory");
-            } finally {
-                if (!silent) setIsAppLoading(false);
+        // Native Local Folder Mode (Desktop)
+        if (window.__KEVRYN_DESKTOP__) {
+            if (localWorkspacePath && window.electronAPI) {
+                try {
+                    if (!silent) setIsAppLoading(true);
+                    const localFiles = await window.electronAPI.readLocalDir(localWorkspacePath);
+                    
+                    // Flatten the tree for the existing files state structure, since the legacy tree expects flat arrays with parentId
+                    const flattenTree = (nodes, parentId = 'root') => {
+                        let flat = [];
+                        nodes.forEach(node => {
+                            const { children, ...rest } = node;
+                            flat.push({ ...rest, parentId });
+                            if (children && children.length > 0) {
+                                flat = flat.concat(flattenTree(children, node._id));
+                            }
+                        });
+                        return flat;
+                    };
+                    
+                    const flatFiles = flattenTree(localFiles);
+                    setFiles(flatFiles);
+                } catch (err) {
+                    console.error("Failed to read local dir:", err);
+                    alert("Could not load local directory");
+                } finally {
+                    if (!silent) setIsAppLoading(false);
+                }
+            } else {
+                // If desktop but no local folder opened, don't fetch cloud files, just empty
+                setFiles([]);
             }
             return;
         }
 
+        // Web IDE Cloud Mode
         // Debounce logic: cancel existing timer
         if (window.fetchFilesTimer) clearTimeout(window.fetchFilesTimer);
 
@@ -2281,8 +2287,11 @@ function App() {
                                             <div className="dropdown-separator"></div>
                                             <div className="dropdown-option" onClick={async () => {
                                                 if (window.__KEVRYN_DESKTOP__ && window.electronAPI) {
-                                                    const res = await window.electronAPI.selectWorkspace();
-                                                    if (res.success && res.path) await window.electronAPI.openWorkspace(res.path);
+                                                    const folderPath = await window.electronAPI.selectFolder();
+                                                    if (folderPath) {
+                                                        await window.electronAPI.saveWorkspacePath(folderPath);
+                                                        setLocalWorkspacePath(folderPath);
+                                                    }
                                                 } else {
                                                     folderInputRef.current.click();
                                                 }
@@ -2974,7 +2983,7 @@ function App() {
                                 </div> {/* End center-workspace */}
 
                                 {/* --- RIGHT SIDEBAR (AI) --- */}
-                                <div style={{ display: 'flex', height: '100%' }}>
+                                <div style={{ display: 'flex', height: '100%', minHeight: 0, minWidth: 0 }}>
                                     <AnimatePresence>
                                         {isAiPanelOpen && (
                                             <motion.div
@@ -2982,15 +2991,16 @@ function App() {
                                                 animate={{ width: aiPanelWidth, opacity: 1 }}
                                                 exit={{ width: 0, opacity: 0 }}
                                                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                                                style={{ display: 'flex', overflow: 'hidden', height: '100%', flexShrink: 0, borderRight: '1px solid var(--border-color)' }}
+                                                style={{ display: 'flex', overflow: 'hidden', height: '100%', minHeight: 0, minWidth: 0, flexShrink: 0, borderRight: '1px solid var(--border-color)' }}
                                             >
                                                 <div className="resize-handle" onMouseDown={startResizingAi} style={{ width: '4px', cursor: 'col-resize', background: 'transparent', zIndex: 100 }} />
-                                                <div className="right-sidebar" style={{ width: '100%', height: '100%' }}>
+                                                <div className="right-sidebar" style={{ width: '100%', height: '100%', minHeight: 0, minWidth: 0 }}>
                                                     <AIPanel
                                                         token={token}
                                                         code={code}
                                                         fileName={fileName}
                                                         language={getLanguage(fileName)}
+                                                        targetAgentId={activeAiAgent}
                                                         onApplyCode={(newCode, lang) => {
                                                             const terminalLangs = ['powershell', 'bash', 'shell', 'sh', 'cmd', 'zsh', 'terminal'];
                                                             if (lang && terminalLangs.includes(lang.toLowerCase())) {
@@ -3029,34 +3039,37 @@ function App() {
                                         gap: '12px'
                                     }}>
                                         <div 
-                                            onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} 
-                                            style={{
-                                                padding: '10px',
-                                                cursor: 'pointer',
-                                                borderRadius: '8px',
-                                                background: isAiPanelOpen ? 'var(--accent-primary)' : 'transparent',
-                                                color: isAiPanelOpen ? '#fff' : 'var(--text-secondary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}
-                                            title="KevRyn AI (Default)"
-                                        >
-                                            <FaRobot size={18} />
-                                        </div>
-                                        <div 
                                             onClick={() => {
-                                                // Trigger Gemini Extension (Mock for now, sets AI panel open)
+                                                setActiveAiAgent('groq-assistant');
                                                 setIsAiPanelOpen(true);
                                             }} 
                                             style={{
                                                 padding: '10px',
                                                 cursor: 'pointer',
                                                 borderRadius: '8px',
-                                                color: '#10b981',
+                                                background: (isAiPanelOpen && activeAiAgent === 'groq-assistant') ? 'var(--accent-primary)' : 'transparent',
+                                                color: (isAiPanelOpen && activeAiAgent === 'groq-assistant') ? '#fff' : 'var(--text-secondary)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}
-                                            title="Google Gemini (Installed)"
+                                            title="Groq Neural Core"
                                         >
-                                            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" alt="Gemini" style={{ width: '18px', height: '18px' }} />
+                                            <span style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '15px', letterSpacing: '-1px' }}>gr</span>
+                                        </div>
+                                        <div 
+                                            onClick={() => {
+                                                setActiveAiAgent('google-gemini');
+                                                setIsAiPanelOpen(true);
+                                            }} 
+                                            style={{
+                                                padding: '10px',
+                                                cursor: 'pointer',
+                                                borderRadius: '8px',
+                                                background: (isAiPanelOpen && activeAiAgent === 'google-gemini') ? 'var(--accent-primary)' : 'transparent',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                            title="Google Gemini"
+                                        >
+                                            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" alt="Gemini" style={{ width: '18px', height: '18px', filter: (isAiPanelOpen && activeAiAgent === 'google-gemini') ? 'brightness(0) invert(1)' : 'none' }} />
                                         </div>
 
                                     </div>
