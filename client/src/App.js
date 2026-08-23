@@ -456,6 +456,7 @@ function App() {
 
     // --- BOTTOM PANEL STATE ---
     const [bottomPanelTab, setBottomPanelTab] = useState('terminal');
+    const [deployMode, setDeployMode] = useState('local');
     const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(true);
     const [bottomPanelHeight, setBottomPanelHeight] = useState(200); // Compact default — user can resize up
     const [isResizingPanel, setIsResizingPanel] = useState(false);
@@ -2463,19 +2464,13 @@ function App() {
                                 <div className="menu-item" onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'deploy' ? null : 'deploy'); }}>
                                     Deploy
                                     {activeMenu === 'deploy' && (
-                                        <div className="dropdown-menu">
-                                            <div className="dropdown-option" onClick={deployFrontend}><FaCloudUploadAlt /> Frontend (Netlify)</div>
-                                            <div className="dropdown-option" onClick={deployBackend}><FaServer /> Backend (Native)</div>
-                                            <div className="dropdown-separator"></div>
-                                            <div className="dropdown-header">Active Deployments</div>
-                                            {deployStatus?.backend ? (
-                                                <div className="dropdown-item-status">
-                                                    <span style={{ color: '#4caf50' }}>● Live</span> Port: {deployStatus.backend.port}
-                                                    <button className="btn-small-danger" onClick={stopBackend}>Stop</button>
-                                                </div>
-                                            ) : (
-                                                <div className="dropdown-item-status" style={{ color: '#666' }}>No Active Backend</div>
-                                            )}
+                                        <div className="dropdown-menu" style={{ width: '280px' }}>
+                                            <div className="dropdown-option" onClick={() => { setDeployMode('local'); setBottomPanelTab('deployment'); setActiveMenu(null); }}>
+                                                <span style={{ marginRight: '8px' }}>🟢</span> Local LAN Testing (Multi-screen)
+                                            </div>
+                                            <div className="dropdown-option" onClick={() => { setDeployMode('world'); setBottomPanelTab('deployment'); setActiveMenu(null); }}>
+                                                <span style={{ marginRight: '8px' }}>🌐</span> Deploy to World (Static / Portfolio)
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -2970,7 +2965,7 @@ function App() {
                                                 )}
                                                 {bottomPanelTab === 'deployment' && (
                                                     <div style={{ height: '100%', overflow: 'hidden' }}>
-                                                        <DeploymentPanel token={token} />
+                                                        <DeploymentPanel token={token} activeMode={deployMode} />
                                                     </div>
                                                 )}
                                             </div>
@@ -3195,6 +3190,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

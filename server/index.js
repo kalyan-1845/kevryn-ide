@@ -1888,8 +1888,13 @@ app.get('/deploy/status', authenticate, (req, res) => {
     const projectId = userId.toString();
     const deployment = DeployManager.getDeployment(projectId);
 
+    // Check if a frontend static site actually exists on disk
+    const userSitesDir = getUserSitesDir(userId);
+    const siteDir = path.join(userSitesDir, username);
+    const frontendExists = fs.existsSync(path.join(siteDir, 'index.html'));
+
     res.json({
-        frontend: `/sites/${userId}/${username}/index.html`,
+        frontend: frontendExists ? `/sites/${userId}/${username}/index.html` : null,
         backend: deployment && deployment.status === 'running' ? {
             url: `/deployed/${projectId}`,
             status: "Running",
@@ -1906,6 +1911,27 @@ app.get('/deploy/logs', authenticate, (req, res) => {
         res.json({ logs: deployment.logs });
     } else {
         res.json({ logs: [] });
+    }
+});
+
+// Unpublish / Take Down a deployed static frontend site
+app.post('/deploy/unpublish', authenticate, (req, res) => {
+    const userId = req.user.userId;
+    const username = req.user.username;
+    const userSitesDir = getUserSitesDir(userId);
+    const siteDir = path.join(userSitesDir, username);
+
+    try {
+        if (fs.existsSync(siteDir)) {
+            fs.rmSync(siteDir, { recursive: true, force: true });
+            console.log(`[Deploy] Unpublished site for user ${username} (${userId})`);
+            res.json({ message: 'Site unpublished successfully.' });
+        } else {
+            res.json({ message: 'No published site found.' });
+        }
+    } catch (err) {
+        console.error('[Deploy] Unpublish error:', err);
+        res.status(500).json({ error: 'Failed to unpublish site.' });
     }
 });
 
