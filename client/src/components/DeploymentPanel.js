@@ -134,9 +134,10 @@ const DeploymentPanel = ({ token, activeMode }) => {
                 backendUrl: ''
             });
             if (res.data.url) {
+                const host = window.__KEVRYN_DESKTOP__ ? 'https://kevryn-ide.pages.dev' : window.location.origin;
                 const fullUrl = res.data.url.startsWith('http')
                     ? res.data.url
-                    : SERVER_URL + res.data.url;
+                    : host + res.data.url;
                 setWorldUrl(fullUrl);
                 setWorldDeployed(true);
             }
