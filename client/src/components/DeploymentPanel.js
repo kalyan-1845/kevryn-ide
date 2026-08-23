@@ -22,6 +22,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
     const [isPublishing, setIsPublishing] = useState(false);
     const [publishError, setPublishError] = useState('');
     const [copied, setCopied] = useState(false);
+    const [projectName, setProjectName] = useState('');
 
     const api = axios.create({
         baseURL: SERVER_URL,
@@ -123,9 +124,13 @@ const DeploymentPanel = ({ token, activeMode }) => {
     const publishToWorld = async () => {
         setIsPublishing(true);
         setPublishError('');
+        
+        // Auto-generate a friendly name if they leave it blank
+        const finalSiteName = projectName.trim() || 'portfolio-' + Math.random().toString(36).substring(2, 8);
+
         try {
             const res = await api.post('/deploy/frontend', {
-                siteName: '',
+                siteName: finalSiteName,
                 backendUrl: ''
             });
             if (res.data.url) {
@@ -305,7 +310,22 @@ const DeploymentPanel = ({ token, activeMode }) => {
             )}
 
             {!worldDeployed ? (
-                <button
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ color: '#888', fontSize: '13px', paddingLeft: '10px' }}>kevryn-ide.pages.dev/sites/</span>
+                        <input
+                            type="text"
+                            placeholder="e.g. my-resume (or leave blank to auto-generate)"
+                            value={projectName}
+                            onChange={(e) => setProjectName(e.target.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase())}
+                            style={{
+                                background: 'transparent', border: 'none', color: '#61dafb',
+                                fontSize: '14px', outline: 'none', padding: '8px', width: '300px'
+                            }}
+                            title="Leave blank to auto-generate a portfolio name"
+                        />
+                    </div>
+                    <button
                     onClick={publishToWorld}
                     disabled={isPublishing}
                     style={{
@@ -330,6 +350,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
                         '\uD83D\uDE80 Publish to Web'
                     )}
                 </button>
+                </div>
             ) : (
                 <div style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px',
