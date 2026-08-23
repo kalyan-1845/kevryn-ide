@@ -58,11 +58,13 @@ const DeploymentPanel = ({ token, activeMode }) => {
     useEffect(() => {
         if (!token) return;
         api.get('/deploy/status').then(res => {
-            if (res.data.frontend && res.data.frontend !== '/sites/undefined/undefined/index.html') {
+            if (res.data.frontend) {
                 setWorldDeployed(true);
+                if (res.data.siteName) setProjectName(res.data.siteName);
+                const host = window.__KEVRYN_DESKTOP__ ? 'https://kevryn-ide.pages.dev' : window.location.origin;
                 const fullUrl = res.data.frontend.startsWith('http')
                     ? res.data.frontend
-                    : SERVER_URL + res.data.frontend;
+                    : host + res.data.frontend;
                 setWorldUrl(fullUrl);
             }
             if (res.data.backend) {

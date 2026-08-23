@@ -1770,9 +1770,10 @@ app.post('/deploy/frontend', authenticate, async (req, res) => {
     const deployPath = path.join(userSitesDir, safeSiteName);
 
     try {
-        if (fs.existsSync(deployPath)) {
-            fs.rmSync(deployPath, { recursive: true, force: true });
+        if (fs.existsSync(userSitesDir)) {
+            fs.rmSync(userSitesDir, { recursive: true, force: true });
         }
+        fs.mkdirSync(userSitesDir, { recursive: true });
 
         let sourceDir = userDir;
 
@@ -2033,17 +2034,35 @@ app.post('/deploy/stop', authenticate, async (req, res) => {
 
 app.get('/deploy/status', authenticate, (req, res) => {
     const userId = req.user.userId;
-    const username = req.user.username;
     const projectId = userId.toString();
     const deployment = DeployManager.getDeployment(projectId);
-
-    // Check if a frontend static site actually exists on disk
     const userSitesDir = getUserSitesDir(userId);
-    const siteDir = path.join(userSitesDir, username);
-    const frontendExists = fs.existsSync(path.join(siteDir, 'index.html'));
+
+    let frontendUrl = null;
+    let activeSiteName = null;
+
+    if (fs.existsSync(userSitesDir)) {
+        try {
+            const sites = fs.readdirSync(userSitesDir).filter(f => fs.statSync(path.join(userSitesDir, f)).isDirectory());
+            if (sites.length > 0) {
+                activeSiteName = sites[0]; // Take the first active site
+                const siteDir = path.join(userSitesDir, activeSiteName);
+                let serveFile = 'index.html';
+                const files = fs.readdirSync(siteDir);
+                if (!files.includes('index.html')) {
+                    const htmlFile = files.find(f => f.endsWith('.html'));
+                    if (htmlFile) serveFile = htmlFile;
+                }
+                frontendUrl = `/sites/${userId}/${activeSiteName}/${serveFile}`;
+            }
+        } catch (e) {
+            console.error("Status check error", e);
+        }
+    }
 
     res.json({
-        frontend: frontendExists ? `/sites/${userId}/${username}/index.html` : null,
+        frontend: frontendUrl,
+        siteName: activeSiteName,
         backend: deployment && deployment.status === 'running' ? {
             url: `/deployed/${projectId}`,
             status: "Running",
