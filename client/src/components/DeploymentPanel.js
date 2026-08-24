@@ -292,124 +292,71 @@ const DeploymentPanel = ({ token, activeMode }) => {
     // === Render: Worldwide Static Deploy ===
     const renderWorldDeploy = () => (
         <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', height: '100%', padding: '20px', textAlign: 'center'
+            display: 'flex', flexDirection: 'row', alignItems: 'center',
+            height: '100%', padding: '0 20px', gap: '20px', width: '100%',
+            boxSizing: 'border-box'
         }}>
-            <FaGlobe size={36} style={{ color: '#3b82f6', marginBottom: '10px', opacity: 0.9 }} />
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold' }}>Worldwide Static Deployment</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <FaGlobe size={18} style={{ color: '#3b82f6', opacity: 0.9 }} />
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>Worldwide Static Deployment</h3>
+            </div>
 
             {publishError && (
-                <div style={{
-                    background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                    padding: '8px 15px', borderRadius: '8px', marginBottom: '15px',
-                    fontSize: '13px', maxWidth: '400px', border: '1px solid rgba(239, 68, 68, 0.2)'
-                }}>
+                <div style={{ color: '#ef4444', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '4px 10px', borderRadius: '4px', flexShrink: 0 }}>
                     {publishError}
                 </div>
             )}
 
-            {!worldDeployed ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span style={{ color: '#888', fontSize: '13px', paddingLeft: '10px' }}>kevryn-ide.onrender.com/sites/</span>
-                        <input
-                            type="text"
-                            placeholder="e.g. my-resume (or leave blank to auto-generate)"
-                            value={projectName}
-                            onChange={(e) => setProjectName(e.target.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase())}
+            <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: '15px', minWidth: 0 }}>
+                {!worldDeployed ? (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', flex: 1, maxWidth: '400px' }}>
+                            <span style={{ color: '#888', fontSize: '12px', paddingLeft: '5px', whiteSpace: 'nowrap' }}>kevryn-ide.onrender.com/sites/</span>
+                            <input
+                                type="text"
+                                placeholder="e.g. my-resume"
+                                value={projectName}
+                                onChange={(e) => setProjectName(e.target.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase())}
+                                style={{ background: 'transparent', border: 'none', color: '#61dafb', fontSize: '13px', outline: 'none', padding: '4px', width: '100%' }}
+                                title="Leave blank to auto-generate a portfolio name"
+                            />
+                        </div>
+                        <button
+                            onClick={publishToWorld}
+                            disabled={isPublishing}
                             style={{
-                                background: 'transparent', border: 'none', color: '#61dafb',
-                                fontSize: '14px', outline: 'none', padding: '8px', width: '300px'
-                            }}
-                            title="Leave blank to auto-generate a portfolio name"
-                        />
-                    </div>
-                    <button
-                    onClick={publishToWorld}
-                    disabled={isPublishing}
-                    style={{
-                        background: isPublishing
-                            ? 'linear-gradient(135deg, #555, #444)'
-                            : 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                        color: 'white', border: 'none',
-                        padding: '14px 35px', borderRadius: '10px',
-                        fontSize: '15px', fontWeight: 'bold',
-                        cursor: isPublishing ? 'not-allowed' : 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        boxShadow: isPublishing ? 'none' : '0 6px 20px rgba(59, 130, 246, 0.35)',
-                        transition: 'all 0.3s ease'
-                    }}
-                >
-                    {isPublishing ? (
-                        <>
-                            <FaSpinner className="spin" size={14} />
-                            Publishing...
-                        </>
-                    ) : (
-                        '\uD83D\uDE80 Publish to Web'
-                    )}
-                </button>
-                </div>
-            ) : (
-                <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px',
-                    background: 'rgba(59, 130, 246, 0.05)', padding: '25px 30px',
-                    borderRadius: '14px', border: '1px solid rgba(59, 130, 246, 0.15)',
-                    maxWidth: '500px', width: '100%'
-                }}>
-                    <div style={{
-                        fontSize: '13px', color: '#10b981', fontWeight: 'bold',
-                        display: 'flex', alignItems: 'center', gap: '6px'
-                    }}>
-                        <span style={{ fontSize: '16px' }}>{'\u2713'}</span> Successfully Published & Live
-                    </div>
-
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        background: 'rgba(0,0,0,0.3)', padding: '12px 20px',
-                        borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)',
-                        width: '100%', justifyContent: 'center'
-                    }}>
-                        <a
-                            href={worldUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                                fontFamily: 'monospace', color: '#61dafb',
-                                textDecoration: 'none', fontSize: '14px',
-                                wordBreak: 'break-all', display: 'flex',
-                                alignItems: 'center', gap: '6px'
+                                background: isPublishing ? 'linear-gradient(135deg, #555, #444)' : 'linear-gradient(135deg, #3b82f6, #6366f1)',
+                                color: 'white', border: 'none', padding: '8px 20px', borderRadius: '6px',
+                                fontSize: '13px', fontWeight: 'bold', cursor: isPublishing ? 'not-allowed' : 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s ease', whiteSpace: 'nowrap', flexShrink: 0
                             }}
                         >
-                            <FaExternalLinkAlt size={10} /> {worldUrl}
-                        </a>
-                        <FaCopy
-                            style={{ cursor: 'pointer', color: copied ? '#10b981' : '#888', flexShrink: 0, transition: 'color 0.2s' }}
-                            onClick={() => copyToClipboard(worldUrl)}
-                            title="Copy Link"
-                        />
-                    </div>
-
-                    <p style={{ color: '#888', fontSize: '13px', marginTop: '15px' }}>
-                        Want to deploy a different project? Take this one down first.
-                    </p>
-
-                    <button
-                        onClick={unpublishWorld}
-                        style={{
-                            background: 'transparent', color: '#ef4444',
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            padding: '8px 22px', borderRadius: '8px',
-                            fontSize: '13px', fontWeight: 'bold',
-                            cursor: 'pointer', display: 'flex',
-                            alignItems: 'center', gap: '8px', marginTop: '5px',
-                            transition: 'all 0.2s ease'
-                        }}
-                    >
-                        <FaTrash size={11} /> Unpublish / Take Down
-                    </button>
-                </div>
-            )}
+                            {isPublishing ? <FaSpinner className="spin" size={12} /> : '\uD83D\uDE80'} {isPublishing ? 'Publishing...' : 'Publish'}
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.3)', padding: '6px 15px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)', flex: 1, maxWidth: '450px' }}>
+                            <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{'\u2713'} Live:</span>
+                            <a href={worldUrl} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', color: '#10b981', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                {worldUrl}
+                            </a>
+                            <FaCopy style={{ cursor: 'pointer', color: copied ? '#10b981' : '#888', flexShrink: 0 }} onClick={() => copyToClipboard(worldUrl)} title="Copy Link" size={14} />
+                            <a href={worldUrl} target="_blank" rel="noreferrer" style={{ color: '#888', flexShrink: 0 }} title="Open in new tab"><FaExternalLinkAlt size={12} /></a>
+                        </div>
+                        <button
+                            onClick={unpublishWorld}
+                            style={{
+                                background: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)',
+                                padding: '8px 15px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0
+                            }}
+                        >
+                            <FaTrash size={11} /> Unpublish
+                        </button>
+                    </>
+                )}
+            </div>
 
             <style>{`
                 .spin { animation: spin-anim 0.8s linear infinite; }
