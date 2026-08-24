@@ -194,7 +194,11 @@ const FileTree = React.memo(({
   };
 
   return (
-    <div style={{ marginLeft: level === 0 ? '0' : '12px', position: 'relative' }}>
+    <div style={{ 
+      marginLeft: level === 0 ? '0' : '14px', 
+      borderLeft: level > 0 ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+      position: 'relative' 
+    }}>
       {/* ── Node Row ── */}
       <div
         ref={nodeRef}
