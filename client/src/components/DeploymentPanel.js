@@ -61,7 +61,11 @@ const DeploymentPanel = ({ token, activeMode }) => {
             if (res.data.frontend) {
                 setWorldDeployed(true);
                 if (res.data.siteName) setProjectName(res.data.siteName);
-                const host = window.__KEVRYN_DESKTOP__ ? 'https://kevryn-ide.pages.dev' : window.location.origin;
+                
+                // CRITICAL FIX: Bypass Cloudflare Pages proxy because it breaks MIME types. 
+                // Serve directly from the Render backend where the files live!
+                const host = SERVER_URL || 'https://kevryn-ide.onrender.com';
+                
                 const fullUrl = res.data.frontend.startsWith('http')
                     ? res.data.frontend
                     : host + res.data.frontend;
@@ -136,7 +140,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
                 backendUrl: ''
             });
             if (res.data.url) {
-                const host = window.__KEVRYN_DESKTOP__ ? 'https://kevryn-ide.pages.dev' : window.location.origin;
+                const host = SERVER_URL || 'https://kevryn-ide.onrender.com';
                 const fullUrl = res.data.url.startsWith('http')
                     ? res.data.url
                     : host + res.data.url;
@@ -307,7 +311,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
             {!worldDeployed ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span style={{ color: '#888', fontSize: '13px', paddingLeft: '10px' }}>kevryn-ide.pages.dev/sites/</span>
+                        <span style={{ color: '#888', fontSize: '13px', paddingLeft: '10px' }}>kevryn-ide.onrender.com/sites/</span>
                         <input
                             type="text"
                             placeholder="e.g. my-resume (or leave blank to auto-generate)"
