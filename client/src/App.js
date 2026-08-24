@@ -2457,18 +2457,6 @@ function App() {
                                     )}
                                 </div>
 
-                                {/* Help Menu */}
-                                <div className="menu-item" onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'help' ? null : 'help'); }}>
-                                    Help
-                                    {activeMenu === 'help' && (
-                                        <div className="dropdown-menu">
-                                            <div className="dropdown-option" onClick={() => window.open('https://code.visualstudio.com/docs', '_blank')}>Documentation</div>
-                                            <div className="dropdown-separator"></div>
-                                            <div className="dropdown-option" onClick={() => showDialog({ type: 'alert', title: 'KevRyn IDE', message: 'KevRyn IDE v2.0\nA premium Cloud IDE built with React & Node.js' })}>About</div>
-                                        </div>
-                                    )}
-                                </div>
-
                                 {/* Deploy Menu */}
                                 <div className="menu-item" onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === 'deploy' ? null : 'deploy'); }}>
                                     Deploy
@@ -3086,21 +3074,6 @@ function App() {
                                         <span>Ln {editorRef.current?.getPosition()?.lineNumber || 1}, Col {editorRef.current?.getPosition()?.column || 1}</span>
                                         <span>UTF-8</span>
                                     </div>
-                                    <button
-                                        onClick={async () => { 
-                                            const ok = await showDialog({ type: 'confirm', title: 'Sign Out', message: 'Are you sure you want to sign out?' }); 
-                                            if (ok) handleLogout(); 
-                                        }}
-                                        style={{
-                                            background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)',
-                                            padding: '1px 8px', borderRadius: '4px', cursor: 'pointer',
-                                            fontSize: '10px', fontWeight: 'bold', transition: 'all 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.3)'}
-                                        onMouseLeave={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.15)'}
-                                    >
-                                        EXIT IDE
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -3108,13 +3081,6 @@ function App() {
                         {/* --- GLOBAL RESIZE OVERLAY --- */}
                         {(isResizingAi || isResizingPanel) && (
                             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, cursor: isResizingPanel ? 'row-resize' : 'col-resize', background: 'transparent' }} />
-                        )}
-
-                        {/* --- FLOATING AI BUTTON (Only for Cloud Web IDE) --- */}
-                        {(!window.__KEVRYN_DESKTOP__) && (
-                            <button className={`ai-fab ${isAiPanelOpen ? 'active' : ''}`} onClick={() => setIsAiPanelOpen(!isAiPanelOpen)} title="Toggle AI Assistant">
-                                <FaRobot size={20} />
-                            </button>
                         )}
 
                         <AnimatePresence>
