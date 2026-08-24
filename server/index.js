@@ -1636,6 +1636,9 @@ app.use('/preview/:userId', (req, res, next) => {
     express.static(dir)(req, res, next);
 });
 
+// Serve Worldwide Deployed static sites
+app.use('/sites', express.static(baseSitesDir));
+
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
     console.error('!!! UNHANDLED ERROR !!!', err.stack);
