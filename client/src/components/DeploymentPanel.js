@@ -289,23 +289,15 @@ const DeploymentPanel = ({ token, activeMode }) => {
     const renderWorldDeploy = () => (
         <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', height: '100%', padding: '30px', textAlign: 'center'
+            justifyContent: 'center', height: '100%', padding: '20px', textAlign: 'center'
         }}>
-            <FaGlobe size={42} style={{ color: '#3b82f6', marginBottom: '15px', opacity: 0.9 }} />
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>Deploy to World</h3>
-            <p style={{
-                maxWidth: '420px', fontSize: '13px', color: '#888',
-                lineHeight: '1.6', marginBottom: '25px'
-            }}>
-                Publish your portfolio, resume, or static website to a public URL visible worldwide.
-                <br />
-                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>Restriction:</span> Static projects only (HTML / CSS / JS). No backends or databases.
-            </p>
+            <FaGlobe size={36} style={{ color: '#3b82f6', marginBottom: '10px', opacity: 0.9 }} />
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold' }}>Worldwide Static Deployment</h3>
 
             {publishError && (
                 <div style={{
                     background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                    padding: '10px 20px', borderRadius: '8px', marginBottom: '15px',
+                    padding: '8px 15px', borderRadius: '8px', marginBottom: '15px',
                     fontSize: '13px', maxWidth: '400px', border: '1px solid rgba(239, 68, 68, 0.2)'
                 }}>
                     {publishError}
@@ -393,6 +385,10 @@ const DeploymentPanel = ({ token, activeMode }) => {
                             title="Copy Link"
                         />
                     </div>
+
+                    <p style={{ color: '#888', fontSize: '13px', marginTop: '15px' }}>
+                        Want to deploy a different project? Take this one down first.
+                    </p>
 
                     <button
                         onClick={unpublishWorld}
