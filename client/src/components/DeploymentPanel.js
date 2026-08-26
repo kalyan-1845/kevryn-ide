@@ -256,7 +256,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
                         }}>
                             <span style={{ fontFamily: 'monospace', color: '#61dafb', fontSize: '14px' }}>{lanUrl}</span>
                             <FaCopy
-                                style={{ cursor: 'pointer', color: copied ? '#10b981' : '#888', transition: 'color 0.2s' }}
+                                style={{ cursor: 'pointer', color: copiedUrl === lanUrl ? '#10b981' : '#888', transition: 'color 0.2s' }}
                                 onClick={() => copyToClipboard(lanUrl)}
                                 title="Copy Link"
                             />
