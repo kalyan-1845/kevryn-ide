@@ -17,11 +17,10 @@ const DeploymentPanel = ({ token, activeMode }) => {
     const [localBackendLoading, setLocalBackendLoading] = useState(false);
 
     // === Worldwide Deploy State ===
-    const [worldDeployed, setWorldDeployed] = useState(false);
-    const [worldUrl, setWorldUrl] = useState('');
+    const [worldDeployments, setWorldDeployments] = useState([]);
     const [isPublishing, setIsPublishing] = useState(false);
     const [publishError, setPublishError] = useState('');
-    const [copied, setCopied] = useState(false);
+    const [copiedUrl, setCopiedUrl] = useState(null);
     const [projectName, setProjectName] = useState('');
 
     const api = axios.create({
@@ -54,33 +53,32 @@ const DeploymentPanel = ({ token, activeMode }) => {
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Check existing deploy status on mount
-    useEffect(() => {
+    const fetchDeployStatus = () => {
         if (!token) return;
         api.get('/deploy/status').then(res => {
-            if (res.data.frontend) {
-                setWorldDeployed(true);
-                if (res.data.siteName) setProjectName(res.data.siteName);
-                
-                // CRITICAL FIX: Bypass Cloudflare Pages proxy because it breaks MIME types. 
-                // Serve directly from the Render backend where the files live!
+            if (res.data.frontends && Array.isArray(res.data.frontends)) {
                 const host = SERVER_URL || 'https://kevryn-ide.onrender.com';
-                
-                const fullUrl = res.data.frontend.startsWith('http')
-                    ? res.data.frontend
-                    : host + res.data.frontend;
-                setWorldUrl(fullUrl);
+                const formatted = res.data.frontends.map(site => ({
+                    name: site.siteName,
+                    url: site.url.startsWith('http') ? site.url : host + site.url
+                }));
+                setWorldDeployments(formatted);
             }
             if (res.data.backend) {
                 setLocalBackendRunning(true);
             }
         }).catch(() => {});
+    };
+
+    // Check existing deploy status on mount
+    useEffect(() => {
+        fetchDeployStatus();
     }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setCopiedUrl(text);
+        setTimeout(() => setCopiedUrl(null), 2000);
     };
 
     // === Local LAN Handlers ===
@@ -107,17 +105,15 @@ const DeploymentPanel = ({ token, activeMode }) => {
         if (localBackendRunning) {
             try {
                 await api.post('/deploy/stop');
-            } catch {}
-            setLocalBackendRunning(false);
+                setLocalBackendRunning(false);
+            } catch (err) {
+                console.error('Failed to stop local backend:', err);
+            }
         } else {
             setLocalBackendLoading(true);
             try {
-                const res = await api.post('/deploy/backend', {
-                    entryFile: 'server.js'
-                });
-                if (res.data.port) {
-                    setLocalBackendRunning(true);
-                }
+                await api.post('/deploy/backend', { entryFile: 'server.js', courseId: window.location.pathname.includes('/lab/') ? window.location.pathname.split('/lab/')[1] : null });
+                setLocalBackendRunning(true);
             } catch (err) {
                 console.error('Failed to start local backend:', err);
             } finally {
@@ -128,6 +124,10 @@ const DeploymentPanel = ({ token, activeMode }) => {
 
     // === Worldwide Deploy Handlers ===
     const publishToWorld = async () => {
+        if (worldDeployments.length >= 3) {
+            setPublishError('You have reached the maximum of 3 deployments. Please unpublish one first.');
+            return;
+        }
         setIsPublishing(true);
         setPublishError('');
         
@@ -135,18 +135,12 @@ const DeploymentPanel = ({ token, activeMode }) => {
         const finalSiteName = projectName.trim() || 'portfolio-' + Math.random().toString(36).substring(2, 8);
 
         try {
-            const res = await api.post('/deploy/frontend', {
+            await api.post('/deploy/frontend', {
                 siteName: finalSiteName,
                 backendUrl: ''
             });
-            if (res.data.url) {
-                const host = SERVER_URL || 'https://kevryn-ide.onrender.com';
-                const fullUrl = res.data.url.startsWith('http')
-                    ? res.data.url
-                    : host + res.data.url;
-                setWorldUrl(fullUrl);
-                setWorldDeployed(true);
-            }
+            fetchDeployStatus(); // Refresh the list
+            setProjectName(''); // Clear the input
         } catch (err) {
             const errMsg = err.response?.data?.error || err.message || 'Deployment failed';
             setPublishError(errMsg);
@@ -155,16 +149,13 @@ const DeploymentPanel = ({ token, activeMode }) => {
         }
     };
 
-    const unpublishWorld = async () => {
-        if (!window.confirm('Are you sure you want to unpublish? This will take your project offline instantly.')) return;
+    const unpublishWorld = async (siteName) => {
+        if (!window.confirm(`Are you sure you want to take ${siteName} offline instantly?`)) return;
         try {
-            await api.post('/deploy/unpublish');
-            setWorldDeployed(false);
-            setWorldUrl('');
+            await api.post('/deploy/unpublish', { siteName });
+            fetchDeployStatus(); // Refresh the list
         } catch {
-            // Even if the route doesn't exist yet, clear the UI
-            setWorldDeployed(false);
-            setWorldUrl('');
+            fetchDeployStatus(); // Refresh anyway in case of out of sync
         }
     };
 
@@ -292,33 +283,57 @@ const DeploymentPanel = ({ token, activeMode }) => {
     // === Render: Worldwide Static Deploy ===
     const renderWorldDeploy = () => (
         <div style={{
-            display: 'flex', flexDirection: 'row', alignItems: 'center',
-            height: '100%', padding: '0 20px', gap: '20px', width: '100%',
+            display: 'flex', flexDirection: 'column',
+            height: '100%', padding: '15px 20px', width: '100%',
             boxSizing: 'border-box'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginBottom: '15px' }}>
                 <FaGlobe size={18} style={{ color: '#3b82f6', opacity: 0.9 }} />
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>Worldwide Static Deployment</h3>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>Worldwide Static Deployment {worldDeployments.length > 0 && `(${worldDeployments.length}/3)`}</h3>
             </div>
 
             {publishError && (
-                <div style={{ color: '#ef4444', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '4px 10px', borderRadius: '4px', flexShrink: 0 }}>
+                <div style={{ color: '#ef4444', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '6px 10px', borderRadius: '4px', flexShrink: 0, marginBottom: '10px' }}>
                     {publishError}
                 </div>
             )}
 
-            <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end', alignItems: 'center', gap: '15px', minWidth: 0 }}>
-                {!worldDeployed ? (
-                    <>
-                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', flex: 1, maxWidth: '400px' }}>
-                            <span style={{ color: '#888', fontSize: '12px', paddingLeft: '5px', whiteSpace: 'nowrap' }}>kevryn-ide.onrender.com/sites/</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
+                {/* List of Active Deployments */}
+                {worldDeployments.map((site) => (
+                    <div key={site.name} style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.2)', padding: '8px 15px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                            <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{'\u2713'} Live:</span>
+                            <a href={site.url} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', color: '#10b981', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                {site.url}
+                            </a>
+                            <FaCopy style={{ cursor: 'pointer', color: copiedUrl === site.url ? '#10b981' : '#888', flexShrink: 0 }} onClick={() => copyToClipboard(site.url)} title="Copy Link" size={14} />
+                            <a href={site.url} target="_blank" rel="noreferrer" style={{ color: '#888', flexShrink: 0 }} title="Open in new tab"><FaExternalLinkAlt size={12} /></a>
+                        </div>
+                        <button
+                            onClick={() => unpublishWorld(site.name)}
+                            style={{
+                                background: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)',
+                                padding: '6px 15px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0
+                            }}
+                        >
+                            <FaTrash size={11} /> Unpublish
+                        </button>
+                    </div>
+                ))}
+
+                {/* Publish New Form (If < 3) */}
+                {worldDeployments.length < 3 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(59, 130, 246, 0.05)', padding: '8px 15px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', flex: 1 }}>
+                            <span style={{ color: '#888', fontSize: '12px', paddingLeft: '5px', whiteSpace: 'nowrap' }}>kevryn-ide.onrender.com/sites/.../</span>
                             <input
                                 type="text"
-                                placeholder="e.g. my-resume"
+                                placeholder="e.g. resume (leave blank to auto-generate)"
                                 value={projectName}
                                 onChange={(e) => setProjectName(e.target.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase())}
-                                style={{ background: 'transparent', border: 'none', color: '#61dafb', fontSize: '13px', outline: 'none', padding: '4px', width: '100%' }}
-                                title="Leave blank to auto-generate a portfolio name"
+                                style={{ background: 'transparent', border: 'none', color: '#61dafb', fontSize: '13px', outline: 'none', padding: '4px', width: '100%', minWidth: 0 }}
                             />
                         </div>
                         <button
@@ -333,28 +348,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
                         >
                             {isPublishing ? <FaSpinner className="spin" size={12} /> : '\uD83D\uDE80'} {isPublishing ? 'Publishing...' : 'Publish'}
                         </button>
-                    </>
-                ) : (
-                    <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.3)', padding: '6px 15px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)', flex: 1, maxWidth: '450px' }}>
-                            <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{'\u2713'} Live:</span>
-                            <a href={worldUrl} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', color: '#10b981', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                {worldUrl}
-                            </a>
-                            <FaCopy style={{ cursor: 'pointer', color: copied ? '#10b981' : '#888', flexShrink: 0 }} onClick={() => copyToClipboard(worldUrl)} title="Copy Link" size={14} />
-                            <a href={worldUrl} target="_blank" rel="noreferrer" style={{ color: '#888', flexShrink: 0 }} title="Open in new tab"><FaExternalLinkAlt size={12} /></a>
-                        </div>
-                        <button
-                            onClick={unpublishWorld}
-                            style={{
-                                background: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)',
-                                padding: '8px 15px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
-                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0
-                            }}
-                        >
-                            <FaTrash size={11} /> Unpublish
-                        </button>
-                    </>
+                    </div>
                 )}
             </div>
 

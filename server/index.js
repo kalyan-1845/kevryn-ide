@@ -1773,10 +1773,20 @@ app.post('/deploy/frontend', authenticate, async (req, res) => {
     const deployPath = path.join(userSitesDir, safeSiteName);
 
     try {
-        if (fs.existsSync(userSitesDir)) {
-            fs.rmSync(userSitesDir, { recursive: true, force: true });
+        if (!fs.existsSync(userSitesDir)) {
+            fs.mkdirSync(userSitesDir, { recursive: true });
         }
-        fs.mkdirSync(userSitesDir, { recursive: true });
+
+        // Check current deployed sites limit
+        const existingSites = fs.readdirSync(userSitesDir).filter(f => fs.statSync(path.join(userSitesDir, f)).isDirectory());
+        if (!existingSites.includes(safeSiteName) && existingSites.length >= 3) {
+            return res.status(400).json({ error: "Maximum of 3 static sites allowed. Please unpublish one first." });
+        }
+
+        if (fs.existsSync(deployPath)) {
+            fs.rmSync(deployPath, { recursive: true, force: true });
+        }
+        fs.mkdirSync(deployPath, { recursive: true });
 
         let sourceDir = userDir;
 
@@ -1801,7 +1811,7 @@ app.post('/deploy/frontend', authenticate, async (req, res) => {
                 const fullPath = path.join(userDir, relPath);
                 if (file.type === 'folder') {
                     if (!fs.existsSync(fullPath)) fs.mkdirSync(fullPath, { recursive: true });
-                } else if (!fs.existsSync(fullPath)) {
+                } else {
                     const dir = path.dirname(fullPath);
                     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
                     fs.writeFileSync(fullPath, file.content || "");
@@ -2041,22 +2051,23 @@ app.get('/deploy/status', authenticate, (req, res) => {
     const deployment = DeployManager.getDeployment(projectId);
     const userSitesDir = getUserSitesDir(userId);
 
-    let frontendUrl = null;
-    let activeSiteName = null;
+    let frontends = [];
 
     if (fs.existsSync(userSitesDir)) {
         try {
             const sites = fs.readdirSync(userSitesDir).filter(f => fs.statSync(path.join(userSitesDir, f)).isDirectory());
-            if (sites.length > 0) {
-                activeSiteName = sites[0]; // Take the first active site
-                const siteDir = path.join(userSitesDir, activeSiteName);
+            for (const siteName of sites) {
+                const siteDir = path.join(userSitesDir, siteName);
                 let serveFile = 'index.html';
                 const files = fs.readdirSync(siteDir);
                 if (!files.includes('index.html')) {
                     const htmlFile = files.find(f => f.endsWith('.html'));
                     if (htmlFile) serveFile = htmlFile;
                 }
-                frontendUrl = `/sites/${userId}/${activeSiteName}/${serveFile}`;
+                frontends.push({
+                    siteName,
+                    url: `/sites/${userId}/${siteName}/${serveFile}`
+                });
             }
         } catch (e) {
             console.error("Status check error", e);
@@ -2064,8 +2075,7 @@ app.get('/deploy/status', authenticate, (req, res) => {
     }
 
     res.json({
-        frontend: frontendUrl,
-        siteName: activeSiteName,
+        frontends,
         backend: deployment && deployment.status === 'running' ? {
             url: `/deployed/${projectId}`,
             status: "Running",
@@ -2088,14 +2098,25 @@ app.get('/deploy/logs', authenticate, (req, res) => {
 // Unpublish / Take Down a deployed static frontend site
 app.post('/deploy/unpublish', authenticate, (req, res) => {
     const userId = req.user.userId;
-    const username = req.user.username;
+    const { siteName } = req.body;
+    
+    // Default to the first site they have if not provided (for backward compatibility)
+    let targetSite = siteName;
     const userSitesDir = getUserSitesDir(userId);
-    const siteDir = path.join(userSitesDir, username);
+
+    if (!targetSite && fs.existsSync(userSitesDir)) {
+        const sites = fs.readdirSync(userSitesDir).filter(f => fs.statSync(path.join(userSitesDir, f)).isDirectory());
+        if (sites.length > 0) targetSite = sites[0];
+    }
+    
+    if (!targetSite) return res.json({ message: 'No published site found.' });
+
+    const siteDir = path.join(userSitesDir, targetSite);
 
     try {
         if (fs.existsSync(siteDir)) {
             fs.rmSync(siteDir, { recursive: true, force: true });
-            console.log(`[Deploy] Unpublished site for user ${username} (${userId})`);
+            console.log(`[Deploy] Unpublished site ${targetSite} for user ${userId}`);
             res.json({ message: 'Site unpublished successfully.' });
         } else {
             res.json({ message: 'No published site found.' });
