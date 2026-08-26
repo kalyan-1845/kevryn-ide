@@ -2840,6 +2840,25 @@ app.put('/files/:id', authenticate, async (req, res) => {
 
                 await fs.promises.writeFile(filePath, content);
                 console.log(`[FILE SYNC] Synced ${relativePath || file.name} to disk at ${filePath}`);
+
+                // --- AUTO-UPDATE LIVE DEPLOYMENTS ("Hot Reload" for the World) ---
+                if (!file.courseId) { // Apply to portfolio projects
+                    const userSitesDir = getUserSitesDir(file.owner || req.user.userId);
+                    if (fs.existsSync(userSitesDir)) {
+                        const sites = fs.readdirSync(userSitesDir).filter(f => fs.statSync(path.join(userSitesDir, f)).isDirectory());
+                        for (const siteName of sites) {
+                            const deployFilePath = path.join(userSitesDir, siteName, relativePath || file.name);
+                            // Ensure the folder structure exists in the deployed site
+                            const deployDir = path.dirname(deployFilePath);
+                            if (!fs.existsSync(deployDir)) {
+                                fs.mkdirSync(deployDir, { recursive: true });
+                            }
+                            await fs.promises.writeFile(deployFilePath, content);
+                            console.log(`[FILE SYNC] Auto-synced to live deployment '${siteName}' -> ${relativePath || file.name}`);
+                        }
+                    }
+                }
+
             } catch (syncErr) {
                 console.error(`[FILE SYNC] Async disk write failed for ${file?.name}:`, syncErr.message);
             }

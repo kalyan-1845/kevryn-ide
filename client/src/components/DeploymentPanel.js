@@ -301,21 +301,30 @@ const DeploymentPanel = ({ token, activeMode }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto' }}>
                 {/* List of Active Deployments */}
                 {worldDeployments.map((site) => (
-                    <div key={site.name} style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,0,0,0.2)', padding: '8px 15px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <div key={site.name} style={{ 
+                        display: 'flex', alignItems: 'center', gap: '15px', 
+                        background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(8px)',
+                        padding: '10px 15px', borderRadius: '8px', 
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'all 0.2s ease'
+                    }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-                            <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{'\u2713'} Live:</span>
-                            <a href={site.url} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', color: '#10b981', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                            <span style={{ color: '#10b981', fontSize: '14px', fontWeight: 'bold', whiteSpace: 'nowrap', textShadow: '0 0 10px rgba(16,185,129,0.3)' }}>{'\u2713'} Live:</span>
+                            <a href={site.url} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', color: '#10b981', textDecoration: 'none', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, transition: 'color 0.2s' }} onMouseOver={e=>e.target.style.color='#34d399'} onMouseOut={e=>e.target.style.color='#10b981'}>
                                 {site.url}
                             </a>
-                            <FaCopy style={{ cursor: 'pointer', color: copiedUrl === site.url ? '#10b981' : '#888', flexShrink: 0 }} onClick={() => copyToClipboard(site.url)} title="Copy Link" size={14} />
-                            <a href={site.url} target="_blank" rel="noreferrer" style={{ color: '#888', flexShrink: 0 }} title="Open in new tab"><FaExternalLinkAlt size={12} /></a>
+                            <FaCopy style={{ cursor: 'pointer', color: copiedUrl === site.url ? '#10b981' : '#64748b', flexShrink: 0, transition: 'all 0.2s' }} onClick={() => copyToClipboard(site.url)} title="Copy Link" size={14} onMouseOver={e=>e.target.style.color='#10b981'} onMouseOut={e=>e.target.style.color=copiedUrl===site.url?'#10b981':'#64748b'} />
+                            <a href={site.url} target="_blank" rel="noreferrer" style={{ color: '#64748b', flexShrink: 0, transition: 'color 0.2s' }} title="Open in new tab" onMouseOver={e=>e.target.style.color='#94a3b8'} onMouseOut={e=>e.target.style.color='#64748b'}><FaExternalLinkAlt size={12} /></a>
                         </div>
                         <button
                             onClick={() => unpublishWorld(site.name)}
+                            onMouseOver={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
+                            onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)'; }}
                             style={{
                                 background: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)',
                                 padding: '6px 15px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
-                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0,
+                                transition: 'all 0.2s ease'
                             }}
                         >
                             <FaTrash size={11} /> Unpublish
@@ -325,23 +334,29 @@ const DeploymentPanel = ({ token, activeMode }) => {
 
                 {/* Publish New Form (If < 3) */}
                 {worldDeployments.length < 3 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(59, 130, 246, 0.05)', padding: '8px 15px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', flex: 1 }}>
-                            <span style={{ color: '#888', fontSize: '12px', paddingLeft: '5px', whiteSpace: 'nowrap' }}>kevryn-ide.onrender.com/sites/.../</span>
+                    <div style={{ 
+                        display: 'flex', alignItems: 'center', gap: '15px', 
+                        background: 'rgba(59, 130, 246, 0.03)', backdropFilter: 'blur(8px)',
+                        padding: '10px 15px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.1)' 
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.4)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', flex: 1, transition: 'border 0.3s' }}>
+                            <span style={{ color: '#64748b', fontSize: '12px', paddingLeft: '5px', whiteSpace: 'nowrap' }}>kevryn-ide.onrender.com/sites/.../</span>
                             <input
                                 type="text"
                                 placeholder="e.g. resume (leave blank to auto-generate)"
                                 value={projectName}
                                 onChange={(e) => setProjectName(e.target.value.replace(/[^a-z0-9-_]/gi, '').toLowerCase())}
-                                style={{ background: 'transparent', border: 'none', color: '#61dafb', fontSize: '13px', outline: 'none', padding: '4px', width: '100%', minWidth: 0 }}
+                                style={{ background: 'transparent', border: 'none', color: '#38bdf8', fontSize: '13px', outline: 'none', padding: '4px', width: '100%', minWidth: 0, fontWeight: '500' }}
                             />
                         </div>
                         <button
                             onClick={publishToWorld}
                             disabled={isPublishing}
+                            onMouseOver={e => !isPublishing && (e.currentTarget.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.4)')}
+                            onMouseOut={e => !isPublishing && (e.currentTarget.style.boxShadow = 'none')}
                             style={{
-                                background: isPublishing ? 'linear-gradient(135deg, #555, #444)' : 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                                color: 'white', border: 'none', padding: '8px 20px', borderRadius: '6px',
+                                background: isPublishing ? 'linear-gradient(135deg, #475569, #334155)' : 'linear-gradient(135deg, #3b82f6, #6366f1)',
+                                color: 'white', border: 'none', padding: '8px 22px', borderRadius: '6px',
                                 fontSize: '13px', fontWeight: 'bold', cursor: isPublishing ? 'not-allowed' : 'pointer',
                                 display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s ease', whiteSpace: 'nowrap', flexShrink: 0
                             }}
