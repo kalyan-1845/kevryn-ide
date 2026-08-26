@@ -8,13 +8,15 @@ const SERVER_URL = _raw.startsWith('http') ? _raw : `https://${_raw}`;
 
 const DeploymentPanel = ({ token, activeMode }) => {
     // === Local LAN State ===
-    const [localFrontendRunning, setLocalFrontendRunning] = useState(false);
-    const [localBackendRunning, setLocalBackendRunning] = useState(false);
     const [localIp, setLocalIp] = useState('');
-    const [frontendPort] = useState(3000);
-    const [backendPort] = useState(5000);
-    const [localFrontendLoading, setLocalFrontendLoading] = useState(false);
-    const [localBackendLoading, setLocalBackendLoading] = useState(false);
+    const [localTasks, setLocalTasks] = useState([
+        { id: '1', name: 'Frontend App', command: 'npx serve . -l 3000', port: '3000', isRunning: false },
+        { id: '2', name: 'Backend API', command: 'node server.js', port: '5000', isRunning: false }
+    ]);
+    const [newTaskName, setNewTaskName] = useState('');
+    const [newTaskCmd, setNewTaskCmd] = useState('');
+    const [newTaskPort, setNewTaskPort] = useState('');
+    const [isAddingTask, setIsAddingTask] = useState(false);
 
     // === Worldwide Deploy State ===
     const [worldDeployments, setWorldDeployments] = useState([]);
@@ -73,10 +75,6 @@ const DeploymentPanel = ({ token, activeMode }) => {
                     url: res.data.frontend.startsWith('http') ? res.data.frontend : host + res.data.frontend
                 }]);
             }
-            
-            if (res.data.backend) {
-                setLocalBackendRunning(true);
-            }
         }).catch(() => {});
     };
 
@@ -92,44 +90,41 @@ const DeploymentPanel = ({ token, activeMode }) => {
     };
 
     // === Local LAN Handlers ===
-    const toggleLocalFrontend = async () => {
-        if (localFrontendRunning) {
-            setLocalFrontendRunning(false);
-        } else {
-            setLocalFrontendLoading(true);
-            try {
-                // If running in Desktop .exe, use Electron IPC to start a local dev server
-                if (window.electronAPI && window.electronAPI.spawnTerminal) {
-                    await window.electronAPI.terminalWrite('npx serve . -l ' + frontendPort + ' --no-clipboard\r');
-                }
-                setLocalFrontendRunning(true);
-            } catch (err) {
-                console.error('Failed to start local frontend:', err);
-            } finally {
-                setLocalFrontendLoading(false);
+    const toggleTask = async (taskId) => {
+        const task = localTasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        if (task.isRunning) {
+            if (window.electronAPI && window.electronAPI.terminalWrite) {
+                window.electronAPI.terminalWrite('\x03'); // Ctrl+C
             }
+            setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, isRunning: false } : t));
+        } else {
+            if (window.electronAPI && window.electronAPI.terminalWrite) {
+                window.electronAPI.terminalWrite(task.command + '\r');
+            }
+            setLocalTasks(prev => prev.map(t => t.id === taskId ? { ...t, isRunning: true } : t));
         }
     };
 
-    const toggleLocalBackend = async () => {
-        if (localBackendRunning) {
-            try {
-                await api.post('/deploy/stop');
-                setLocalBackendRunning(false);
-            } catch (err) {
-                console.error('Failed to stop local backend:', err);
-            }
-        } else {
-            setLocalBackendLoading(true);
-            try {
-                await api.post('/deploy/backend', { entryFile: 'server.js', courseId: window.location.pathname.includes('/lab/') ? window.location.pathname.split('/lab/')[1] : null });
-                setLocalBackendRunning(true);
-            } catch (err) {
-                console.error('Failed to start local backend:', err);
-            } finally {
-                setLocalBackendLoading(false);
-            }
-        }
+    const addTask = () => {
+        if (!newTaskName || !newTaskCmd || !newTaskPort) return;
+        const newTask = {
+            id: Date.now().toString(),
+            name: newTaskName,
+            command: newTaskCmd,
+            port: newTaskPort,
+            isRunning: false
+        };
+        setLocalTasks([...localTasks, newTask]);
+        setNewTaskName('');
+        setNewTaskCmd('');
+        setNewTaskPort('');
+        setIsAddingTask(false);
+    };
+    
+    const removeTask = (taskId) => {
+        setLocalTasks(prev => prev.filter(t => t.id !== taskId));
     };
 
     // === Worldwide Deploy Handlers ===
@@ -169,124 +164,101 @@ const DeploymentPanel = ({ token, activeMode }) => {
         }
     };
 
-    const lanUrl = 'http://' + localIp + ':' + frontendPort;
-
     // === Render: Local LAN Testing ===
     const renderLocalLAN = () => (
         <div style={{ display: 'flex', height: '100%', padding: '20px', gap: '20px' }}>
-            {/* Left: Controls */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', borderRight: '1px solid var(--border-color, #333)', paddingRight: '20px' }}>
-                <div>
-                    <h3 style={{ margin: '0 0 8px 0', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}>
-                        <FaMobileAlt /> Local LAN Testing
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#888', lineHeight: '1.5' }}>
-                        Test across multiple devices on the same Wi-Fi. Uses your local RAM only — zero server cost.
-                    </p>
-                </div>
-
-                {/* Frontend Server Card */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(0,0,0,0.25)', padding: '15px', borderRadius: '10px',
-                    border: localFrontendRunning ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255,255,255,0.06)'
-                }}>
+            {/* Left: Task List */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px', borderRight: '1px solid var(--border-color, #333)', paddingRight: '20px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                     <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>Frontend Server</div>
-                        <div style={{ fontSize: '12px', color: localFrontendRunning ? '#10b981' : '#666' }}>
-                            {localFrontendLoading ? 'Starting...' : localFrontendRunning ? 'Running on Port ' + frontendPort : 'Stopped'}
-                        </div>
+                        <h3 style={{ margin: '0 0 5px 0', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}>
+                            <FaMobileAlt /> Local Run Configurations
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#888', lineHeight: '1.5' }}>
+                            Run any script directly in your terminal. Zero server cost.
+                        </p>
                     </div>
-                    <button
-                        onClick={toggleLocalFrontend}
-                        disabled={localFrontendLoading}
-                        style={{
-                            background: localFrontendRunning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            color: localFrontendRunning ? '#ef4444' : '#10b981',
-                            border: '1px solid ' + (localFrontendRunning ? '#ef4444' : '#10b981'),
-                            padding: '8px 18px', borderRadius: '6px',
-                            cursor: localFrontendLoading ? 'not-allowed' : 'pointer',
-                            fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px',
-                            fontSize: '13px', transition: 'all 0.2s ease',
-                            opacity: localFrontendLoading ? 0.6 : 1
-                        }}
-                    >
-                        {localFrontendLoading ? <FaSpinner className="spin" size={11} /> : localFrontendRunning ? <><FaStop size={11} /> Stop</> : <><FaPlay size={11} /> Run</>}
+                    <button 
+                        onClick={() => setIsAddingTask(!isAddingTask)}
+                        style={{ background: 'rgba(167, 139, 250, 0.15)', color: '#a78bfa', border: '1px solid rgba(167, 139, 250, 0.3)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                        {isAddingTask ? 'Cancel' : '+ Add Task'}
                     </button>
                 </div>
 
-                {/* Backend Server Card */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(0,0,0,0.25)', padding: '15px', borderRadius: '10px',
-                    border: localBackendRunning ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(255,255,255,0.06)'
-                }}>
-                    <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>Backend Server</div>
-                        <div style={{ fontSize: '12px', color: localBackendRunning ? '#3b82f6' : '#666' }}>
-                            {localBackendLoading ? 'Starting...' : localBackendRunning ? 'Running on Port ' + backendPort : 'Stopped'}
+                {isAddingTask && (
+                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(167, 139, 250, 0.2)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <input type="text" placeholder="Task Name (e.g. React App)" value={newTaskName} onChange={e => setNewTaskName(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px', borderRadius: '4px', fontSize: '13px' }} />
+                        <input type="text" placeholder="Command (e.g. npm start)" value={newTaskCmd} onChange={e => setNewTaskCmd(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px', borderRadius: '4px', fontSize: '13px' }} />
+                        <input type="text" placeholder="Port (e.g. 3000)" value={newTaskPort} onChange={e => setNewTaskPort(e.target.value)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px', borderRadius: '4px', fontSize: '13px' }} />
+                        <button onClick={addTask} style={{ background: '#a78bfa', color: '#1a1a2e', border: 'none', padding: '8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Save Task</button>
+                    </div>
+                )}
+
+                {localTasks.map(task => (
+                    <div key={task.id} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: 'rgba(0,0,0,0.25)', padding: '15px', borderRadius: '10px',
+                        border: task.isRunning ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255,255,255,0.06)',
+                        transition: 'all 0.2s'
+                    }}>
+                        <div style={{ flex: 1, minWidth: 0, paddingRight: '15px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {task.name}
+                                {task.isRunning && <span style={{ fontSize: '10px', background: 'rgba(16,185,129,0.2)', color: '#10b981', padding: '2px 6px', borderRadius: '4px' }}>Running on {task.port}</span>}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#888', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                &gt; {task.command}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                                onClick={() => toggleTask(task.id)}
+                                style={{
+                                    background: task.isRunning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                    color: task.isRunning ? '#ef4444' : '#10b981',
+                                    border: '1px solid ' + (task.isRunning ? '#ef4444' : '#10b981'),
+                                    padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                                    fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', transition: 'all 0.2s'
+                                }}
+                            >
+                                {task.isRunning ? <><FaStop size={10} /> Stop</> : <><FaPlay size={10} /> Run</>}
+                            </button>
+                            <button onClick={() => removeTask(task.id)} style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', padding: '4px' }}>
+                                <FaTrash size={12} />
+                            </button>
                         </div>
                     </div>
-                    <button
-                        onClick={toggleLocalBackend}
-                        disabled={localBackendLoading}
-                        style={{
-                            background: localBackendRunning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                            color: localBackendRunning ? '#ef4444' : '#3b82f6',
-                            border: '1px solid ' + (localBackendRunning ? '#ef4444' : '#3b82f6'),
-                            padding: '8px 18px', borderRadius: '6px',
-                            cursor: localBackendLoading ? 'not-allowed' : 'pointer',
-                            fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px',
-                            fontSize: '13px', transition: 'all 0.2s ease',
-                            opacity: localBackendLoading ? 0.6 : 1
-                        }}
-                    >
-                        {localBackendLoading ? <FaSpinner className="spin" size={11} /> : localBackendRunning ? <><FaStop size={11} /> Stop</> : <><FaPlay size={11} /> Run</>}
-                    </button>
-                </div>
+                ))}
             </div>
 
             {/* Right: QR Code Preview */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                {(localFrontendRunning || localBackendRunning) ? (
-                    <>
-                        <div style={{
-                            background: 'white', padding: '16px', borderRadius: '12px',
-                            marginBottom: '15px', boxShadow: '0 8px 30px rgba(0,0,0,0.3)'
-                        }}>
-                            <QRCodeSVG value={lanUrl} size={140} />
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-                            Scan with your Phone / Tablet to preview
-                        </div>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '10px',
-                            background: 'rgba(0,0,0,0.3)', padding: '10px 16px',
-                            borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)'
-                        }}>
-                            <span style={{ fontFamily: 'monospace', color: '#61dafb', fontSize: '14px' }}>{lanUrl}</span>
-                            <FaCopy
-                                style={{ cursor: 'pointer', color: copiedUrl === lanUrl ? '#10b981' : '#888', transition: 'color 0.2s' }}
-                                onClick={() => copyToClipboard(lanUrl)}
-                                title="Copy Link"
-                            />
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#555', marginTop: '12px', textAlign: 'center', maxWidth: '250px' }}>
-                            All devices must be connected to the same Wi-Fi network. Closes automatically when you exit the IDE.
-                        </div>
-                    </>
-                ) : (
-                    <div style={{ color: '#555', textAlign: 'center' }}>
-                        <FaMobileAlt size={45} style={{ opacity: 0.15, marginBottom: '15px' }} />
-                        <p style={{ margin: 0, fontSize: '13px' }}>Start a server to generate the Live LAN Preview</p>
+                {localTasks.some(t => t.isRunning) ? (() => {
+                    const activeTask = localTasks.find(t => t.isRunning);
+                    const activeUrl = 'http://' + localIp + ':' + activeTask.port;
+                    return (
+                        <>
+                            <div style={{ background: 'white', padding: '16px', borderRadius: '12px', marginBottom: '15px', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
+                                <QRCodeSVG value={activeUrl} size={140} />
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#e0e0e0', marginBottom: '6px' }}>{activeTask.name} is Live</div>
+                            <div style={{ fontSize: '12px', color: '#888', marginBottom: '15px' }}>Scan with Phone/Tablet to preview</div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <a href={activeUrl} target="_blank" rel="noreferrer" style={{ color: '#61dafb', fontFamily: 'monospace', textDecoration: 'none', fontSize: '13px' }}>
+                                    {activeUrl}
+                                </a>
+                                <FaCopy style={{ cursor: 'pointer', color: copiedUrl === activeUrl ? '#10b981' : '#888', transition: 'all 0.2s' }} onClick={() => copyToClipboard(activeUrl)} title="Copy" size={14} />
+                            </div>
+                        </>
+                    );
+                })() : (
+                    <div style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
+                        <FaMobileAlt size={40} style={{ opacity: 0.2, marginBottom: '15px' }} />
+                        <p style={{ margin: 0, fontSize: '13px' }}>Run a task to generate a local preview link and QR code.</p>
                     </div>
                 )}
             </div>
-
-            <style>{`
-                .spin { animation: spin-anim 0.8s linear infinite; }
-                @keyframes spin-anim { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            `}</style>
         </div>
     );
 
