@@ -56,14 +56,24 @@ const DeploymentPanel = ({ token, activeMode }) => {
     const fetchDeployStatus = () => {
         if (!token) return;
         api.get('/deploy/status').then(res => {
+            const host = SERVER_URL || 'https://kevryn-ide.onrender.com';
+            
+            // New multi-site format
             if (res.data.frontends && Array.isArray(res.data.frontends)) {
-                const host = SERVER_URL || 'https://kevryn-ide.onrender.com';
                 const formatted = res.data.frontends.map(site => ({
                     name: site.siteName,
                     url: site.url.startsWith('http') ? site.url : host + site.url
                 }));
                 setWorldDeployments(formatted);
+            } 
+            // Fallback for old backend format (while Render is deploying)
+            else if (res.data.frontend) {
+                setWorldDeployments([{
+                    name: res.data.siteName || 'portfolio',
+                    url: res.data.frontend.startsWith('http') ? res.data.frontend : host + res.data.frontend
+                }]);
             }
+            
             if (res.data.backend) {
                 setLocalBackendRunning(true);
             }
@@ -287,11 +297,6 @@ const DeploymentPanel = ({ token, activeMode }) => {
             height: '100%', padding: '15px 20px', width: '100%',
             boxSizing: 'border-box'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginBottom: '15px' }}>
-                <FaGlobe size={18} style={{ color: '#3b82f6', opacity: 0.9 }} />
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>Worldwide Static Deployment {worldDeployments.length > 0 && `(${worldDeployments.length}/3)`}</h3>
-            </div>
-
             {publishError && (
                 <div style={{ color: '#ef4444', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '6px 10px', borderRadius: '4px', flexShrink: 0, marginBottom: '10px' }}>
                     {publishError}
@@ -388,7 +393,7 @@ const DeploymentPanel = ({ token, activeMode }) => {
             }}>
                 {activeMode === 'local'
                     ? <><FaMobileAlt color="#a78bfa" /> Local LAN Test Environment</>
-                    : <><FaGlobe color="#3b82f6" /> Worldwide Static Deployment</>
+                    : <><FaGlobe color="#3b82f6" /> Worldwide Static Deployment {worldDeployments.length > 0 && <span style={{ color: '#888', fontWeight: 'normal' }}>({worldDeployments.length}/3)</span>}</>
                 }
             </div>
             <div style={{ flex: 1, overflow: 'auto' }}>
